@@ -1,0 +1,298 @@
+[
+ {
+  "name": "ListPlayers",
+  "aliases": [],
+  "description": "List connected players with their Steam ids.",
+  "syntax": [
+   "ListPlayers"
+  ]
+ },
+ {
+  "name": "Broadcast",
+  "aliases": [],
+  "description": "Show a message in the middle of every player's screen.",
+  "syntax": [
+   "Broadcast <Message:message>"
+  ]
+ },
+ {
+  "name": "ServerChat",
+  "aliases": [],
+  "description": "Send a chat message to everyone as SERVER.",
+  "syntax": [
+   "ServerChat <Message:message>"
+  ]
+ },
+ {
+  "name": "ServerChatTo",
+  "aliases": [],
+  "description": "Send a private chat message to one player by Steam id.",
+  "syntax": [
+   "ServerChatTo <SteamID:steamid> <Message:message>"
+  ]
+ },
+ {
+  "name": "ServerChatToPlayer",
+  "aliases": [],
+  "description": "Send a private chat message to one player by name (quote names with spaces).",
+  "syntax": [
+   "ServerChatToPlayer <PlayerName:playername> <Message:message>"
+  ]
+ },
+ {
+  "name": "GetChat",
+  "aliases": [],
+  "description": "Show the chat messages since the last GetChat.",
+  "syntax": [
+   "GetChat"
+  ]
+ },
+ {
+  "name": "SetMessageOfTheDay",
+  "aliases": [],
+  "description": "Set the message shown to players when they join.",
+  "syntax": [
+   "SetMessageOfTheDay <Message:message>"
+  ]
+ },
+ {
+  "name": "ShowMessageOfTheDay",
+  "aliases": [],
+  "description": "Show the message of the day to everyone.",
+  "syntax": [
+   "ShowMessageOfTheDay"
+  ]
+ },
+ {
+  "name": "SaveWorld",
+  "aliases": [],
+  "description": "Save the world to disk now.",
+  "syntax": [
+   "SaveWorld"
+  ]
+ },
+ {
+  "name": "DoExit",
+  "aliases": [],
+  "description": "Save and shut the server down.",
+  "syntax": [
+   "DoExit"
+  ]
+ },
+ {
+  "name": "KickPlayer",
+  "aliases": [],
+  "description": "Disconnect a player. They can join again.",
+  "syntax": [
+   "KickPlayer <SteamID:steamid>"
+  ]
+ },
+ {
+  "name": "BanPlayer",
+  "aliases": [],
+  "description": "Ban a player and add them to BanList.txt.",
+  "syntax": [
+   "BanPlayer <SteamID:steamid>"
+  ]
+ },
+ {
+  "name": "UnbanPlayer",
+  "aliases": [],
+  "description": "Remove a player from the ban list.",
+  "syntax": [
+   "UnbanPlayer <SteamID:steamid>"
+  ]
+ },
+ {
+  "name": "AllowPlayerToJoinNoCheck",
+  "aliases": [],
+  "description": "Add a player to the whitelist (PlayersJoinNoCheckList.txt).",
+  "syntax": [
+   "AllowPlayerToJoinNoCheck <SteamID:steamid>"
+  ]
+ },
+ {
+  "name": "DisallowPlayerToJoinNoCheck",
+  "aliases": [],
+  "description": "Remove a player from the whitelist.",
+  "syntax": [
+   "DisallowPlayerToJoinNoCheck <SteamID:steamid>"
+  ]
+ },
+ {
+  "name": "GetPlayerIDForSteamID",
+  "aliases": [],
+  "description": "Find a player's in-game id from their Steam id.",
+  "syntax": [
+   "GetPlayerIDForSteamID <SteamID:steamid>"
+  ]
+ },
+ {
+  "name": "GetSteamIDForPlayerID",
+  "aliases": [],
+  "description": "Find a player's Steam id from their in-game id.",
+  "syntax": [
+   "GetSteamIDForPlayerID <PlayerID:int>"
+  ]
+ },
+ {
+  "name": "GetTribeIdPlayerList",
+  "aliases": [],
+  "description": "List the members of a tribe.",
+  "syntax": [
+   "GetTribeIdPlayerList <TribeID:int>"
+  ]
+ },
+ {
+  "name": "RenamePlayer",
+  "aliases": [],
+  "description": "Rename a player's survivor (quote names with spaces).",
+  "syntax": [
+   "RenamePlayer <PlayerName:playername> <NewName:message>"
+  ]
+ },
+ {
+  "name": "RenameTribe",
+  "aliases": [],
+  "description": "Rename a tribe (quote names with spaces).",
+  "syntax": [
+   "RenameTribe <TribeName:string> <NewName:message>"
+  ]
+ },
+ {
+  "name": "KillPlayer",
+  "aliases": [],
+  "description": "Kill a player's survivor by in-game id.",
+  "syntax": [
+   "KillPlayer <PlayerID:int>"
+  ]
+ },
+ {
+  "name": "ClearPlayerInventory",
+  "aliases": [],
+  "description": "Empty a player's inventory, slots and/or equipment.",
+  "syntax": [
+   "ClearPlayerInventory <PlayerID:int> <Inventory:bool> <Slots:bool> <Equipment:bool>"
+  ]
+ },
+ {
+  "name": "GiveExpToPlayer",
+  "aliases": [],
+  "description": "Give experience to a player.",
+  "syntax": [
+   "GiveExpToPlayer <PlayerID:int> <Amount:int> <FromTribeShare:bool> <PreventSharing:bool>"
+  ]
+ },
+ {
+  "name": "GiveItemToPlayer",
+  "aliases": [],
+  "description": "Give an item by blueprint path.",
+  "syntax": [
+   "GiveItemToPlayer <PlayerID:int> <Blueprint:string> <Quantity:int> <Quality:int> <ForceBlueprint:bool>"
+  ]
+ },
+ {
+  "name": "GiveItemNumToPlayer",
+  "aliases": [],
+  "description": "Give an item by item number.",
+  "syntax": [
+   "GiveItemNumToPlayer <PlayerID:int> <ItemNumber:int> <Quantity:int> <Quality:int> <ForceBlueprint:bool>"
+  ]
+ },
+ {
+  "name": "TeleportPlayerIDToPlayerID",
+  "aliases": [],
+  "description": "Teleport one player to another.",
+  "syntax": [
+   "TeleportPlayerIDToPlayerID <FromPlayerID:int> <ToPlayerID:int>"
+  ]
+ },
+ {
+  "name": "ForcePlayerToJoinTribe",
+  "aliases": [],
+  "description": "Put a player in a tribe.",
+  "syntax": [
+   "ForcePlayerToJoinTribe <PlayerID:int> <TribeName:message>"
+  ]
+ },
+ {
+  "name": "DestroyTribeId",
+  "aliases": [],
+  "description": "Destroy a tribe with all its players, dinos and structures.",
+  "syntax": [
+   "DestroyTribeId <TribeID:int>"
+  ]
+ },
+ {
+  "name": "DestroyTribeIdDinos",
+  "aliases": [],
+  "description": "Destroy every tamed dino of a tribe.",
+  "syntax": [
+   "DestroyTribeIdDinos <TribeID:int>"
+  ]
+ },
+ {
+  "name": "DestroyTribeIdPlayers",
+  "aliases": [],
+  "description": "Destroy every survivor of a tribe.",
+  "syntax": [
+   "DestroyTribeIdPlayers <TribeID:int>"
+  ]
+ },
+ {
+  "name": "DestroyTribeIdStructures",
+  "aliases": [],
+  "description": "Destroy every structure of a tribe.",
+  "syntax": [
+   "DestroyTribeIdStructures <TribeID:int>"
+  ]
+ },
+ {
+  "name": "DestroyWildDinos",
+  "aliases": [],
+  "description": "Remove all wild dinos so they respawn fresh.",
+  "syntax": [
+   "DestroyWildDinos"
+  ]
+ },
+ {
+  "name": "DestroyAll",
+  "aliases": [],
+  "description": "Destroy every actor of a class.",
+  "syntax": [
+   "DestroyAll <Class:string>"
+  ]
+ },
+ {
+  "name": "DestroyStructures",
+  "aliases": [],
+  "description": "Destroy every structure on the map.",
+  "syntax": [
+   "DestroyStructures"
+  ]
+ },
+ {
+  "name": "SetTimeOfDay",
+  "aliases": [],
+  "description": "Set the in-game time (hh:mm or hh:mm:ss).",
+  "syntax": [
+   "SetTimeOfDay <Time:time>"
+  ]
+ },
+ {
+  "name": "Slomo",
+  "aliases": [],
+  "description": "Change the game speed (1 is normal).",
+  "syntax": [
+   "Slomo <Multiplier:multiplier>"
+  ]
+ },
+ {
+  "name": "PlayersOnly",
+  "aliases": [],
+  "description": "Freeze everything except players (toggle).",
+  "syntax": [
+   "PlayersOnly"
+  ]
+ }
+]

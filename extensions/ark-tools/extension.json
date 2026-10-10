@@ -1,0 +1,45 @@
+{
+    "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
+    "id": "ark-tools",
+    "name": "ARK Tools",
+    "version": "1.0.2",
+    "requires": {
+        "panel": "^2.0.0-dev",
+        "sdk": "^2.0.0-beta.4",
+        "php": "^8.3"
+    },
+    "description": "Workshop mods, players, whitelist, bans, admin actions, safe restarts and console autocomplete for ARK: Survival Evolved servers.",
+    "author": "Anton van Zanten",
+    "provider": "ArkTools\\ArkToolsProvider",
+    "ui": {
+        "entry": "dist/client.js",
+        "mode": "native",
+        "prefix": "ark",
+        "screens": [
+            {
+                "id": "mods",
+                "area": "server",
+                "path": "ark-mods",
+                "nav": {
+                    "label": "Mods",
+                    "icon": "package",
+                    "order": 11
+                },
+                "permission": [
+                    "startup.read"
+                ],
+                "when": {
+                    "eggTags": {
+                        "any": [
+                            "ark"
+                        ]
+                    }
+                }
+            }
+        ]
+    },
+    "icon": "gamepad-2",
+    "autoload": {
+        "ArkTools\\": "src"
+    }
+}

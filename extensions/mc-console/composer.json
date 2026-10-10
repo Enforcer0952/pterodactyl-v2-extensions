@@ -1,0 +1,12 @@
+{
+    "description": "Command suggestions, syntax hints and Tab completion in the server console.",
+    "autoload": {
+        "psr-4": {
+            "McConsole\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "McConsoleExtension"
+    },
+    "license": "GPL-3.0-or-later"
+}

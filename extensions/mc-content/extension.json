@@ -1,0 +1,79 @@
+{
+    "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
+    "id": "mc-content",
+    "name": "Minecraft Content",
+    "version": "1.4.1",
+    "requires": {
+        "panel": "^2.0.0-dev",
+        "sdk": "^2.0.0-beta.4",
+        "php": "^8.3"
+    },
+    "description": "Browse Modrinth and install plugins (Paper, Spigot, Bukkit, Purpur, Folia, Sponge, Velocity, Waterfall, BungeeCord) or mods (Forge, NeoForge, Fabric, Quilt) straight into a server's files.",
+    "author": "Anton van Zanten",
+    "icon": "package",
+    "provider": "McContent\\McContentProvider",
+    "autoload": {
+        "McContent\\": "src"
+    },
+    "ui": {
+        "entry": "dist/client.js",
+        "mode": "native",
+        "prefix": "mcc",
+        "screens": [
+            {
+                "id": "plugins",
+                "area": "server",
+                "path": "plugins",
+                "nav": {
+                    "label": "Plugins",
+                    "icon": "plug",
+                    "order": 10
+                },
+                "permission": [
+                    "file.read"
+                ],
+                "when": {
+                    "eggTags": {
+                        "any": [
+                            "paper",
+                            "purpur",
+                            "folia",
+                            "spigot",
+                            "bukkit",
+                            "sponge",
+                            "velocity",
+                            "waterfall",
+                            "bungeecord",
+                            "proxy",
+                            "plugins"
+                        ]
+                    }
+                }
+            },
+            {
+                "id": "mods",
+                "area": "server",
+                "path": "mods",
+                "nav": {
+                    "label": "Mods",
+                    "icon": "package",
+                    "order": 11
+                },
+                "permission": [
+                    "file.read"
+                ],
+                "when": {
+                    "eggTags": {
+                        "any": [
+                            "forge",
+                            "neoforge",
+                            "fabric",
+                            "quilt",
+                            "mods"
+                        ]
+                    }
+                }
+            }
+        ]
+    }
+}

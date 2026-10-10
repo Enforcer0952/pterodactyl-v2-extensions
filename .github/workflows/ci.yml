@@ -1,0 +1,39 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  extension:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        extension: [mc-content, mc-players, mc-console, ark-tools]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: repo
+      - uses: actions/checkout@v4
+        with:
+          repository: pterodactyl/panel
+          ref: 2.0-develop
+          path: panel
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prepare panel SDK
+        working-directory: panel
+        run: npm ci && npm run sdk:generate && npm run sdk:testing
+      - name: Install
+        run: |
+          mkdir -p panel/extensions-src
+          cp -r repo/extensions/${{ matrix.extension }} panel/extensions-src/
+          cd panel/extensions-src/${{ matrix.extension }}
+          npm install --legacy-peer-deps
+      - name: Typecheck, test, build
+        working-directory: panel/extensions-src/${{ matrix.extension }}
+        run: npx tsc && npm test && npm run build
+      - name: PHP syntax
+        working-directory: repo/extensions/${{ matrix.extension }}
+        run: find src routes database -name '*.php' -print0 2>/dev/null | xargs -0 -n1 php -l

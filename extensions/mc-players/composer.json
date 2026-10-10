@@ -1,0 +1,12 @@
+{
+    "description": "Online players, whitelist, bans and operators on the console page.",
+    "autoload": {
+        "psr-4": {
+            "McPlayers\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "McPlayersExtension"
+    },
+    "license": "GPL-3.0-or-later"
+}

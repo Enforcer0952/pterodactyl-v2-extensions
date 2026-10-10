@@ -1,0 +1,12 @@
+{
+    "description": "Workshop mods, players, whitelist, bans, admin actions, safe restarts and console autocomplete for ARK: Survival Evolved servers.",
+    "autoload": {
+        "psr-4": {
+            "ArkTools\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "ArkToolsExtension"
+    },
+    "license": "GPL-3.0-or-later"
+}

@@ -1,0 +1,12 @@
+{
+    "description": "Browse and install plugins and mods from Modrinth.",
+    "autoload": {
+        "psr-4": {
+            "McContent\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "McContentExtension"
+    },
+    "license": "GPL-3.0-or-later"
+}
