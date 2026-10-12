@@ -1,6 +1,6 @@
-# ARK Tools: Workshop mods, players, admin and safe restarts for ARK: Survival Evolved
+# ARK Tools: Workshop mods, server settings, players, admin and safe restarts for ARK: Survival Evolved
 
-Adds a **Mods** page and two console cards to ARK: Survival Evolved servers in Pterodactyl 2.0.
+Adds **Mods** and **Config** pages and two console cards to ARK: Survival Evolved servers in Pterodactyl 2.0.
 
 ## Features
 
@@ -9,6 +9,14 @@ Adds a **Mods** page and two console cards to ARK: Survival Evolved servers in P
 - Reorder the load order, remove mods, and save as one change to `MOD_ID`.
 - Status per mod: up to date, update on restart, or downloads on restart.
 - Finds mods that are downloaded but not loaded, and lets you delete their files.
+
+**Config page**
+- `GameUserSettings.ini` and `Game.ini` as a form: about 90 common settings in groups (rates, breeding, survival, PvE, structures and more), each with its default.
+- Presets: Vanilla, 2x, 3x, 5x, 10x, boosted breeding and relaxed PvE, with a preview of every change.
+- Finds settings ARK ignores: lines in the wrong file or section, likely typos (`MaxNumbersofPlayersInTribe`), duplicates. One-click fixes.
+- Marks settings the startup command overrides.
+- Raw editor for everything else, including mod sections. Passwords stay hidden.
+- Safe saving: ARK rewrites its config when it shuts down, so a running server gets a countdown, saves the world and stops; the files are written while it is off, then it starts again. Every save keeps the last five backups next to the file.
 
 **Players card**
 - Online players (via RCON `ListPlayers`) and every player seen before, with Steam ids and names.
@@ -29,6 +37,7 @@ Adds a **Mods** page and two console cards to ARK: Survival Evolved servers in P
 - Pterodactyl Panel **2.0** (2.0.0-beta or newer; tested on 2.0-develop, October 2026)
 - PHP 8.3+ (same as the panel)
 - No build step: the package ships prebuilt.
+- The panel's scheduler (`php artisan schedule:run` every minute, as in the standard install) to write settings saved while the server was running.
 
 ## Install
 
@@ -68,6 +77,7 @@ Settings and data are kept.
 | `ext.ark-tools.whitelist` | Whitelist changes |
 | `ext.ark-tools.admin` | Admin commands and the admin list |
 | `ext.ark-tools.restart` | Safe and daily restarts |
+| `ext.ark-tools.config` | View and change the Config page (saving restarts a running server) |
 
 The Mods page uses the core **startup.read** and **startup.update** permissions.
 

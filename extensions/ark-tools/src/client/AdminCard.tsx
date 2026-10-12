@@ -263,7 +263,7 @@ function DailyRestart({
     );
 }
 
-function Countdown({ to, kind }: { to: string | null; kind: 'now' | 'daily' }) {
+function Countdown({ to, kind }: { to: string | null; kind: 'now' | 'daily' | 'apply' }) {
     const [now, setNow] = useState(() => Date.now());
     useEffect(() => {
         const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -275,7 +275,7 @@ function Countdown({ to, kind }: { to: string | null; kind: 'now' | 'daily' }) {
 
     return (
         <p className={'ark:text-sm ark:text-foreground'} role={'status'}>
-            {kind === 'daily' ? 'Daily restart' : 'Restart'} {label}
+            {kind === 'daily' ? 'Daily restart' : kind === 'apply' ? 'Restart to apply settings' : 'Restart'} {label}
         </p>
     );
 }

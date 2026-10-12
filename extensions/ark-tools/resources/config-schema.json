@@ -1,0 +1,187 @@
+{
+    "files": {
+        "GameUserSettings.ini": "/ShooterGame/Saved/Config/LinuxServer/GameUserSettings.ini",
+        "Game.ini": "/ShooterGame/Saved/Config/LinuxServer/Game.ini"
+    },
+    "core_sections": {
+        "GameUserSettings.ini": ["ServerSettings", "SessionSettings", "/Script/Engine.GameSession", "MessageOfTheDay"],
+        "Game.ini": ["/Script/ShooterGame.ShooterGameMode"]
+    },
+    "known_keys": ["ActiveMods", "AdminLogging", "AllowAnyoneBabyImprintCuddle", "AllowCrateSpawnsOnTopOfStructures", "AllowHideDamageSourceFromLogs", "AllowRaidDinoFeeding", "AllowSharedConnections", "AllowTekSuitPowersInGenesis", "AutoDestroyDecayedDinos", "AutoDestroyOldStructuresMultiplier", "BanListURL", "ClampItemSpoilingTimes", "ClampResourceHarvestDamage", "DestroyUnconnectedWaterPipes", "DisableDinoDecayPvE", "DisableImprintDinoBuff", "DisablePvEGamma", "DontAlwaysNotifyPlayerJoined", "EnableExtraStructurePreventionVolumes", "EnablePvEGamma", "ExtinctionEventTimeInterval", "FastDecayUnsnappedCoreStructures", "ForceAllStructureLocking", "ForceAllowCaveFlyers", "ImplantSuicideCD", "MaxPersonalTamedDinos", "MaxPlatformSaddleStructureLimit", "MaxTributeDinos", "MaxTributeItems", "NonPermanentDiseases", "NPCNetworkStimulusMultiplier", "OnlyAutoDestroyCoreStructures", "OnlyDecayUnsnappedCoreStructures", "OverrideStructurePlatformPrevention", "PersonalTamedDinosSaddleStructureCost", "PreventDiseases", "PreventDownloadDinos", "PreventDownloadItems", "PreventDownloadSurvivors", "PreventMateBoost", "PreventOfflinePvPInterval", "PreventSpawnAnimations", "PreventTribeAlliances", "ProximityChat", "PvEAllowStructuresAtSupplyDrops", "PvEDinoDecayPeriodMultiplier", "PvPDinoDecay", "PvPStructureDecay", "RaidDinoCharacterFoodDrainMultiplier", "RandomSupplyCratePoints", "RCONEnabled", "RCONPort", "RCONServerGameLogBuffer", "ServerAutoForceRespawnWildDinosInterval", "ServerForceNoHUD", "TribeLogDestroyedEnemyStructures", "TribeNameChangeCooldown", "UseOptimizedHarvestingHealth", "PvPZoneStructureDamageMultiplier", "ListenServerTetherDistanceMultiplier", "bAllowCustomRecipes", "bAllowUnclaimDinos", "bAutoPvETimer", "bAutoPvEUseSystemTime", "bDisableDinoBreeding", "bDisableDinoRiding", "bDisableDinoTaming", "bDisableGenesisMissions", "bDisablePhotoMode", "bFlyerPlatformAllowUnalignedDinoBasing", "bIncreasePvPRespawnInterval", "bPassiveDefensesDamageRiderlessDinos", "bPvEAllowTribeWar", "bPvEAllowTribeWarCancel", "bShowCreativeMode", "bUseCorpseLocator", "bUseDinoLevelUpAnimations", "bUseSingleplayerSettings", "bUseTameLimitForStructuresOnly", "CustomRecipeEffectivenessMultiplier", "CustomRecipeSkillMultiplier", "DinoTurretDamageMultiplier", "HairGrowthSpeedMultiplier", "IncreasePvPRespawnIntervalBaseAmount", "IncreasePvPRespawnIntervalCheckPeriod", "IncreasePvPRespawnIntervalMultiplier", "MaxAlliancesPerTribe", "MaxTribeLogs", "ResourceNoReplenishRadiusPlayers", "ResourceNoReplenishRadiusStructures", "TribeSlotReuseCooldown", "UseCorpseLifeSpanMultiplier", "CropDecaySpeedMultiplier", "BaseTemperatureMultiplier", "LimitNonPlayerDroppedItemsCount", "LimitNonPlayerDroppedItemsRange", "PvEStructureDecayPeriodMultiplier", "PvEStructureDecayDestructionPeriod", "TamedDinoDamageMultiplier", "TamedDinoResistanceMultiplier", "TamedDinoTorporDrainMultiplier", "WildDinoTorporDrainMultiplier", "AutoPvEStartTimeSeconds", "AutoPvEStopTimeSeconds", "MaxGateFrameOnSaddles", "MaxHexagonsPerCharacter", "BirthIntervalMultiplier"],
+    "secrets": ["ServerPassword", "ServerAdminPassword", "SpectatorPassword"],
+    "groups": [
+        { "id": "rates", "label": "Rates" },
+        { "id": "breeding", "label": "Breeding" },
+        { "id": "survival", "label": "Survival" },
+        { "id": "difficulty", "label": "Difficulty & combat" },
+        { "id": "pve", "label": "PvE & PvP" },
+        { "id": "structures", "label": "Structures" },
+        { "id": "players", "label": "Players & tribes" },
+        { "id": "world", "label": "World & loot" },
+        { "id": "server", "label": "Server" }
+    ],
+    "settings": [
+        { "key": "XPMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "rates", "label": "XP", "help": "Experience from every source." },
+        { "key": "TamingSpeedMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "rates", "label": "Taming speed", "help": "How fast creatures tame." },
+        { "key": "HarvestAmountMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "rates", "label": "Harvest amount", "help": "Resources gained per hit." },
+        { "key": "HarvestHealthMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "rates", "label": "Harvest health", "help": "How many hits a tree or rock takes before it is used up." },
+        { "key": "ResourcesRespawnPeriodMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "rates", "label": "Resource respawn time", "help": "Lower is faster respawning resources." },
+        { "key": "ItemStackSizeMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "rates", "label": "Stack size", "help": "Maximum items per inventory stack." },
+        { "key": "KillXPMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "rates", "label": "Kill XP", "help": "XP for kills, on top of XP." },
+        { "key": "HarvestXPMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "rates", "label": "Harvest XP", "help": "XP for harvesting, on top of XP." },
+        { "key": "CraftXPMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "rates", "label": "Craft XP", "help": "XP for crafting, on top of XP." },
+        { "key": "GenericXPMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "rates", "label": "Generic XP", "help": "XP gained over time, on top of XP." },
+        { "key": "SpecialXPMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "rates", "label": "Special XP", "help": "XP for special events such as explorer notes, on top of XP." },
+        { "key": "DinoHarvestingDamageMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "3.2", "min": 0, "group": "rates", "label": "Creature harvesting damage", "help": "Damage creatures do to resource nodes." },
+        { "key": "PlayerHarvestingDamageMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "rates", "label": "Player harvesting damage", "help": "Damage players do to resource nodes." },
+        { "key": "CropGrowthSpeedMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "rates", "label": "Crop growth speed", "help": "Higher grows crops faster." },
+        { "key": "PassiveTameIntervalMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "rates", "label": "Passive tame interval", "help": "Lower means passive-tame feeding requests come sooner." },
+
+        { "key": "MatingIntervalMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "breeding", "label": "Mating interval", "help": "Cooldown before a female can mate again. Lower is shorter." },
+        { "key": "MatingSpeedMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "breeding", "label": "Mating speed", "help": "How fast the mating bar fills." },
+        { "key": "EggHatchSpeedMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "breeding", "label": "Egg hatch & gestation speed", "help": "Higher hatches eggs and finishes gestation faster." },
+        { "key": "BabyMatureSpeedMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "breeding", "label": "Baby mature speed", "help": "Higher grows babies up faster." },
+        { "key": "BabyFoodConsumptionSpeedMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "breeding", "label": "Baby food use", "help": "Lower makes babies eat less." },
+        { "key": "BabyCuddleIntervalMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "breeding", "label": "Imprint interval", "help": "Time between imprint requests. Lower it when maturing faster, or full imprints become impossible." },
+        { "key": "BabyCuddleGracePeriodMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "breeding", "label": "Imprint grace period", "help": "How long you have to answer an imprint request." },
+        { "key": "BabyCuddleLoseImprintQualitySpeedMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "breeding", "label": "Imprint loss speed", "help": "How fast imprint drops after a missed request. 0 turns loss off." },
+        { "key": "BabyImprintAmountMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "breeding", "label": "Imprint per cuddle", "help": "Imprint gained per answered request." },
+        { "key": "BabyImprintingStatScaleMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "breeding", "label": "Imprint stat bonus", "help": "Stat bonus from a full imprint." },
+        { "key": "LayEggIntervalMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "breeding", "label": "Egg laying interval", "help": "Time between unfertilized eggs. Lower is more often." },
+
+        { "key": "PlayerCharacterWaterDrainMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "survival", "label": "Player water drain", "help": "" },
+        { "key": "PlayerCharacterFoodDrainMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "survival", "label": "Player food drain", "help": "" },
+        { "key": "PlayerCharacterStaminaDrainMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "survival", "label": "Player stamina drain", "help": "" },
+        { "key": "PlayerCharacterHealthRecoveryMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "survival", "label": "Player health recovery", "help": "" },
+        { "key": "DinoCharacterFoodDrainMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "survival", "label": "Creature food drain", "help": "Applies to all creatures." },
+        { "key": "DinoCharacterStaminaDrainMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "survival", "label": "Creature stamina drain", "help": "" },
+        { "key": "DinoCharacterHealthRecoveryMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "survival", "label": "Creature health recovery", "help": "" },
+        { "key": "TamedDinoCharacterFoodDrainMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "survival", "label": "Tamed creature food drain", "help": "On top of creature food drain." },
+        { "key": "WildDinoCharacterFoodDrainMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "survival", "label": "Wild creature food drain", "help": "Higher makes taming faster, since wild creatures get hungry sooner." },
+        { "key": "OxygenSwimSpeedStatMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "survival", "label": "Oxygen swim speed bonus", "help": "Swim speed gained per oxygen level." },
+        { "key": "DayCycleSpeedScale", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "survival", "label": "Day cycle speed", "help": "Speed of the whole day/night cycle." },
+        { "key": "DayTimeSpeedScale", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "survival", "label": "Daytime speed", "help": "" },
+        { "key": "NightTimeSpeedScale", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "survival", "label": "Nighttime speed", "help": "Higher makes nights shorter." },
+        { "key": "GlobalSpoilingTimeMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "survival", "label": "Spoiling time", "help": "Higher makes food last longer." },
+
+        { "key": "DifficultyOffset", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "0.2", "min": 0, "max": 1, "group": "difficulty", "label": "Difficulty offset", "help": "0 to 1. Together with official difficulty it sets the maximum wild creature level." },
+        { "key": "OverrideOfficialDifficulty", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "0", "min": 0, "group": "difficulty", "label": "Official difficulty override", "help": "5.0 gives level 150 wild creatures, 0 leaves it to the map." },
+        { "key": "PlayerDamageMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "difficulty", "label": "Player damage", "help": "" },
+        { "key": "PlayerResistanceMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "difficulty", "label": "Player resistance", "help": "Lower takes less damage." },
+        { "key": "DinoDamageMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "difficulty", "label": "Creature damage", "help": "" },
+        { "key": "DinoResistanceMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "difficulty", "label": "Creature resistance", "help": "Lower takes less damage." },
+        { "key": "ServerHardcore", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "difficulty", "label": "Hardcore", "help": "Players restart at level 1 when they die." },
+        { "key": "AllowHitMarkers", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "True", "group": "difficulty", "label": "Hit markers", "help": "" },
+        { "key": "ShowFloatingDamageText", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "difficulty", "label": "Floating damage numbers", "help": "" },
+
+        { "key": "ServerPVE", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "pve", "label": "PvE", "help": "Players cannot damage other players or their structures." },
+        { "key": "AllowFlyerCarryPvE", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "pve", "label": "Flyer carry in PvE", "help": "Let flyers pick up wild creatures on PvE." },
+        { "key": "AllowCaveBuildingPvE", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "pve", "label": "Cave building in PvE", "help": "" },
+        { "key": "DisableStructureDecayPvE", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "pve", "label": "No structure decay in PvE", "help": "" },
+        { "key": "bPvEDisableFriendlyFire", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "bool", "default": "False", "group": "pve", "label": "No friendly fire in PvE", "help": "" },
+        { "key": "bDisableFriendlyFire", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "bool", "default": "False", "group": "pve", "label": "No friendly fire in PvP", "help": "" },
+        { "key": "PreventOfflinePvP", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "pve", "label": "Offline raid protection", "help": "A tribe's structures cannot be damaged while all its members are offline." },
+        { "key": "EnablePvPGamma", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "pve", "label": "Gamma command in PvP", "help": "" },
+
+        { "key": "AlwaysAllowStructurePickup", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "structures", "label": "Always allow pickup", "help": "Pick up placed structures at any time, not only right after placing." },
+        { "key": "StructurePickupTimeAfterPlacement", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "30", "min": 0, "group": "structures", "label": "Pickup window (s)", "help": "Seconds after placing during which a structure can be picked up." },
+        { "key": "StructurePickupHoldDuration", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "0.5", "min": 0, "group": "structures", "label": "Pickup hold time (s)", "help": "" },
+        { "key": "StructureDamageMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "structures", "label": "Structure damage", "help": "Damage structures deal, such as turrets." },
+        { "key": "StructureResistanceMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "structures", "label": "Structure resistance", "help": "Lower takes less damage." },
+        { "key": "TheMaxStructuresInRange", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "int", "default": "10500", "min": 0, "group": "structures", "label": "Max structures in range", "help": "" },
+        { "key": "PerPlatformMaxStructuresMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "structures", "label": "Platform saddle structures", "help": "" },
+        { "key": "PlatformSaddleBuildAreaBoundsMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "structures", "label": "Platform saddle build area", "help": "" },
+        { "key": "StructurePreventResourceRadiusMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "structures", "label": "Resource block radius", "help": "How far structures stop resources respawning." },
+        { "key": "bAllowPlatformSaddleMultiFloors", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "bool", "default": "False", "group": "structures", "label": "Multi-floor platform saddles", "help": "" },
+        { "key": "bDisableStructurePlacementCollision", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "bool", "default": "False", "group": "structures", "label": "No placement collision", "help": "Place structures through terrain and other structures." },
+        { "key": "FuelConsumptionIntervalMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "structures", "label": "Fuel duration", "help": "Higher makes fuel last longer." },
+
+        { "key": "MaxTamedDinos", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "int", "default": "5000", "min": 0, "group": "players", "label": "Max tamed creatures", "help": "Server-wide limit." },
+        { "key": "MaxNumberOfPlayersInTribe", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "int", "default": "0", "min": 0, "group": "players", "label": "Max tribe size", "help": "0 is unlimited." },
+        { "key": "AllowThirdPersonPlayer", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "players", "label": "Third person", "help": "" },
+        { "key": "ShowMapPlayerLocation", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "players", "label": "Show position on map", "help": "" },
+        { "key": "ServerCrosshair", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "players", "label": "Crosshair", "help": "" },
+        { "key": "AllowFlyingStaminaRecovery", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "players", "label": "Flyer stamina recovery", "help": "Flyers recover stamina while hovering with a rider." },
+        { "key": "bAllowUnlimitedRespecs", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "bool", "default": "False", "group": "players", "label": "Unlimited respecs", "help": "Mindwipe tonics without a cooldown." },
+        { "key": "KickIdlePlayersPeriod", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "3600", "min": 0, "group": "players", "label": "Idle kick (s)", "help": "Only applies with the -EnableIdlePlayerKick launch option." },
+
+        { "key": "SupplyCrateLootQualityMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 1, "max": 5, "group": "world", "label": "Supply drop quality", "help": "1 to 5." },
+        { "key": "FishingLootQualityMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 1, "max": 5, "group": "world", "label": "Fishing loot quality", "help": "1 to 5." },
+        { "key": "bDisableLootCrates", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "bool", "default": "False", "group": "world", "label": "No supply drops", "help": "" },
+        { "key": "GlobalItemDecompositionTimeMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "world", "label": "Dropped item lifetime", "help": "" },
+        { "key": "GlobalCorpseDecompositionTimeMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "world", "label": "Corpse lifetime", "help": "" },
+        { "key": "PoopIntervalMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "world", "label": "Poop interval", "help": "Lower is more often." },
+
+        { "key": "SessionName", "file": "GameUserSettings.ini", "section": "SessionSettings", "type": "string", "default": "", "group": "server", "label": "Server name", "help": "" },
+        { "key": "MaxPlayers", "file": "GameUserSettings.ini", "section": "/Script/Engine.GameSession", "type": "int", "default": "70", "min": 1, "group": "server", "label": "Max players", "help": "" },
+        { "key": "Message", "file": "GameUserSettings.ini", "section": "MessageOfTheDay", "type": "string", "default": "", "group": "server", "label": "Message of the day", "help": "Shown to players when they join." },
+        { "key": "Duration", "file": "GameUserSettings.ini", "section": "MessageOfTheDay", "type": "int", "default": "20", "min": 0, "group": "server", "label": "Message duration (s)", "help": "" },
+        { "key": "AutoSavePeriodMinutes", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "15", "min": 1, "group": "server", "label": "Autosave (min)", "help": "" },
+        { "key": "NoTributeDownloads", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "server", "label": "No cluster downloads", "help": "Block downloading characters, items and creatures from other servers." }
+    ],
+    "presets": [
+        {
+            "id": "vanilla",
+            "label": "Vanilla",
+            "description": "Official rates for XP, taming, harvesting and breeding.",
+            "values": {
+                "XPMultiplier": "1.0", "TamingSpeedMultiplier": "1.0", "HarvestAmountMultiplier": "1.0",
+                "MatingIntervalMultiplier": "1.0", "EggHatchSpeedMultiplier": "1.0", "BabyMatureSpeedMultiplier": "1.0", "BabyCuddleIntervalMultiplier": "1.0"
+            }
+        },
+        {
+            "id": "2x",
+            "label": "2x",
+            "description": "Double XP, taming, harvesting and breeding.",
+            "values": {
+                "XPMultiplier": "2.0", "TamingSpeedMultiplier": "2.0", "HarvestAmountMultiplier": "2.0",
+                "MatingIntervalMultiplier": "0.5", "EggHatchSpeedMultiplier": "2.0", "BabyMatureSpeedMultiplier": "2.0", "BabyCuddleIntervalMultiplier": "0.5"
+            }
+        },
+        {
+            "id": "3x",
+            "label": "3x",
+            "description": "Triple XP, taming, harvesting and breeding.",
+            "values": {
+                "XPMultiplier": "3.0", "TamingSpeedMultiplier": "3.0", "HarvestAmountMultiplier": "3.0",
+                "MatingIntervalMultiplier": "0.333", "EggHatchSpeedMultiplier": "3.0", "BabyMatureSpeedMultiplier": "3.0", "BabyCuddleIntervalMultiplier": "0.333"
+            }
+        },
+        {
+            "id": "5x",
+            "label": "5x",
+            "description": "5x XP, taming, harvesting and breeding.",
+            "values": {
+                "XPMultiplier": "5.0", "TamingSpeedMultiplier": "5.0", "HarvestAmountMultiplier": "5.0",
+                "MatingIntervalMultiplier": "0.2", "EggHatchSpeedMultiplier": "5.0", "BabyMatureSpeedMultiplier": "5.0", "BabyCuddleIntervalMultiplier": "0.2"
+            }
+        },
+        {
+            "id": "10x",
+            "label": "10x",
+            "description": "10x XP, taming, harvesting and breeding.",
+            "values": {
+                "XPMultiplier": "10.0", "TamingSpeedMultiplier": "10.0", "HarvestAmountMultiplier": "10.0",
+                "MatingIntervalMultiplier": "0.1", "EggHatchSpeedMultiplier": "10.0", "BabyMatureSpeedMultiplier": "10.0", "BabyCuddleIntervalMultiplier": "0.1"
+            }
+        },
+        {
+            "id": "breeding",
+            "label": "Boosted breeding",
+            "description": "Fast breeding with full imprints still possible, rates untouched.",
+            "values": {
+                "MatingIntervalMultiplier": "0.1", "EggHatchSpeedMultiplier": "10.0", "BabyMatureSpeedMultiplier": "10.0",
+                "BabyCuddleIntervalMultiplier": "0.1", "BabyCuddleGracePeriodMultiplier": "2.0", "BabyFoodConsumptionSpeedMultiplier": "0.5"
+            }
+        },
+        {
+            "id": "relaxed-pve",
+            "label": "Relaxed PvE",
+            "description": "PvE with no friendly fire, no structure decay, flyer carry and cave building.",
+            "values": {
+                "ServerPVE": "True", "bPvEDisableFriendlyFire": "True", "DisableStructureDecayPvE": "True",
+                "AllowFlyerCarryPvE": "True", "AllowCaveBuildingPvE": "True"
+            }
+        }
+    ]
+}

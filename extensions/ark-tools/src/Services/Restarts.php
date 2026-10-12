@@ -24,6 +24,9 @@ class Restarts
 
     public const string DAILY = 'ARK Tools: daily restart';
 
+    /** Countdown that stops the server, so new settings can be written while it is off. */
+    public const string APPLY = 'ARK Tools: apply settings';
+
     /** Countdown warnings, in minutes before the restart. */
     private const array WARNINGS = [30, 15, 10, 5, 1];
 
@@ -43,11 +46,16 @@ class Restarts
     {
         $now = $this->find($server, self::NOW);
         $daily = $this->find($server, self::DAILY);
-        $running = collect([$now, $daily])->first(fn (?Schedule $schedule): bool => $schedule !== null && $schedule->is_processing);
+        $apply = $this->find($server, self::APPLY);
+        $running = collect([$now, $daily, $apply])->first(fn (?Schedule $schedule): bool => $schedule !== null && $schedule->is_processing);
 
         return [
             'running' => $running === null ? null : [
-                'kind' => $running->name === self::DAILY ? 'daily' : 'now',
+                'kind' => match ($running->name) {
+                    self::DAILY => 'daily',
+                    self::APPLY => 'apply',
+                    default => 'now',
+                },
                 'restart_at' => $this->restartAt($running)?->toAtomString(),
             ],
             'daily' => $daily === null ? null : [
@@ -64,22 +72,39 @@ class Restarts
     /** Start a countdown restart right away. */
     public function start(Server $server, int $minutes): void
     {
+        $this->runOnce($server, self::NOW, $minutes, 'restart');
+    }
+
+    /** Count down, save the world and stop the server, so new settings can be written. */
+    public function stopToApply(Server $server, int $minutes): void
+    {
+        $this->runOnce($server, self::APPLY, $minutes, 'stop');
+    }
+
+    /** Whether a settings countdown is under way. */
+    public function applying(Server $server): bool
+    {
+        return (bool) $this->find($server, self::APPLY)?->is_processing;
+    }
+
+    private function runOnce(Server $server, string $name, int $minutes, string $power): void
+    {
         $this->assertIdle($server);
 
-        $existing = $this->find($server, self::NOW);
+        $existing = $this->find($server, $name);
         if ($existing !== null) {
             $this->deletes->delete($existing);
         }
 
-        $schedule = DB::transaction(function () use ($server, $minutes): Schedule {
+        $schedule = DB::transaction(function () use ($server, $name, $minutes, $power): Schedule {
             // Inactive, so the cron never picks it up; it only runs when started here.
             $schedule = $this->schedules->create($server, [
-                'name' => self::NOW,
+                'name' => $name,
                 'is_active' => false,
                 'minute' => '0', 'hour' => '4', 'day_of_month' => '*', 'month' => '*', 'day_of_week' => '*',
                 'only_when_online' => true,
             ]);
-            $this->addTasks($schedule, $minutes);
+            $this->addTasks($schedule, $minutes, $power);
 
             return $schedule;
         });
@@ -92,10 +117,17 @@ class Restarts
     {
         $cancelled = false;
 
-        $now = $this->find($server, self::NOW);
-        if ($now !== null && $now->is_processing) {
-            $this->deletes->delete($now);
-            $cancelled = true;
+        foreach ([self::NOW, self::APPLY] as $name) {
+            $once = $this->find($server, $name);
+            if ($once !== null && $once->is_processing) {
+                $this->deletes->delete($once);
+                $cancelled = true;
+            }
+        }
+
+        // A cancelled settings countdown drops the settings waiting for it too.
+        if ($cancelled) {
+            DB::table(ConfigApply::TABLE)->where('server_id', $server->id)->delete();
         }
 
         $daily = $this->find($server, self::DAILY);
@@ -140,7 +172,7 @@ class Restarts
         });
     }
 
-    private function addTasks(Schedule $schedule, int $minutes): void
+    private function addTasks(Schedule $schedule, int $minutes, string $power = 'restart'): void
     {
         $steps = [];
         $warnings = array_values(array_filter(self::WARNINGS, fn (int $warning): bool => $warning <= $minutes));
@@ -157,11 +189,11 @@ class Restarts
         if ($previous !== null) {
             $steps[] = ['command', 'Broadcast Server restarting in 10 seconds. Saving the world now.', $previous * 60 - 10];
             $steps[] = ['command', 'SaveWorld', 0];
-            $steps[] = ['power', 'restart', 10];
+            $steps[] = ['power', $power, 10];
         } else {
             $steps[] = ['command', 'Broadcast Server restarting now. Saving the world.', 0];
             $steps[] = ['command', 'SaveWorld', 0];
-            $steps[] = ['power', 'restart', 5];
+            $steps[] = ['power', $power, 5];
         }
 
         foreach ($steps as [$action, $payload, $offset]) {
@@ -205,7 +237,7 @@ class Restarts
 
     private function assertIdle(Server $server): void
     {
-        foreach ([self::NOW, self::DAILY] as $name) {
+        foreach ([self::NOW, self::DAILY, self::APPLY] as $name) {
             if ($this->find($server, $name)?->is_processing) {
                 throw new HttpException(409, 'A restart is already counting down.');
             }

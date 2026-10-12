@@ -1,6 +1,7 @@
 <?php
 
 use ArkTools\Http\Controllers\AdminController;
+use ArkTools\Http\Controllers\ConfigController;
 use ArkTools\Http\Controllers\ModsController;
 use ArkTools\Http\Controllers\PlayersController;
 use Illuminate\Support\Facades\Route;
@@ -21,3 +22,7 @@ Route::get('/restart', [AdminController::class, 'restartStatus'])->name('restart
 Route::post('/restart', [AdminController::class, 'restart'])->middleware('throttle:20,1,ark-restart')->name('restart.start');
 Route::delete('/restart', [AdminController::class, 'cancel'])->middleware('throttle:20,1,ark-restart')->name('restart.cancel');
 Route::put('/restart/daily', [AdminController::class, 'daily'])->middleware('throttle:20,1,ark-restart')->name('restart.daily');
+
+Route::get('/config', [ConfigController::class, 'show'])->middleware('throttle:60,1,ark-config')->name('config');
+Route::put('/config', [ConfigController::class, 'update'])->middleware('throttle:20,1,ark-config-save')->name('config.update');
+Route::delete('/config/apply', [ConfigController::class, 'cancel'])->middleware('throttle:20,1,ark-config-save')->name('config.cancel');

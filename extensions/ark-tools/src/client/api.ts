@@ -9,6 +9,7 @@ export const keys = {
     online: (server: string) => ['ark-tools', server, 'online'] as const,
     lists: (server: string) => ['ark-tools', server, 'lists'] as const,
     restart: (server: string) => ['ark-tools', server, 'restart'] as const,
+    config: (server: string) => ['ark-tools', server, 'config'] as const,
 };
 
 /* Mods */
@@ -102,7 +103,7 @@ export const runAdminCommand = async (server: string, action: AdminAction, messa
     (await http.post<{ sent: string }>(`${base(server)}/admin/command`, { action, message })).data;
 
 export interface RestartStatus {
-    running: { kind: 'now' | 'daily'; restart_at: string | null } | null;
+    running: { kind: 'now' | 'daily' | 'apply'; restart_at: string | null } | null;
     daily: { enabled: boolean; time: string; minutes: number; next_run_at: string | null } | null;
     timezone: string;
     minutes: number[];
@@ -128,3 +129,110 @@ export function parseModInput(text: string): string[] {
 }
 
 export const STEAM_ID = /^7656119\d{10}$/;
+
+/* Config */
+
+export type ConfigFileName = 'GameUserSettings.ini' | 'Game.ini';
+
+export interface ConfigSetting {
+    key: string;
+    file: ConfigFileName;
+    section: string;
+    type: 'float' | 'int' | 'bool' | 'string';
+    default: string;
+    min?: number;
+    max?: number;
+    group: string;
+    label: string;
+    help: string;
+}
+
+export interface ConfigPreset {
+    id: string;
+    label: string;
+    description: string;
+    values: Record<string, string>;
+}
+
+export interface ConfigEdit {
+    file: ConfigFileName;
+    section: string;
+    key: string;
+    value: string | null;
+}
+
+export interface ConfigIssue {
+    file: ConfigFileName;
+    section: string;
+    key: string;
+    line: number;
+    kind: 'misplaced' | 'typo' | 'duplicate';
+    level: 'warning' | 'info';
+    message: string;
+    fixes: { label: string; edits: ConfigEdit[] }[];
+}
+
+export interface ConfigResponse {
+    state: ServerState;
+    files: Record<ConfigFileName, { path: string; exists: boolean; raw: string; hash: string }>;
+    fields: { key: string; value: string | null; overridden: boolean }[];
+    issues: ConfigIssue[];
+    apply: { status: 'waiting' | 'writing' | 'failed'; since: string; error: string | null } | null;
+    restart: RestartStatus['running'];
+    minutes: number[];
+    schema: { groups: { id: string; label: string }[]; settings: ConfigSetting[]; presets: ConfigPreset[] };
+    result?: 'unchanged' | 'saved' | 'waiting';
+}
+
+export interface ConfigSave {
+    raw?: Partial<Record<ConfigFileName, string>>;
+    edits?: ConfigEdit[];
+    hashes: Record<string, string>;
+    minutes?: number;
+    start?: boolean;
+}
+
+export const getConfig = async (server: string) => (await http.get<ConfigResponse>(`${base(server)}/config`)).data;
+
+export const saveConfig = async (server: string, input: ConfigSave) => (await http.put<ConfigResponse>(`${base(server)}/config`, input)).data;
+
+export const cancelConfigApply = async (server: string) => (await http.delete<ConfigResponse>(`${base(server)}/config/apply`)).data;
+
+/** A problem with a value typed into the form, or null when it is fine. */
+export function validateSetting(setting: ConfigSetting, value: string): string | null {
+    const trimmed = value.trim();
+    if (setting.type === 'bool') {
+        return /^(true|false)$/i.test(trimmed) ? null : 'Must be True or False.';
+    }
+    if (setting.type === 'string') {
+        return trimmed.length > 500 ? 'Too long.' : null;
+    }
+    if (trimmed === '' || !Number.isFinite(Number(trimmed))) {
+        return setting.type === 'int' ? 'Enter a whole number.' : 'Enter a number.';
+    }
+    if (setting.type === 'int' && !/^-?\d+$/.test(trimmed)) {
+        return 'Enter a whole number.';
+    }
+    if (setting.min !== undefined && Number(trimmed) < setting.min) {
+        return `At least ${setting.min}.`;
+    }
+    if (setting.max !== undefined && Number(trimmed) > setting.max) {
+        return `At most ${setting.max}.`;
+    }
+    return null;
+}
+
+/** Edits keyed by file, section and key, so a later edit to the same setting replaces an earlier one. */
+export const editKey = (edit: Pick<ConfigEdit, 'file' | 'section' | 'key'>) =>
+    `${edit.file}|${edit.section.toLowerCase()}|${edit.key.toLowerCase()}`;
+
+/** Whether two setting values mean the same thing: 2 and 2.000000, true and True. */
+export function sameValue(a: string | null | undefined, b: string | null | undefined): boolean {
+    if (a === null || a === undefined || b === null || b === undefined) return (a ?? null) === (b ?? null);
+    const x = a.trim();
+    const y = b.trim();
+    if (x !== '' && y !== '' && Number.isFinite(Number(x)) && Number.isFinite(Number(y))) {
+        return Math.abs(Number(x) - Number(y)) < 1e-9;
+    }
+    return x.toLowerCase() === y.toLowerCase();
+}
