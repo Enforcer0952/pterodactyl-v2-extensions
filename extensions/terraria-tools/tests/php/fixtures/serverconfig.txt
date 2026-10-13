@@ -1,0 +1,11 @@
+worldpath=/home/container/saves/Worlds
+worldname=MyWorld
+world=/home/container/saves/Worlds/MyWorld.wld
+difficulty=0
+autocreate=3
+port=12556
+maxplayers=8
+motd=Welcome
+seed=
+password=secret
+npcstream=0

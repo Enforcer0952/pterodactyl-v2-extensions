@@ -7,7 +7,6 @@ use McContent\Support\ContentKind;
 use Pterodactyl\Contracts\Files\ListsDirectories;
 use Pterodactyl\Contracts\Files\ReadsFileContents;
 use Pterodactyl\Models\Server;
-use Pterodactyl\Services\Extensions\ExtensionManager;
 
 /**
  * Works out which Minecraft version a server runs. In order: the version a user
@@ -23,7 +22,6 @@ class GameVersionDetector
     public function __construct(
         private readonly ListsDirectories $lister,
         private readonly ReadsFileContents $reader,
-        private readonly ExtensionManager $extensions,
     ) {}
 
     /**
@@ -57,14 +55,14 @@ class GameVersionDetector
 
     public function saved(Server $server): ?string
     {
-        $value = $this->extensions->settings('mc-content')->forServer($server)->get('game_version');
+        $value = app('ext.mc-content.settings')->forServer($server)->get('game_version');
 
         return is_string($value) && $value !== '' ? $value : null;
     }
 
     public function save(Server $server, ?string $version): void
     {
-        $store = $this->extensions->settings('mc-content')->forServer($server);
+        $store = app('ext.mc-content.settings')->forServer($server);
 
         $version === null ? $store->forget('game_version') : $store->set('game_version', $version);
     }

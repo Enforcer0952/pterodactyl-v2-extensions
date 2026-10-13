@@ -4,12 +4,22 @@ on:
   pull_request:
 
 jobs:
+  list:
+    runs-on: ubuntu-latest
+    outputs:
+      extensions: ${{ steps.list.outputs.extensions }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: list
+        run: echo "extensions=$(ls extensions | jq -R . | jq -cs .)" >> "$GITHUB_OUTPUT"
+
   extension:
+    needs: list
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        extension: [mc-content, mc-players, mc-console, ark-tools]
+        extension: ${{ fromJson(needs.list.outputs.extensions) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,6 +32,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer
       - name: Prepare panel SDK
         working-directory: panel
         run: npm ci && npm run sdk:generate && npm run sdk:testing
@@ -37,3 +51,10 @@ jobs:
       - name: PHP syntax
         working-directory: repo/extensions/${{ matrix.extension }}
         run: find src routes database -name '*.php' -print0 2>/dev/null | xargs -0 -n1 php -l
+      - name: PHP tests
+        working-directory: repo
+        run: |
+          composer install --no-interaction --no-progress
+          if [ -f extensions/${{ matrix.extension }}/phpunit.xml ]; then
+            cd extensions/${{ matrix.extension }} && ../../vendor/bin/phpunit
+          fi

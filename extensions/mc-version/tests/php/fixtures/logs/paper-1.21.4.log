@@ -1,0 +1,5 @@
+[15:02:11 INFO]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[15:02:13 INFO]: Loaded 1290 recipes
+[15:02:14 INFO]: Starting minecraft server version 1.21.4
+[15:02:14 INFO]: Loading properties
+[15:02:14 INFO]: This server is running Paper version 1.21.4-232-main@2d3f4c8 (2025-01-05T14:38:28Z) (Implementing API version 1.21.4-R0.1-SNAPSHOT)

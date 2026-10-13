@@ -1,0 +1,12 @@
+{
+    "description": "Manage the backend server list of a BungeeCord or Waterfall proxy from the proxy server page.",
+    "autoload": {
+        "psr-4": {
+            "McNetwork\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "McNetworkExtension"
+    },
+    "license": "GPL-3.0-or-later"
+}

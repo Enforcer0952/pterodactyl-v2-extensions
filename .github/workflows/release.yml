@@ -1,0 +1,62 @@
+name: Release
+# Builds every extension, packs it, and publishes a GitHub release with the
+# .pteroext files, SHA256SUMS.txt and generated notes.
+#   - Push a tag like v1.2.0, or
+#   - run this workflow from the Actions tab and type the tag.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to create, for example v1.2.0
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: repo
+      - uses: actions/checkout@v4
+        with:
+          repository: pterodactyl/panel
+          ref: 2.0-develop
+          path: panel
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: zip
+      - name: Prepare panel SDK
+        working-directory: panel
+        run: npm ci && npm run sdk:generate
+      - name: Build every extension
+        run: |
+          mkdir -p panel/extensions-src
+          cp -r repo/extensions/* panel/extensions-src/
+          for dir in panel/extensions-src/*/; do
+            echo "::group::$(basename "$dir")"
+            (cd "$dir" && npm install --legacy-peer-deps --no-audit --no-fund && npm run build)
+            echo "::endgroup::"
+          done
+      - name: Pack and checksum
+        run: php repo/scripts/build-release.php panel/extensions-src out "$TAG"
+      - name: Publish release
+        working-directory: out
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$TAG" *.pteroext SHA256SUMS.txt \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "$TAG" \
+            --notes-file release-notes.md

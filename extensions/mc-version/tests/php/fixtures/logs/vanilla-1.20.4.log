@@ -1,0 +1,4 @@
+[09:15:00] [ServerMain/INFO]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[09:15:03] [Server thread/INFO]: Starting minecraft server version 1.20.4
+[09:15:03] [Server thread/INFO]: Loading properties
+[09:15:04] [Server thread/INFO]: Default game type: SURVIVAL

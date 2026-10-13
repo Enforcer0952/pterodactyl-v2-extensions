@@ -16,6 +16,9 @@ class McContentProvider extends ExtensionProvider
 
     public function boot(): void
     {
+        // Services read settings through this binding, so they work on every panel build.
+        $this->app->instance('ext.mc-content.settings', $this->settings());
+
         // Loads routes/server.php at /api/client/servers/{server}/extensions/mc-content.
         $this->registerApiRoutes();
         $this->loadExtensionMigrations();

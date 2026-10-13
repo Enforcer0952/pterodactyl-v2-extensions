@@ -1,0 +1,46 @@
+[
+  {
+    "id": 174,
+    "time": "2026-10-11T08:11:34Z",
+    "channel": "ALPHA",
+    "commits": [
+      {
+        "sha": "99867f8f9207d3164696e469435a067330473743",
+        "time": "2026-10-11T08:08:37Z",
+        "message": "Fix block state upgrading in old structure data\n"
+      }
+    ],
+    "downloads": {
+      "server:default": {
+        "name": "paper-26.3-174.jar",
+        "checksums": {
+          "sha256": "ab925801c3b7f8fbb98d6fa88a2e9c34687ffe2697199a1c2fa19a98922ed1f9"
+        },
+        "size": 55143345,
+        "url": "https://fill-data.papermc.io/v1/objects/ab925801c3b7f8fbb98d6fa88a2e9c34687ffe2697199a1c2fa19a98922ed1f9/paper-26.3-174.jar"
+      }
+    }
+  },
+  {
+    "id": 173,
+    "time": "2026-10-11T08:07:20Z",
+    "channel": "ALPHA",
+    "commits": [
+      {
+        "sha": "c3ec3ae0c281658e4b8f994c05de92164e1b59ed",
+        "time": "2026-10-11T08:07:05Z",
+        "message": "Fix minimum block light in spawner spawn rules (#14371)"
+      }
+    ],
+    "downloads": {
+      "server:default": {
+        "name": "paper-26.3-173.jar",
+        "checksums": {
+          "sha256": "645621f6551ef079f1e110dda4fb74549b92d741f7917ef66907ea0625646752"
+        },
+        "size": 55140532,
+        "url": "https://fill-data.papermc.io/v1/objects/645621f6551ef079f1e110dda4fb74549b92d741f7917ef66907ea0625646752/paper-26.3-173.jar"
+      }
+    }
+  }
+]

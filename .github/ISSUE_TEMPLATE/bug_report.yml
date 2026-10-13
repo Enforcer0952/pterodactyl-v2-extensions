@@ -1,0 +1,51 @@
+name: Bug report
+description: Something in one of the extensions does not work
+labels: [bug]
+body:
+  - type: dropdown
+    id: extension
+    attributes:
+      label: Extension
+      options:
+        - ARK Tools
+        - Minecraft Console
+        - Minecraft Content
+        - Minecraft Network
+        - Minecraft Players
+        - Minecraft Version
+        - Minecraft World
+        - Terraria Tools
+        - Other / not sure
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Extension version
+      description: Shown under Admin → Extensions.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: panel
+    attributes:
+      label: Panel version
+      placeholder: "2.0.0-beta.x or 2.0-develop commit"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead. Screenshots help.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Errors
+      description: Browser console errors, and the panel log (storage/logs/laravel-*.log) around the time it happened. Remove passwords and IPs.
+      render: text
+  - type: input
+    id: egg
+    attributes:
+      label: Egg and game version
+      placeholder: "Paper 1.21.4, Forge 1.20.1, ARK Survival Evolved..."

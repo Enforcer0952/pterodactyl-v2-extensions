@@ -1,0 +1,23 @@
+name: Feature or new game
+description: Ideas for an extension, or a game you want supported
+labels: [enhancement]
+body:
+  - type: input
+    id: area
+    attributes:
+      label: Extension or game
+      placeholder: "Minecraft Players, or a new game such as Valheim"
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help you
+      description: What you do by hand today, and what you would like the panel to do instead.
+    validations:
+      required: true
+  - type: input
+    id: egg
+    attributes:
+      label: Egg you use
+      description: A link to the egg helps for new games.

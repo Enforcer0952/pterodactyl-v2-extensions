@@ -1,0 +1,12 @@
+{
+    "description": "World backups, safe world resets and a server.properties editor for Minecraft Java servers.",
+    "autoload": {
+        "psr-4": {
+            "McWorld\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "McWorldExtension"
+    },
+    "license": "GPL-3.0-or-later"
+}

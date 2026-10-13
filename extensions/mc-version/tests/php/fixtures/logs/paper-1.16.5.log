@@ -1,0 +1,5 @@
+[17:48:41] [ServerMain/INFO]: Environment: authHost='https://authserver.mojang.com', accountsHost='https://api.mojang.com', sessionHost='https://sessionserver.mojang.com', servicesHost='https://api.minecraftservices.com', name='PROD'
+[17:48:44] [Server thread/INFO]: Starting minecraft server version 1.16.5
+[17:48:44] [Server thread/INFO]: Loading properties
+[17:48:45] [Server thread/INFO]: This server is running Paper version git-Paper-794 (MC: 1.16.5) (Implementing API version 1.16.5-R0.1-SNAPSHOT)
+[17:48:45] [Server thread/INFO]: Server Ping Player Sample Count: 12

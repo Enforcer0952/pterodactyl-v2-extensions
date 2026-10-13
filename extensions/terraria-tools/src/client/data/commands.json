@@ -1,0 +1,110 @@
+[
+    {
+        "name": "help",
+        "aliases": [],
+        "description": "List the server console commands.",
+        "syntax": ["help"]
+    },
+    {
+        "name": "playing",
+        "aliases": [],
+        "description": "List the players who are connected.",
+        "syntax": ["playing"]
+    },
+    {
+        "name": "kick",
+        "aliases": [],
+        "description": "Disconnect a player. They can join again.",
+        "syntax": ["kick <Player:player>"]
+    },
+    {
+        "name": "ban",
+        "aliases": [],
+        "description": "Ban a player by their address.",
+        "syntax": ["ban <Player:player>"]
+    },
+    {
+        "name": "password",
+        "aliases": [],
+        "description": "Show the server password, or set a new one.",
+        "syntax": ["password", "password <Password:any>"]
+    },
+    {
+        "name": "save",
+        "aliases": [],
+        "description": "Save the world to disk.",
+        "syntax": ["save"]
+    },
+    {
+        "name": "exit",
+        "aliases": [],
+        "description": "Save the world and shut down the server.",
+        "syntax": ["exit"]
+    },
+    {
+        "name": "exit-nosave",
+        "aliases": [],
+        "description": "Shut down the server without saving.",
+        "syntax": ["exit-nosave"]
+    },
+    {
+        "name": "say",
+        "aliases": [],
+        "description": "Send a message to every player.",
+        "syntax": ["say <Message:message>"]
+    },
+    {
+        "name": "time",
+        "aliases": [],
+        "description": "Show the time in the world.",
+        "syntax": ["time"]
+    },
+    {
+        "name": "dawn",
+        "aliases": [],
+        "description": "Set the time to 4:30 AM.",
+        "syntax": ["dawn"]
+    },
+    {
+        "name": "noon",
+        "aliases": [],
+        "description": "Set the time to 12:00 PM.",
+        "syntax": ["noon"]
+    },
+    {
+        "name": "dusk",
+        "aliases": [],
+        "description": "Set the time to 7:30 PM.",
+        "syntax": ["dusk"]
+    },
+    {
+        "name": "midnight",
+        "aliases": [],
+        "description": "Set the time to 12:00 AM.",
+        "syntax": ["midnight"]
+    },
+    {
+        "name": "settle",
+        "aliases": [],
+        "description": "Settle all liquids.",
+        "syntax": ["settle"]
+    },
+    {
+        "name": "version",
+        "aliases": [],
+        "description": "Show the server version.",
+        "syntax": ["version"]
+    },
+    {
+        "name": "maxplayers",
+        "aliases": [],
+        "description": "Show the maximum number of players.",
+        "syntax": ["maxplayers"]
+    },
+    {
+        "name": "motd",
+        "aliases": [],
+        "description": "Show the message of the day, or set a new one.",
+        "syntax": ["motd", "motd <Message:message>"]
+    }
+]

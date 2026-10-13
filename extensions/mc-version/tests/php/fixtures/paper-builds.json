@@ -1,0 +1,90 @@
+[
+  {
+    "id": 180,
+    "time": "2026-10-13T13:02:41Z",
+    "channel": "STABLE",
+    "commits": [
+      {
+        "sha": "a2d844f71e275a91656448d5a0eb1142359230b9",
+        "time": "2026-10-13T13:02:24Z",
+        "message": "Fix player removal from maps (#14328)"
+      }
+    ],
+    "downloads": {
+      "server:default": {
+        "name": "paper-26.3-180.jar",
+        "checksums": {
+          "sha256": "d6a5589a720fbe74b15fd9be6679bff3c55f737801e149fab8337cd0b0a1a989"
+        },
+        "size": 55143262,
+        "url": "https://fill-data.papermc.io/v1/objects/d6a5589a720fbe74b15fd9be6679bff3c55f737801e149fab8337cd0b0a1a989/paper-26.3-180.jar"
+      }
+    }
+  },
+  {
+    "id": 179,
+    "time": "2026-10-13T12:09:07Z",
+    "channel": "STABLE",
+    "commits": [
+      {
+        "sha": "6829d9e6cb4f09ce5f34035f774e2b4b19f164dd",
+        "time": "2026-10-13T12:08:48Z",
+        "message": "Fix fire immune entities being lightning immune (#14357)\n\nCo-authored-by: Owen1212055 <23108066+Owen1212055@users.noreply.github.com>"
+      }
+    ],
+    "downloads": {
+      "server:default": {
+        "name": "paper-26.3-179.jar",
+        "checksums": {
+          "sha256": "5c208cf990315cff647b8e8b3d487b98c8be2f31655985ed004c7bb25b3857ce"
+        },
+        "size": 55143590,
+        "url": "https://fill-data.papermc.io/v1/objects/5c208cf990315cff647b8e8b3d487b98c8be2f31655985ed004c7bb25b3857ce/paper-26.3-179.jar"
+      }
+    }
+  },
+  {
+    "id": 174,
+    "time": "2026-10-11T08:11:34Z",
+    "channel": "BETA",
+    "commits": [
+      {
+        "sha": "99867f8f9207d3164696e469435a067330473743",
+        "time": "2026-10-11T08:08:37Z",
+        "message": "Fix block state upgrading in old structure data\n"
+      }
+    ],
+    "downloads": {
+      "server:default": {
+        "name": "paper-26.3-174.jar",
+        "checksums": {
+          "sha256": "ab925801c3b7f8fbb98d6fa88a2e9c34687ffe2697199a1c2fa19a98922ed1f9"
+        },
+        "size": 55143345,
+        "url": "https://fill-data.papermc.io/v1/objects/ab925801c3b7f8fbb98d6fa88a2e9c34687ffe2697199a1c2fa19a98922ed1f9/paper-26.3-174.jar"
+      }
+    }
+  },
+  {
+    "id": 173,
+    "time": "2026-10-11T08:07:20Z",
+    "channel": "BETA",
+    "commits": [
+      {
+        "sha": "c3ec3ae0c281658e4b8f994c05de92164e1b59ed",
+        "time": "2026-10-11T08:07:05Z",
+        "message": "Fix minimum block light in spawner spawn rules (#14371)"
+      }
+    ],
+    "downloads": {
+      "server:default": {
+        "name": "paper-26.3-173.jar",
+        "checksums": {
+          "sha256": "645621f6551ef079f1e110dda4fb74549b92d741f7917ef66907ea0625646752"
+        },
+        "size": 55140532,
+        "url": "https://fill-data.papermc.io/v1/objects/645621f6551ef079f1e110dda4fb74549b92d741f7917ef66907ea0625646752/paper-26.3-173.jar"
+      }
+    }
+  }
+]

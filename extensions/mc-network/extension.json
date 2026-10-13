@@ -1,0 +1,48 @@
+{
+    "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
+    "id": "mc-network",
+    "name": "Minecraft Network",
+    "version": "1.0.0",
+    "requires": {
+        "panel": "^2.0.0-dev",
+        "sdk": "^2.0.0-beta.4",
+        "php": "^8.3"
+    },
+    "description": "Manage the backend servers of a BungeeCord or Waterfall proxy from its server page: match each entry with a panel server, spot broken addresses, and edit servers, priorities and forced hosts safely.",
+    "author": "Anton van Zanten",
+    "provider": "McNetwork\\McNetworkProvider",
+    "ui": {
+        "entry": "dist/client.js",
+        "mode": "native",
+        "prefix": "mcnet",
+        "screens": [
+            {
+                "id": "network",
+                "area": "server",
+                "path": "network",
+                "nav": {
+                    "label": "Network",
+                    "icon": "network",
+                    "order": 13
+                },
+                "permission": [
+                    "file.read"
+                ],
+                "when": {
+                    "eggTags": {
+                        "any": [
+                            "proxy",
+                            "bungeecord",
+                            "waterfall",
+                            "velocity"
+                        ]
+                    }
+                }
+            }
+        ]
+    },
+    "icon": "network",
+    "autoload": {
+        "McNetwork\\": "src"
+    }
+}

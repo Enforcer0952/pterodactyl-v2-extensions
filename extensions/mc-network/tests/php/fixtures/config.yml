@@ -1,0 +1,90 @@
+# Waterfall configuration
+server_connect_timeout: 5000
+remote_ping_timeout: 5000
+player_limit: -1
+permissions:
+  default:
+  - bungeecord.command.server
+  - bungeecord.command.list
+  admin:
+  - bungeecord.command.alert
+  - bungeecord.command.end
+  - bungeecord.command.ip
+  - bungeecord.command.reload
+timeout: 30000
+log_commands: false
+online_mode: true
+disabled_commands:
+- disabledcommandhere
+servers:
+  lobby:
+    motd: '&1Lobby &r&7- spawn'
+    address: localhost:12550
+    restricted: false
+  TheKingdom:
+    motd: '&6The Kingdom'
+    address: localhost:13261
+    restricted: false
+  Survival:
+    motd: '&aSurvival'
+    address: localhost:12551
+    restricted: false
+  Minetopia:
+    motd: '&#ff8800Minetopia &lCity'
+    address: 127.0.0.1:12552
+    restricted: false
+  Hardcore:
+    motd: '&cHardcore'
+    address: localhost:12554
+    restricted: true
+  Terra:
+    motd: '&2Terraria'
+    address: localhost:12556
+    restricted: false
+  Skyblock:
+    motd: '&bSkyblock'
+    address: localhost:25565
+    restricted: false
+  Private1:
+    motd: '&7Private'
+    address: localhost:12560
+    restricted: true
+  Private2:
+    motd: '&7Private'
+    address: localhost:12560
+    restricted: true
+  Far:
+    motd: 'Other host'
+    address: play.example.net:25570
+    restricted: false
+listeners:
+- query_port: 25577
+  motd: '&1Another Waterfall server'
+  tab_list: GLOBAL_PING
+  query_enabled: false
+  proxy_protocol: false
+  forced_hosts:
+    pvp.example.com: Hardcore
+    skyblock.example.com: SkyBlock
+  ping_passthrough: false
+  priorities:
+  - lobby
+  - Ghost
+  bind_local_address: true
+  host: 0.0.0.0:25565
+  max_players: 100
+  tab_size: 60
+  force_default_server: false
+- query_port: 25578
+  host: 0.0.0.0:25566
+  priorities:
+  - lobby
+  forced_hosts: {}
+ip_forward: true
+prevent_proxy_connections: false
+groups:
+  Anton:
+  - admin
+connection_throttle: 4000
+connection_throttle_limit: 3
+stats: 8f1c0a3e-0000-4000-8000-000000000000

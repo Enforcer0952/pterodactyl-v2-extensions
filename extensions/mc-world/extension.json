@@ -1,0 +1,52 @@
+{
+    "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
+    "id": "mc-world",
+    "name": "Minecraft World",
+    "version": "1.0.0",
+    "requires": {
+        "panel": "^2.0.0-dev",
+        "sdk": "^2.0.0-beta.4",
+        "php": "^8.3"
+    },
+    "description": "World backups, restores, quick world resets and a friendly server.properties editor for Minecraft Java servers.",
+    "author": "Anton van Zanten",
+    "provider": "McWorld\\McWorldProvider",
+    "ui": {
+        "entry": "dist/client.js",
+        "mode": "native",
+        "prefix": "mcw",
+        "screens": [
+            {
+                "id": "world",
+                "area": "server",
+                "path": "world",
+                "nav": {
+                    "label": "World",
+                    "icon": "globe",
+                    "order": 13
+                },
+                "permission": [
+                    "file.read"
+                ],
+                "when": {
+                    "eggTags": {
+                        "any": [
+                            "minecraft"
+                        ]
+                    },
+                    "eggFeatures": {
+                        "any": [
+                            "eula"
+                        ]
+                    },
+                    "match": "any",
+                    "runtime": true
+                }
+            }
+        ]
+    },
+    "icon": "globe",
+    "autoload": {
+        "McWorld\\": "src"
+    }
+}

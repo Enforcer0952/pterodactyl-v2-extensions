@@ -1,0 +1,12 @@
+{
+    "description": "Switch a Minecraft Java server between Paper, Purpur, Fabric and Vanilla, change its version and fix its Java version.",
+    "autoload": {
+        "psr-4": {
+            "McVersion\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "McVersionExtension"
+    },
+    "license": "GPL-3.0-or-later"
+}

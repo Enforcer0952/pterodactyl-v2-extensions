@@ -1,0 +1,11 @@
+# Terraria server config
+
+#worldpath=/old
+worldname=MyWorld
+WORLD=/home/container/saves/Worlds/MyWorld.wld
+; secure
+secure=1
+unknownkey = keep me
+maxplayers=8
+motd=Hello there
+password=secret

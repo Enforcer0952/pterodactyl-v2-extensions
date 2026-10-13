@@ -1,0 +1,53 @@
+{
+    "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
+    "id": "mc-version",
+    "name": "Minecraft Version",
+    "version": "1.0.0",
+    "requires": {
+        "panel": "^2.0.0-dev",
+        "sdk": "^2.0.0-beta.4",
+        "php": "^8.3"
+    },
+    "description": "Switch a Minecraft Java server between Paper, Purpur, Fabric and Vanilla, pick any version, roll back to the previous jar and set the matching Java version.",
+    "author": "Anton van Zanten",
+    "icon": "refresh-cw",
+    "provider": "McVersion\\McVersionProvider",
+    "autoload": {
+        "McVersion\\": "src"
+    },
+    "ui": {
+        "entry": "dist/client.js",
+        "mode": "native",
+        "prefix": "mcver",
+        "screens": [
+            {
+                "id": "version",
+                "area": "server",
+                "path": "version",
+                "nav": {
+                    "label": "Version",
+                    "icon": "refresh-cw",
+                    "order": 14
+                },
+                "permission": [
+                    "file.read",
+                    "startup.read"
+                ],
+                "when": {
+                    "eggTags": {
+                        "any": [
+                            "minecraft"
+                        ]
+                    },
+                    "eggFeatures": {
+                        "any": [
+                            "eula"
+                        ]
+                    },
+                    "match": "any",
+                    "runtime": true
+                }
+            }
+        ]
+    }
+}

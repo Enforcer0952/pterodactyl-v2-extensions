@@ -1,0 +1,13 @@
+{
+    "name": "enforcer0952/pterodactyl-v2-extensions",
+    "description": "Development tools for the extensions in this repository. Each extension ships its own runtime code; nothing here is packaged.",
+    "license": "GPL-3.0-or-later",
+    "require-dev": {
+        "php": "^8.3",
+        "phpunit/phpunit": "^11.5",
+        "symfony/yaml": "^7.1"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

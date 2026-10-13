@@ -1,0 +1,57 @@
+{
+    "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
+    "id": "terraria-tools",
+    "name": "Terraria Tools",
+    "version": "1.0.0",
+    "requires": {
+        "panel": "^2.0.0-dev",
+        "sdk": "^2.0.0-beta.4",
+        "php": "^8.3"
+    },
+    "description": "Players, kick and ban, admin commands, worlds with backups, server settings and console autocomplete for vanilla Terraria servers.",
+    "author": "Anton van Zanten",
+    "provider": "TerrariaTools\\TerrariaToolsProvider",
+    "ui": {
+        "entry": "dist/client.js",
+        "mode": "native",
+        "prefix": "terra",
+        "screens": [
+            {
+                "id": "worlds",
+                "area": "server",
+                "path": "worlds",
+                "nav": {
+                    "label": "Worlds",
+                    "icon": "globe",
+                    "order": 11
+                },
+                "permission": [
+                    "ext.terraria-tools.worlds"
+                ],
+                "when": {
+                    "runtime": true
+                }
+            },
+            {
+                "id": "settings",
+                "area": "server",
+                "path": "terraria-settings",
+                "nav": {
+                    "label": "Server settings",
+                    "icon": "settings",
+                    "order": 12
+                },
+                "permission": [
+                    "ext.terraria-tools.admin"
+                ],
+                "when": {
+                    "runtime": true
+                }
+            }
+        ]
+    },
+    "icon": "trees",
+    "autoload": {
+        "TerrariaTools\\": "src"
+    }
+}

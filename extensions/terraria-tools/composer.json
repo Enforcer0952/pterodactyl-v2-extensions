@@ -1,0 +1,12 @@
+{
+    "description": "Players, bans, admin commands, worlds, backups and server settings for Terraria servers.",
+    "autoload": {
+        "psr-4": {
+            "TerrariaTools\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "TerrariaToolsExtension"
+    },
+    "license": "GPL-3.0-or-later"
+}

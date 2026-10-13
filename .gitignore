@@ -3,3 +3,6 @@ dist/
 vendor/
 *.pteroext
 .DS_Store
+/packages
+/out/
+composer.lock
