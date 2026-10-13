@@ -11,6 +11,19 @@ export interface ContentContext {
     game_version_source: 'saved' | 'startup' | 'files' | null;
     game_versions: string[];
     egg: string | null;
+    /** What the server's files say it runs, when they tell. */
+    platform: Platform | null;
+}
+
+export interface Platform {
+    loader: string;
+    kind: ContentKind;
+}
+
+export interface PlatformResponse {
+    platform: Platform | null;
+    /** The content pages this server should show. */
+    kinds: ContentKind[];
 }
 
 export interface SearchHit {
@@ -83,6 +96,7 @@ const filterParams = (filters: Filters) => ({
 });
 
 export const keys = {
+    platform: (server: string) => ['mc-content', server, 'platform'] as const,
     context: (server: string, kind: ContentKind) => ['mc-content', server, kind, 'context'] as const,
     search: (server: string, kind: ContentKind, params: unknown) => ['mc-content', server, kind, 'search', params] as const,
     versions: (server: string, kind: ContentKind, project: string, filters: Filters) =>
@@ -156,4 +170,9 @@ export async function uninstall(server: string, kind: ContentKind, filename: str
 
 export async function saveGameVersion(server: string, kind: ContentKind, gameVersion: string | null): Promise<void> {
     await http.post(`${base(server, kind)}/preferences`, { game_version: gameVersion });
+}
+
+export async function getPlatform(server: string): Promise<PlatformResponse> {
+    const { data } = await http.get<PlatformResponse>(`/api/client/servers/${server}/extensions/mc-content/platform`);
+    return data;
 }

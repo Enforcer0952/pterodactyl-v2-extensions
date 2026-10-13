@@ -1,19 +1,17 @@
 {
     "name": "mc-content",
     "private": true,
-    "version": "1.4.1",
+    "version": "1.5.0",
     "type": "module",
     "scripts": {
         "build": "vite build",
         "dev": "vite build --watch",
         "typecheck": "tsc",
         "test": "vitest run",
-        "test:watch": "vitest",
-        "api:generate": "openapi-ts && node scripts/externalize-api.mjs"
+        "test:watch": "vitest"
     },
     "devDependencies": {
         "@base-ui/react": "^1.6.0",
-        "@hey-api/openapi-ts": "0.99.0",
         "@pterodactyl/sdk": "file:../../packages/sdk",
         "@tailwindcss/postcss": "^4",
         "@tanstack/form-core": "^1.33.0",

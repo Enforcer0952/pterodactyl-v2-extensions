@@ -10,13 +10,13 @@ use McContent\Models\Install;
 use McContent\Services\GameVersionDetector;
 use McContent\Services\InstallDetector;
 use McContent\Services\ModrinthClient;
+use McContent\Services\ServerFiles;
 use McContent\Support\ContentKind;
+use McContent\Support\Updates;
 use Pterodactyl\Contracts\Files\CreatesDirectories;
 use Pterodactyl\Contracts\Files\DeletesFiles;
-use Pterodactyl\Contracts\Files\ListsDirectories;
 use Pterodactyl\Contracts\Files\PullsFiles;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
-use Pterodactyl\Facades\Activity;
 use Pterodactyl\Models\Server;
 use Pterodactyl\Services\Extensions\ExtensionSettingsRegistry;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -31,19 +31,25 @@ class ContentController extends Controller
 
     private const int MAX_DEPENDENCIES = 10;
 
+    /** At most this many extra version lists are fetched per page load to find stable updates. */
+    private const int MAX_UPDATE_LOOKUPS = 15;
+
     public function __construct(
         private readonly ModrinthClient $modrinth,
         private readonly ExtensionSettingsRegistry $settings,
+        private readonly ServerFiles $files,
     ) {}
 
     /**
      * What the page needs to start: the detected loader and Minecraft version, the
      * loaders the user can pick from, and the release versions Modrinth knows about.
      */
-    public function context(Server $server, string $kind, GameVersionDetector $detector): JsonResponse
+    public function context(Request $request, Server $server, string $kind, GameVersionDetector $detector): JsonResponse
     {
         $type = ContentKind::from($kind);
+        $this->authorizeRead($request, $server);
         $detected = $detector->detect($server);
+        $platform = $this->files->platform($server);
 
         try {
             $gameVersions = array_slice($this->modrinth->gameVersions(), 0, 80);
@@ -55,12 +61,39 @@ class ContentController extends Controller
             'kind' => $type->value,
             'directory' => $type->directory(),
             'loaders' => $type->loaders(),
-            'detected_loader' => $type->detectLoader($server),
+            'detected_loader' => $this->files->loader($server, $type),
+            // What the server's files say it runs. When that is the other kind of
+            // content, the page says so and refuses installs into the wrong folder.
+            'platform' => $platform,
             'detected_game_version' => $detected['version'],
             'game_version_source' => $detected['source'],
             'game_versions' => $gameVersions,
             'egg' => $server->egg?->name,
         ]);
+    }
+
+    /**
+     * Which content pages this server should show: what its files say it runs, or,
+     * before it has ever started, what its egg tags say. Light enough for the
+     * navigation to ask on every server page.
+     */
+    public function platform(Request $request, Server $server): JsonResponse
+    {
+        $this->authorizeRead($request, $server);
+
+        $platform = $this->files->platform($server);
+        if ($platform !== null) {
+            return new JsonResponse(['platform' => $platform, 'kinds' => [$platform['kind']]]);
+        }
+
+        $kinds = [];
+        foreach ([ContentKind::Plugins, ContentKind::Mods] as $type) {
+            if ($type->detectLoader($server) !== null || in_array($type->value, array_map('strtolower', $server->tagSlugs()), true)) {
+                $kinds[] = $type->value;
+            }
+        }
+
+        return new JsonResponse(['platform' => null, 'kinds' => $kinds]);
     }
 
     /**
@@ -81,9 +114,10 @@ class ContentController extends Controller
         return new JsonResponse($detector->detect($server));
     }
 
-    public function search(Request $request, Server $server, string $kind, ListsDirectories $lister, InstallDetector $detector): JsonResponse
+    public function search(Request $request, Server $server, string $kind): JsonResponse
     {
         $type = ContentKind::from($kind);
+        $this->authorizeRead($request, $server);
         $data = $this->validateSearch($request, $type);
 
         $limit = max(5, min(50, (int) ($this->setting('results_per_page') ?? 20)));
@@ -101,7 +135,7 @@ class ContentController extends Controller
 
         // Mark the projects already on this server so the page can offer an
         // update or version change instead of a second copy.
-        $installed = $this->installedByProject($server, $type, $lister, $detector);
+        $installed = $this->installedByProject($server, $type);
         $result['hits'] = array_map(fn (array $hit): array => [
             ...$hit,
             'installed' => $installed[$hit['project_id']] ?? null,
@@ -113,6 +147,7 @@ class ContentController extends Controller
     public function versions(Request $request, Server $server, string $kind, string $project): JsonResponse
     {
         $type = ContentKind::from($kind);
+        $this->authorizeRead($request, $server);
         $data = $this->validateSearch($request, $type);
 
         $gameVersion = ContentKind::isProxy($data['loader']) ? null : ($data['game_version'] ?? null);
@@ -149,32 +184,27 @@ class ContentController extends Controller
         Request $request,
         Server $server,
         string $kind,
-        ListsDirectories $lister,
         InstallDetector $detector,
         GameVersionDetector $versions,
     ): JsonResponse
     {
         $type = ContentKind::from($kind);
-        abort_unless($request->user()->can('file.read', $server), 403, 'You do not have permission to read files on this server.');
+        $this->authorizeRead($request, $server);
 
         $loader = $request->query('loader');
-        $loader = is_string($loader) && in_array($loader, $type->loaders(), true) ? $loader : ($type->detectLoader($server) ?? $type->loaders()[0]);
+        // No loader known: list the files, but check no updates rather than guess one.
+        $loader = is_string($loader) && in_array($loader, $type->loaders(), true) ? $loader : $this->files->loader($server, $type);
         $gameVersion = $request->query('game_version');
         $gameVersion = is_string($gameVersion) && preg_match(self::VERSION_PATTERN, $gameVersion) === 1 ? $gameVersion : null;
         // Without a version, "latest" could be a build for another Minecraft version.
         $gameVersion ??= $versions->detect($server)['version'];
-        if (ContentKind::isProxy($loader)) {
+        if ($loader !== null && ContentKind::isProxy($loader)) {
             $gameVersion = null;
         }
 
-        try {
-            $files = $lister->list($server, $type->directory());
-        } catch (DaemonConnectionException $exception) {
-            if ($exception->getStatusCode() === 404) {
-                return new JsonResponse(['data' => [], 'directory_exists' => false, 'pending' => 0]);
-            }
-
-            throw $exception;
+        $files = $this->files->list($server, $type->directory());
+        if ($files === null) {
+            return new JsonResponse(['data' => [], 'directory_exists' => false, 'pending' => 0, 'loader' => $loader]);
         }
 
         $jars = $this->jars($files);
@@ -199,7 +229,9 @@ class ContentController extends Controller
         $updates = [];
         $current = [];
         $hashes = $records->pluck('sha1')->filter()->values()->all();
-        if ($hashes !== []) {
+        $allowPrereleases = (bool) $this->setting('allow_prereleases');
+        $lookups = 0;
+        if ($hashes !== [] && $loader !== null) {
             try {
                 $updates = $this->modrinth->latestForHashes($hashes, ContentKind::compatibleLoaders($loader), $gameVersion);
                 $current = $this->modrinth->versionsByIds($records->pluck('version_id')->filter()->values()->all());
@@ -213,12 +245,21 @@ class ContentController extends Controller
             /** @var Install|null $record */
             $record = $records->get($name);
             $latest = $record?->sha1 !== null ? ($updates[$record->sha1] ?? null) : null;
+            $installedVersion = $record !== null ? ($current[$record->version_id] ?? null) : null;
 
-            // Only offer versions published after the installed one, never a backport.
-            $installedAt = $record !== null ? ($current[$record->version_id]['date_published'] ?? null) : null;
-            if ($latest !== null && is_string($installedAt) && is_string($latest['date_published'] ?? null)
-                && strtotime($latest['date_published']) <= strtotime($installedAt)) {
+            // The bulk lookup ignores release type, and can name a build for another
+            // Minecraft version. When its answer does not qualify, look further down
+            // the project's own version list for one that does.
+            if ($latest !== null && $record !== null && ! Updates::acceptable($installedVersion, $latest, $allowPrereleases, $gameVersion)) {
                 $latest = null;
+                if ($lookups < self::MAX_UPDATE_LOOKUPS) {
+                    $lookups++;
+                    try {
+                        $latest = Updates::pick($installedVersion, $this->modrinth->versions($record->project_id, ContentKind::compatibleLoaders($loader), $gameVersion), $allowPrereleases, $gameVersion);
+                    } catch (HttpException) {
+                        $latest = null;
+                    }
+                }
             }
 
             $rows[] = [
@@ -240,7 +281,7 @@ class ContentController extends Controller
 
         usort($rows, fn (array $a, array $b): int => strcasecmp($a['title'] ?? $a['filename'], $b['title'] ?? $b['filename']));
 
-        return new JsonResponse(['data' => $rows, 'directory_exists' => true, 'pending' => $pending]);
+        return new JsonResponse(['data' => $rows, 'directory_exists' => true, 'pending' => $pending, 'loader' => $loader]);
     }
 
     /**
@@ -252,25 +293,29 @@ class ContentController extends Controller
         Server $server,
         string $kind,
         PullsFiles $puller,
-        ListsDirectories $lister,
         CreatesDirectories $directories,
         DeletesFiles $deleter,
     ): JsonResponse {
         $type = ContentKind::from($kind);
         abort_unless($request->user()->can('file.create', $server), 403, 'You do not have permission to create files on this server.');
 
+        $platform = $this->files->platform($server);
+        if ($platform !== null && $platform['kind'] !== $type->value) {
+            throw new HttpException(409, 'This server runs '.ucfirst($platform['loader']).', which uses '.$platform['kind'].', not '.$type->value.'. Use the '.ucfirst($platform['kind']).' page instead.');
+        }
+
         $data = $request->validate([
             'version_id' => ['required', 'string', 'regex:/^[A-Za-z0-9]{8}$/'],
             'loader' => ['required', 'string', 'in:'.implode(',', $type->loaders())],
             'game_version' => ['nullable', 'string', 'regex:'.self::VERSION_PATTERN],
-            'replace' => ['nullable', 'string', 'regex:'.self::JAR_PATTERN],
+            'replace' => ['nullable', 'string', 'regex:/^[A-Za-z0-9][A-Za-z0-9._+\-()\[\] ]{0,200}\.jar(\.disabled)?$/'],
         ]);
 
         $loaders = ContentKind::compatibleLoaders($data['loader']);
         if (ContentKind::isProxy($data['loader'])) {
             $data['game_version'] = null;
         }
-        $existing = $this->existingFiles($server, $type, $lister, $directories);
+        $existing = $this->existingFiles($server, $type, $directories);
 
         // A project can only be installed once. Installing another version of a
         // project that is already here replaces the old file instead.
@@ -294,15 +339,17 @@ class ContentController extends Controller
         }
 
         $installed = [];
-        $installed[] = $this->installVersion($server, $type, $puller, $data['version_id'], $loaders, $existing);
+        $installed[] = $this->installVersion($server, $type, $puller, $data['version_id'], $loaders, $existing, $data['replace'] ?? null);
 
         if (! empty($data['replace']) && $data['replace'] !== $installed[0]['filename'] && in_array($data['replace'], $existing, true)) {
-            $deleter->delete($server, $type->directory(), [$data['replace']]);
+            // The record of the old file goes first: if deleting it fails, the new
+            // version is still the one the panel tracks. The panel logs the delete.
             Install::query()->where('server_id', $server->id)->where('kind', $type->value)->where('filename', $data['replace'])->delete();
-            Activity::event('server:file.delete')
-                ->property('directory', $type->directory())
-                ->property('files', [$data['replace']])
-                ->log();
+            try {
+                $deleter->delete($server, $type->directory(), [$data['replace']]);
+            } catch (DaemonConnectionException) {
+                throw new HttpException(502, $installed[0]['title'].' '.$installed[0]['version_number'].' was installed, but the old file '.$data['replace'].' could not be deleted. Delete it in the file manager, or both versions will load.');
+            }
         }
 
         $skipped = [];
@@ -325,13 +372,9 @@ class ContentController extends Controller
             'filename' => ['required', 'string', 'regex:/^[A-Za-z0-9][A-Za-z0-9._+\-()\[\] ]{0,200}\.jar(\.disabled)?$/'],
         ]);
 
+        // The panel's delete action records this in the activity log.
         $deleter->delete($server, $type->directory(), [$data['filename']]);
         Install::query()->where('server_id', $server->id)->where('kind', $type->value)->where('filename', $data['filename'])->delete();
-
-        Activity::event('server:file.delete')
-            ->property('directory', $type->directory())
-            ->property('files', [$data['filename']])
-            ->log();
 
         return new JsonResponse([], 204);
     }
@@ -341,7 +384,7 @@ class ContentController extends Controller
      * @param  list<string>  $existing  file names already in the folder, updated in place
      * @return array<string, mixed>
      */
-    private function installVersion(Server $server, ContentKind $type, PullsFiles $puller, string $versionId, array $loaders, array &$existing): array
+    private function installVersion(Server $server, ContentKind $type, PullsFiles $puller, string $versionId, array $loaders, array &$existing, ?string $replacing = null): array
     {
         $version = $this->modrinth->version($versionId);
 
@@ -362,19 +405,24 @@ class ContentController extends Controller
 
         $filename = basename($jar['filename']);
         if (preg_match(self::JAR_PATTERN, $filename) !== 1) {
-            $filename = preg_replace('/[^A-Za-z0-9._+-]/', '_', pathinfo($filename, PATHINFO_FILENAME)).'.jar';
+            $stem = trim((string) preg_replace('/[^A-Za-z0-9._+-]/', '_', pathinfo($filename, PATHINFO_FILENAME)), '._');
+            $filename = ($stem !== '' ? $stem : (string) $version['id']).'.jar';
         }
 
+        // Never overwrite a file that belongs to another project.
+        if (in_array($filename, $existing, true) && $filename !== $replacing) {
+            $owner = Install::query()->where('server_id', $server->id)->where('kind', $type->value)->where('filename', $filename)->first();
+            if ($owner === null || $owner->project_id !== (string) $version['project_id']) {
+                throw new HttpException(409, $filename.' already exists and is not this project. Rename or remove it first.');
+            }
+        }
+
+        // The panel's pull action records this in the activity log.
         $puller->pull($server, $jar['url'], $type->directory(), [
             'filename' => $filename,
             'foreground' => true,
             'timeout' => 120,
         ]);
-
-        Activity::event('server:file.pull')
-            ->property('directory', $type->directory())
-            ->property('url', $jar['url'])
-            ->log();
 
         $project = [];
         try {
@@ -433,7 +481,7 @@ class ContentController extends Controller
         $tracked = Install::query()->where('server_id', $server->id)->where('kind', $type->value)->pluck('project_id')->all();
 
         foreach ($dependencies as $dependency) {
-            if (($dependency['type'] ?? null) !== 'required' || count($installed) > self::MAX_DEPENDENCIES) {
+            if (($dependency['type'] ?? null) !== 'required' || count($installed) >= self::MAX_DEPENDENCIES) {
                 continue;
             }
 
@@ -445,7 +493,10 @@ class ContentController extends Controller
             try {
                 $versionId = is_string($dependency['version_id'] ?? null) ? $dependency['version_id'] : null;
                 if ($versionId === null && $projectId !== null) {
-                    $versionId = $this->modrinth->versions($projectId, $loaders, $gameVersion)[0]['id'] ?? null;
+                    $candidates = $this->modrinth->versions($projectId, $loaders, $gameVersion);
+                    $releases = array_values(array_filter($candidates, fn (array $v): bool => $v['version_type'] === 'release' && $v['file'] !== null));
+                    // Prefer a release; a project that only publishes betas still gets its newest beta.
+                    $versionId = ($releases !== [] ? $releases[0]['id'] : ($candidates[0]['id'] ?? null));
                 }
 
                 if ($versionId === null) {
@@ -474,18 +525,16 @@ class ContentController extends Controller
      *
      * @return array<string, array{filename: string, version_id: string, version_number: string}>
      */
-    private function installedByProject(Server $server, ContentKind $type, ListsDirectories $lister, InstallDetector $detector): array
+    private function installedByProject(Server $server, ContentKind $type): array
     {
         try {
-            $jars = $this->jars($lister->list($server, $type->directory()));
+            $jars = $this->jars($this->files->list($server, $type->directory()) ?? []);
         } catch (DaemonConnectionException) {
-            // No folder yet, or Wings is unreachable: nothing to mark.
-            return [];
+            return []; // Node unreachable: nothing to mark.
         }
 
-        $tracked = Install::query()->where('server_id', $server->id)->where('kind', $type->value)->pluck('filename')->all();
-        $detector->identify($server, $type, $jars, $tracked, 8);
-
+        // Only files already recognised; hashing new ones is the Installed tab's job,
+        // so a search never reads jars through Wings.
         $result = [];
         $records = Install::query()->where('server_id', $server->id)->where('kind', $type->value)->whereIn('filename', array_keys($jars))->get();
         foreach ($records as $record) {
@@ -524,17 +573,15 @@ class ContentController extends Controller
      *
      * @return list<string>
      */
-    private function existingFiles(Server $server, ContentKind $type, ListsDirectories $lister, CreatesDirectories $directories): array
+    private function existingFiles(Server $server, ContentKind $type, CreatesDirectories $directories): array
     {
-        try {
-            return array_values(array_map(fn (array $file): string => (string) ($file['name'] ?? ''), $lister->list($server, $type->directory())));
-        } catch (DaemonConnectionException $exception) {
-            if ($exception->getStatusCode() !== 404) {
-                throw $exception;
-            }
+        $files = $this->files->list($server, $type->directory());
+        if ($files !== null) {
+            return array_values(array_map(fn (array $file): string => (string) ($file['name'] ?? ''), $files));
         }
 
         $directories->create($server, ltrim($type->directory(), '/'), '/');
+        $this->files->forget($server);
 
         return [];
     }
@@ -552,6 +599,11 @@ class ContentController extends Controller
             'sort' => ['nullable', 'string', 'in:'.implode(',', self::SORTS)],
             'page' => ['nullable', 'integer', 'min:1', 'max:200'],
         ]);
+    }
+
+    private function authorizeRead(Request $request, Server $server): void
+    {
+        abort_unless($request->user()->can('file.read', $server), 403, 'You do not have permission to read files on this server.');
     }
 
     private function setting(string $key): mixed

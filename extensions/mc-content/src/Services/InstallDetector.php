@@ -68,16 +68,18 @@ class InstallDetector
                     continue;
                 }
 
-                try {
-                    $hash = sha1($this->reader->read($server, $type->directory().'/'.$name, self::MAX_FILE_BYTES));
-                } catch (\Throwable $exception) {
-                    Log::info('mc-content: could not hash '.$name, ['message' => $exception->getMessage()]);
-                    $hash = 'skip';
-                }
-
                 $read++;
                 $bytes += $size;
-                Cache::put($key, $hash, now()->addDays(30));
+
+                try {
+                    $hash = sha1($this->reader->read($server, $type->directory().'/'.$name, self::MAX_FILE_BYTES));
+                    Cache::put($key, $hash, now()->addDays(30));
+                } catch (\Throwable $exception) {
+                    // A node hiccup should not hide a jar for a month: try again in ten minutes.
+                    Log::info('mc-content: could not hash '.$name, ['message' => $exception->getMessage()]);
+                    $hash = 'skip';
+                    Cache::put($key, $hash, now()->addMinutes(10));
+                }
             }
 
             if ($hash !== 'skip') {
@@ -118,17 +120,22 @@ class InstallDetector
             $project = $projects[(string) ($version['project_id'] ?? '')] ?? [];
             $icon = $project['icon_url'] ?? null;
 
-            Install::query()->updateOrCreate(
-                ['server_id' => $server->id, 'kind' => $type->value, 'filename' => $name],
-                [
-                    'project_id' => (string) $version['project_id'],
-                    'version_id' => (string) ($version['id'] ?? ''),
-                    'title' => mb_substr((string) ($project['title'] ?? $version['name'] ?? $name), 0, 255),
-                    'version_number' => mb_substr((string) ($version['version_number'] ?? ''), 0, 128),
-                    'icon_url' => is_string($icon) && parse_url($icon, PHP_URL_HOST) === 'cdn.modrinth.com' ? $icon : null,
-                    'sha1' => $hash,
-                ],
-            );
+            // Two tabs can recognise the same jar at once; the second write is harmless.
+            try {
+                Install::query()->updateOrCreate(
+                    ['server_id' => $server->id, 'kind' => $type->value, 'filename' => $name],
+                    [
+                        'project_id' => (string) $version['project_id'],
+                        'version_id' => (string) ($version['id'] ?? ''),
+                        'title' => mb_substr((string) ($project['title'] ?? $version['name'] ?? $name), 0, 255),
+                        'version_number' => mb_substr((string) ($version['version_number'] ?? ''), 0, 128),
+                        'icon_url' => is_string($icon) && parse_url($icon, PHP_URL_HOST) === 'cdn.modrinth.com' ? $icon : null,
+                        'sha1' => $hash,
+                    ],
+                );
+            } catch (\Illuminate\Database\QueryException) {
+                // Already recorded by the other request.
+            }
         }
     }
 }

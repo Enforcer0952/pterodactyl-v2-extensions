@@ -5,9 +5,10 @@ Adds **Plugins** and **Mods** pages to Minecraft servers in Pterodactyl 2.0. Sea
 ## Features
 
 - Search Modrinth filtered to the server's loader and Minecraft version (both detected automatically).
+- Works out what the server really runs from its files, so a Fabric server started from a Paper egg gets the Mods page, not Plugins. Each server only shows the page it needs.
 - One-click install, update and uninstall. Required dependencies are installed too (can be turned off).
 - Recognises jars you added by hand (SHA-1 lookup on Modrinth), so they show as installed and get update checks.
-- Update detection that ignores backports to older Minecraft versions.
+- Updates only offer stable releases for the server's Minecraft version, never a backport (unless you are already on a beta, or turn pre-releases on).
 - Version picker with release, beta and alpha builds (pre-releases are optional).
 - Plugin loaders: Paper, Purpur, Folia, Spigot, Bukkit, Sponge. Proxies: Velocity, Waterfall, BungeeCord. Mod loaders: Forge, NeoForge, Fabric, Quilt.
 
@@ -23,7 +24,7 @@ Adds **Plugins** and **Mods** pages to Minecraft servers in Pterodactyl 2.0. Sea
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/mc-content-1.4.1.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/mc-content-1.5.0.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -34,7 +35,7 @@ Adds **Plugins** and **Mods** pages to Minecraft servers in Pterodactyl 2.0. Sea
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/mc-content-1.4.1.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/mc-content-1.5.0.pteroext --enable --replace
 ```
 
 Settings and data are kept.

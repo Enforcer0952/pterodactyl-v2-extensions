@@ -76,13 +76,15 @@ class GameVersionDetector
 
     private function fromFiles(Server $server): ?string
     {
+        // The log of the last start names the version that actually ran, so it goes
+        // before the folders, which can hold leftovers of an older or newer version.
         foreach ([
             fn () => $this->fromPaperHistory($server),
+            fn () => $this->fromLog($server),
             fn () => $this->fromDirectory($server, '/versions'),
             fn () => $this->fromDirectory($server, '/libraries/net/minecraft/server'),
             fn () => $this->fromDirectory($server, '/.fabric/server'),
             fn () => $this->fromDirectory($server, '/cache', '/^mojang_('.self::VERSION.')\.jar$/'),
-            fn () => $this->fromLog($server),
         ] as $probe) {
             try {
                 $version = $probe();
@@ -108,7 +110,7 @@ class GameVersionDetector
     }
 
     /**
-     * The newest version named by the entries of a directory, such as
+     * The most recently written version named by the entries of a directory, such as
      * libraries/net/minecraft/server/1.20.1-20230612.114412 (Forge and NeoForge),
      * versions/1.21.4 (Paper 1.21+) or .fabric/server/1.21.1-server.jar (Fabric).
      */
@@ -119,7 +121,7 @@ class GameVersionDetector
 
         foreach ($this->lister->list($server, $directory) as $entry) {
             if (preg_match($pattern, (string) ($entry['name'] ?? ''), $match) === 1) {
-                $versions[] = $match[1];
+                $versions[] = ['version' => $match[1], 'modified' => strtotime((string) ($entry['modified'] ?? '')) ?: 0];
             }
         }
 
@@ -127,9 +129,11 @@ class GameVersionDetector
             return null;
         }
 
-        usort($versions, 'version_compare');
+        // A server switched from 1.21.10 back to 1.21.1 keeps both folders; the one
+        // written last is the one in use. Ties go to the higher version.
+        usort($versions, fn (array $a, array $b): int => $a['modified'] <=> $b['modified'] ?: version_compare($a['version'], $b['version']));
 
-        return end($versions);
+        return end($versions)['version'];
     }
 
     /** Every Java server logs "Starting minecraft server version 1.21.1" on start. */

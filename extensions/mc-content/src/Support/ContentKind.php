@@ -71,21 +71,22 @@ enum ContentKind: string
      */
     public function detectLoader(Server $server): ?string
     {
+        // NeoForge before Forge, and Purpur/Folia before Paper, so the more specific
+        // loader wins when an egg is tagged or named with both.
+        $specificFirst = match ($this) {
+            self::Plugins => ['velocity', 'waterfall', 'bungeecord', 'purpur', 'folia', 'paper', 'spigot', 'bukkit', 'sponge'],
+            self::Mods => ['neoforge', 'forge', 'quilt', 'fabric'],
+        };
+
         $tags = array_map('strtolower', $server->tagSlugs());
-        foreach ($this->loaders() as $loader) {
+        foreach ($specificFirst as $loader) {
             if (in_array($loader, $tags, true)) {
                 return $loader;
             }
         }
 
         $name = strtolower((string) ($server->egg?->name ?? ''));
-        // NeoForge before Forge, and Purpur/Folia before Paper, so the more
-        // specific name wins when an egg mentions both.
-        $byName = match ($this) {
-            self::Plugins => ['velocity', 'waterfall', 'bungeecord', 'purpur', 'folia', 'paper', 'spigot', 'bukkit', 'sponge'],
-            self::Mods => ['neoforge', 'forge', 'quilt', 'fabric'],
-        };
-        foreach ($byName as $loader) {
+        foreach ($specificFirst as $loader) {
             if (str_contains($name, $loader)) {
                 return $loader;
             }
@@ -112,7 +113,12 @@ enum ContentKind: string
 
         foreach ($candidates as $key) {
             $value = $values[$key] ?? null;
-            if ($value !== null && preg_match('/^\d+(\.\d+){1,2}([-.][A-Za-z0-9.]+)?$/', $value) === 1) {
+            // A bare VERSION variable often holds a loader or build number, so it only
+            // counts when it looks like a Minecraft release (1.x or the yearly 2x.x).
+            $pattern = $key === 'VERSION'
+                ? '/^(1\.\d{1,2}(\.\d{1,2})?|2\d\.\d{1,2}(\.\d{1,2})?)$/'
+                : '/^\d+(\.\d+){1,2}([-.][A-Za-z0-9.]+)?$/';
+            if ($value !== null && preg_match($pattern, $value) === 1) {
                 return $value;
             }
         }

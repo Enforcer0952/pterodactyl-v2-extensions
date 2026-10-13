@@ -2,7 +2,7 @@
     "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
     "id": "mc-content",
     "name": "Minecraft Content",
-    "version": "1.4.1",
+    "version": "1.5.0",
     "requires": {
         "panel": "^2.0.0-dev",
         "sdk": "^2.0.0-beta.4",
@@ -35,6 +35,7 @@
                 "when": {
                     "eggTags": {
                         "any": [
+                            "minecraft",
                             "paper",
                             "purpur",
                             "folia",
@@ -45,9 +46,21 @@
                             "waterfall",
                             "bungeecord",
                             "proxy",
-                            "plugins"
+                            "plugins",
+                            "forge",
+                            "neoforge",
+                            "fabric",
+                            "quilt",
+                            "mods"
                         ]
-                    }
+                    },
+                    "eggFeatures": {
+                        "any": [
+                            "eula"
+                        ]
+                    },
+                    "match": "any",
+                    "runtime": true
                 }
             },
             {
@@ -65,13 +78,32 @@
                 "when": {
                     "eggTags": {
                         "any": [
+                            "minecraft",
+                            "paper",
+                            "purpur",
+                            "folia",
+                            "spigot",
+                            "bukkit",
+                            "sponge",
+                            "velocity",
+                            "waterfall",
+                            "bungeecord",
+                            "proxy",
+                            "plugins",
                             "forge",
                             "neoforge",
                             "fabric",
                             "quilt",
                             "mods"
                         ]
-                    }
+                    },
+                    "eggFeatures": {
+                        "any": [
+                            "eula"
+                        ]
+                    },
+                    "match": "any",
+                    "runtime": true
                 }
             }
         ]

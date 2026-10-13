@@ -141,10 +141,17 @@ export default function ContentBrowser({ kind, title }: Props) {
     }
 
     const noun = kind === 'plugins' ? 'plugin' : 'mod';
+    const wrongPage = context.data.platform !== null && context.data.platform !== undefined && context.data.platform.kind !== kind;
 
     return (
         <ServerContentBlock title={title}>
             <div className={'mcc:flex mcc:flex-col mcc:gap-4'}>
+                {wrongPage && (
+                    <Alert type={'warning'}>
+                        This server runs {loaderLabel(context.data.platform!.loader)}, which loads {context.data.platform!.kind}, not {kind}.
+                        Installing here is turned off; use the {context.data.platform!.kind === 'mods' ? 'Mods' : 'Plugins'} page.
+                    </Alert>
+                )}
                 <div className={'mcc:flex mcc:flex-wrap mcc:items-end mcc:gap-3'}>
                     <div className={'mcc:flex mcc:gap-2'} role={'tablist'}>
                         <Button
