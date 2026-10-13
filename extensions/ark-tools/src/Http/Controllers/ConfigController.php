@@ -46,8 +46,10 @@ class ConfigController extends Controller
 
         $files = implode(',', array_keys($this->model->files()));
         $data = $request->validate([
+            // Raw text arrives base64-encoded: the panel trims request strings, which
+            // would drop a file's trailing newline and turn an empty file into null.
             'raw' => ['sometimes', 'array', 'max:2'],
-            'raw.*' => ['string', 'max:4000000'],
+            'raw.*' => ['string', 'max:5600000'],
             'edits' => ['sometimes', 'array', 'max:500'],
             'edits.*.file' => ['required', 'string', 'in:'.$files],
             'edits.*.section' => ['required', 'string', 'max:200'],
@@ -59,7 +61,14 @@ class ConfigController extends Controller
             'start' => ['sometimes', 'boolean'],
         ]);
 
-        $raw = array_intersect_key($data['raw'] ?? [], $this->model->files());
+        $raw = [];
+        foreach (array_intersect_key($data['raw'] ?? [], $this->model->files()) as $file => $encoded) {
+            $decoded = base64_decode($encoded, true);
+            if ($decoded === false || ! mb_check_encoding($decoded, 'UTF-8')) {
+                throw new \Symfony\Component\HttpKernel\Exception\HttpException(422, $file.' could not be read. Reload the page and try again.');
+            }
+            $raw[$file] = $decoded;
+        }
         $edits = array_map(fn (array $edit): array => [
             'file' => $edit['file'],
             'section' => $edit['section'],

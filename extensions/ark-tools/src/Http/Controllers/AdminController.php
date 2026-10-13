@@ -53,8 +53,8 @@ class AdminController extends Controller
             'chat' => 'ServerChat '.$message,
         };
 
+        // The panel's command action records this in the activity log.
         $this->commands->send($server, $command);
-        Activity::event('server:console.command')->property('command', $command)->log();
 
         return new JsonResponse(['sent' => $command]);
     }

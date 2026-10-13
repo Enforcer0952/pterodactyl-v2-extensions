@@ -9,6 +9,7 @@ use Pterodactyl\Contracts\Files\ListsDirectories;
 use Pterodactyl\Contracts\Files\ReadsFileContents;
 use Pterodactyl\Contracts\Files\WritesFileContents;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
+use Pterodactyl\Exceptions\Http\Server\FileSizeTooLargeException;
 use Pterodactyl\Models\Server;
 use Throwable;
 
@@ -91,6 +92,8 @@ class ConfigFiles
     {
         try {
             return $this->reader->read($server, $path, self::MAX_BYTES);
+        } catch (FileSizeTooLargeException) {
+            throw new \Symfony\Component\HttpKernel\Exception\HttpException(422, basename($path).' is larger than 4 MB, too large for the editor. Edit it in the file manager.');
         } catch (DaemonConnectionException $exception) {
             if ($exception->getStatusCode() === 404) {
                 return null;
@@ -108,7 +111,10 @@ class ConfigFiles
         try {
             $entries = $this->directories->list($server, $directory);
         } catch (DaemonConnectionException $exception) {
-            if ($exception->getStatusCode() === 404) {
+            // A server that never started has no config folder, and some Wings
+            // versions answer that with a 500 instead of a 404. A node that is down
+            // answers 502/504 and is reported as such.
+            if (in_array($exception->getStatusCode(), [404, 500], true)) {
                 return [];
             }
 

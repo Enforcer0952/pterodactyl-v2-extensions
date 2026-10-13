@@ -178,6 +178,39 @@ final class ConfigTest extends TestCase
         $this->assertStringContainsString("\nXPMultiplier=6\n", $saved[self::GUS]);
     }
 
+    public function test_raw_editor_cannot_change_passwords(): void
+    {
+        $model = new ConfigModel;
+        $files = self::files();
+        $masked = $model->mask($files[self::GUS]);
+
+        foreach ([
+            'changed' => str_replace('ServerAdminPassword='.ConfigModel::MASK, 'ServerAdminPassword=mine', $masked),
+            'removed' => str_replace("ServerAdminPassword=".ConfigModel::MASK."\n", '', $masked),
+            'added' => $masked."[ServerSettings]\nSpectatorPassword=spy\n",
+        ] as $case => $text) {
+            try {
+                $model->apply($files, [self::GUS => $text], []);
+                $this->fail('Accepted a '.$case.' password');
+            } catch (InvalidArgumentException $exception) {
+                $this->assertStringContainsString('Startup page', $exception->getMessage());
+            }
+        }
+
+        // Moving the line is fine.
+        $moved = str_replace("ServerAdminPassword=".ConfigModel::MASK."\n", '', $masked)."ServerAdminPassword=".ConfigModel::MASK."\n";
+        $this->assertArrayHasKey(self::GUS, $model->apply($files, [self::GUS => $moved], []));
+    }
+
+    public function test_masking_keeps_crlf_line_endings(): void
+    {
+        $model = new ConfigModel;
+        $crlf = "[ServerSettings]\r\nServerAdminPassword=secret\r\nXPMultiplier=2\r\n";
+
+        $this->assertSame("[ServerSettings]\r\nServerAdminPassword=".ConfigModel::MASK."\r\nXPMultiplier=2\r\n", $model->mask($crlf));
+        $this->assertSame([], $model->apply([self::GUS => $crlf, self::GAME => null], [self::GUS => $model->mask($crlf)], []));
+    }
+
     public function test_edits_are_validated(): void
     {
         $model = new ConfigModel;

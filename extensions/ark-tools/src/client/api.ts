@@ -194,7 +194,21 @@ export interface ConfigSave {
 
 export const getConfig = async (server: string) => (await http.get<ConfigResponse>(`${base(server)}/config`)).data;
 
-export const saveConfig = async (server: string, input: ConfigSave) => (await http.put<ConfigResponse>(`${base(server)}/config`, input)).data;
+/** UTF-8 text as base64, so the panel's request trimming cannot change it. */
+export function toBase64(text: string): string {
+    const bytes = new TextEncoder().encode(text);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(binary);
+}
+
+export const saveConfig = async (server: string, input: ConfigSave) =>
+    (
+        await http.put<ConfigResponse>(`${base(server)}/config`, {
+            ...input,
+            raw: Object.fromEntries(Object.entries(input.raw ?? {}).map(([file, text]) => [file, toBase64(text ?? '')])),
+        })
+    ).data;
 
 export const cancelConfigApply = async (server: string) => (await http.delete<ConfigResponse>(`${base(server)}/config/apply`)).data;
 

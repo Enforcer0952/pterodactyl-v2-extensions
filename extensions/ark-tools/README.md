@@ -45,7 +45,7 @@ Adds **Mods** and **Config** pages and two console cards to ARK: Survival Evolve
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/ark-tools-1.0.2.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/ark-tools-1.1.1.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -56,7 +56,7 @@ Adds **Mods** and **Config** pages and two console cards to ARK: Survival Evolve
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/ark-tools-1.0.2.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/ark-tools-1.1.1.pteroext --enable --replace
 ```
 
 Settings and data are kept.

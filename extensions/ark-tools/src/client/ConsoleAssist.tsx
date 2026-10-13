@@ -14,15 +14,17 @@ const VISIBLE = 8;
 export default function ConsoleAssistSlot({ data: server }: { data: SdkServer }) {
     const tags = (server.attributes.egg_tags ?? []).map((tag) => tag.toLowerCase());
     const canSend = useServerPermission('control.console');
+    // Player names come from the players endpoints, which need the view permission.
+    const canView = useServerPermission('ext.ark-tools.view');
 
     if (!canSend || !tags.includes('ark')) {
         return null;
     }
 
-    return <ConsoleAssist server={server} />;
+    return <ConsoleAssist server={server} withPlayers={canView} />;
 }
 
-export function ConsoleAssist({ server }: { server: SdkServer }) {
+export function ConsoleAssist({ server, withPlayers = true }: { server: SdkServer; withPlayers?: boolean }) {
     const identifier = server.attributes.identifier;
     const input = useConsoleInput();
     const [text, setText] = useState('');
@@ -31,8 +33,8 @@ export function ConsoleAssist({ server }: { server: SdkServer }) {
     const [selected, setSelected] = useState(0);
 
     // Shares its data with the players card, so this adds no requests of its own.
-    const online = useQuery({ queryKey: keys.online(identifier), queryFn: () => getOnline(identifier), staleTime: 30_000 });
-    const lists = useQuery({ queryKey: keys.lists(identifier), queryFn: () => getLists(identifier), staleTime: 30_000 });
+    const online = useQuery({ queryKey: keys.online(identifier), queryFn: () => getOnline(identifier), staleTime: 30_000, enabled: withPlayers });
+    const lists = useQuery({ queryKey: keys.lists(identifier), queryFn: () => getLists(identifier), staleTime: 30_000, enabled: withPlayers });
 
     const commands = useMemo<CommandDef[]>(() => commandData.map((command) => ({ ...command, source: 'ARK' })), []);
 

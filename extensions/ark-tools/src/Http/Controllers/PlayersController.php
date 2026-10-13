@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\Cache;
 use Pterodactyl\Contracts\Servers\ReadsServerLogs;
 use Pterodactyl\Contracts\Servers\ReadsServerState;
 use Pterodactyl\Contracts\Servers\SendsServerCommands;
-use Pterodactyl\Facades\Activity;
 use Pterodactyl\Models\Server;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -104,7 +103,6 @@ class PlayersController extends Controller
 
         if ($command !== null && $state === 'running') {
             $this->commands->send($server, $command.' '.$id);
-            Activity::event('server:console.command')->property('command', $command.' '.$id)->log();
             // Give ARK a moment to write its list file before it is read back.
             usleep(self::ANSWER_DELAY_MS * 1000);
             Cache::forget('ext:ark-tools:online:'.$server->uuid);
@@ -128,7 +126,6 @@ class PlayersController extends Controller
             } elseif (! $this->files->remove($server, $list, $id)) {
                 throw new HttpException(404, $id.' is not on that list.');
             }
-            Activity::event('server:file.write')->property('file', $list.' list ('.$data['action'].' '.$id.')')->log();
         }
 
         return new JsonResponse($this->listsPayload($server));

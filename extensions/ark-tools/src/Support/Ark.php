@@ -15,10 +15,10 @@ final class Ark
     public const string APP_ID = '376030';
 
     /** A SteamID64 of an individual account. */
-    public const string STEAM_ID = '/^7656119\d{10}$/';
+    public const string STEAM_ID = '/^7656119\d{10}$/D';
 
     /** Steam Workshop item ids. */
-    public const string MOD_ID = '/^\d{5,12}$/';
+    public const string MOD_ID = '/^\d{5,12}$/D';
 
     public const string MODS_DIR = 'ShooterGame/Content/Mods';
 
@@ -42,7 +42,8 @@ final class Ark
             return null;
         }
 
-        $clean = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $value) ?? '');
+        // All control characters, including C1 and Unicode line breaks, could end the command early.
+        $clean = trim(preg_replace('/[\p{Cc}\p{Zl}\p{Zp}]+/u', ' ', $value) ?? '');
 
         return $clean === '' ? null : mb_substr($clean, 0, $max);
     }

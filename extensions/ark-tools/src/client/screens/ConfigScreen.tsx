@@ -40,16 +40,22 @@ export default function ConfigScreen() {
     const server = useCurrentServerRequired();
     const identifier = server.attributes.identifier;
     const queryClient = useQueryClient();
-    const config = useQuery({
-        queryKey: keys.config(identifier),
-        queryFn: () => getConfig(identifier),
-        // While settings wait for the server to stop, keep the status fresh.
-        refetchInterval: (query) => (query.state.data?.apply ? 10_000 : false),
-    });
-
     const [tab, setTab] = useState<Tab>('settings');
     const [edits, setEdits] = useState<Record<string, ConfigEdit>>({});
     const [raw, setRaw] = useState<Partial<Record<ConfigFileName, string>>>({});
+    // The file versions the unsaved changes were made against. A refetch while editing
+    // must not move these, or a stale draft would overwrite a newer file.
+    const [baseHashes, setBaseHashes] = useState<Record<string, string> | null>(null);
+    const editing = baseHashes !== null;
+
+    const config = useQuery({
+        queryKey: keys.config(identifier),
+        queryFn: () => getConfig(identifier),
+        // While settings wait for the server to stop, keep the status fresh, but not
+        // while someone is editing.
+        refetchInterval: (query) => (query.state.data?.apply && !editing ? 10_000 : false),
+        refetchOnWindowFocus: !editing,
+    });
     const [minutes, setMinutes] = useState(5);
     const [start, setStart] = useState(false);
     const [preset, setPreset] = useState<ConfigPreset | null>(null);
@@ -78,16 +84,26 @@ export default function ConfigScreen() {
     const reset = () => {
         setEdits({});
         setRaw({});
+        setBaseHashes(null);
     };
 
-    const addEdits = (list: ConfigEdit[]) =>
+    const startEditing = () => {
+        if (baseHashes === null && data) {
+            setBaseHashes(Object.fromEntries(FILES.map((file) => [file, data.files[file]?.hash ?? ''])));
+        }
+    };
+
+    const addEdits = (list: ConfigEdit[]) => {
+        startEditing();
         setEdits((current) => {
             const next = { ...current };
             for (const edit of list) next[editKey(edit)] = edit;
             return next;
         });
+    };
 
     const setValue = (setting: ConfigSetting, value: string | null) => {
+        startEditing();
         const saved = values.get(setting.key.toLowerCase())?.value ?? null;
         const edit: ConfigEdit = { file: setting.file, section: setting.section, key: setting.key, value };
         setEdits((current) => {
@@ -108,7 +124,7 @@ export default function ConfigScreen() {
             saveConfig(identifier, {
                 raw: Object.fromEntries(rawChanged.map((file) => [file, raw[file] ?? ''])),
                 edits: editList,
-                hashes: Object.fromEntries(FILES.map((file) => [file, data?.files[file]?.hash ?? ''])),
+                hashes: baseHashes ?? Object.fromEntries(FILES.map((file) => [file, data?.files[file]?.hash ?? ''])),
                 minutes,
                 start,
             }),
@@ -185,7 +201,10 @@ export default function ConfigScreen() {
                 {tab === 'settings' ? (
                     <SettingsForm data={data} edits={edits} values={values} onChange={setValue} />
                 ) : (
-                    <RawEditor data={data} raw={raw} onChange={(file, text) => setRaw((current) => ({ ...current, [file]: text }))} hasEdits={editList.length > 0} />
+                    <RawEditor data={data} raw={raw} onChange={(file, text) => {
+                            startEditing();
+                            setRaw((current) => ({ ...current, [file]: text }));
+                        }} hasEdits={editList.length > 0} />
                 )}
             </div>
 

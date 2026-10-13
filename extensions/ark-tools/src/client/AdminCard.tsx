@@ -154,7 +154,7 @@ function RestartSection({ identifier, offline }: { identifier: string; offline: 
         mutationFn: () => cancelRestart(identifier),
         onSuccess: (result) => {
             update(result);
-            toast.success('Restart cancelled.');
+            toast.success(running?.kind === 'apply' ? 'Cancelled. The new settings were not written.' : 'Restart cancelled.');
         },
         onError,
     });
@@ -175,7 +175,7 @@ function RestartSection({ identifier, offline }: { identifier: string; offline: 
                 <div className={'ark:flex ark:flex-wrap ark:items-center ark:gap-3'}>
                     <Countdown to={running.restart_at} kind={running.kind} />
                     <Button.Danger size={'small'} isSecondary isLoading={cancel.isPending} onClick={() => cancel.mutate()}>
-                        Cancel restart
+                        {running.kind === 'apply' ? 'Cancel and discard new settings' : 'Cancel restart'}
                     </Button.Danger>
                 </div>
             ) : (

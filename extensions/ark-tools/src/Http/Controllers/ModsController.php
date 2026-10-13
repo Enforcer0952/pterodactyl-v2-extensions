@@ -14,7 +14,6 @@ use Pterodactyl\Contracts\Files\DeletesFiles;
 use Pterodactyl\Contracts\Files\ListsDirectories;
 use Pterodactyl\Contracts\Servers\ReadsServerState;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
-use Pterodactyl\Facades\Activity;
 use Pterodactyl\Models\Server;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -98,7 +97,6 @@ class ModsController extends Controller
         abort_if($files === [], 404, 'Those files are already gone.');
 
         $this->deletes->delete($server, '/'.Ark::MODS_DIR, $files);
-        Activity::event('server:file.delete')->property('directory', '/'.Ark::MODS_DIR)->property('files', $files)->log();
 
         return new JsonResponse($this->payload($request, $server));
     }

@@ -27,6 +27,9 @@ class ConfigApply
     /** A change still waiting after this long is given up on. */
     private const int GIVE_UP_MINUTES = 90;
 
+    /** A write that was claimed but never finished (worker died) is retried after this long. */
+    private const int STALE_WRITE_MINUTES = 10;
+
     public function __construct(
         private readonly ConfigFiles $files,
         private readonly ConfigModel $model,
@@ -60,7 +63,10 @@ class ConfigApply
         }
 
         $state = $this->serverState($server);
-        if (in_array($state, ['offline', 'stopped'], true)) {
+        if ($state === 'starting') {
+            throw new HttpException(409, 'The server is starting. Save again once it is running or stopped.');
+        }
+        if ($state === 'offline') {
             DB::table(self::TABLE)->where('server_id', $server->id)->delete();
             $this->files->write($server, $changed, $current);
             if ($start) {
@@ -74,19 +80,22 @@ class ConfigApply
             throw new HttpException(409, 'A restart is already counting down. Save again once the server is back up, or cancel the restart.');
         }
 
-        DB::transaction(function () use ($server, $userId, $raw, $edits): void {
-            DB::table(self::TABLE)->where('server_id', $server->id)->delete();
-            DB::table(self::TABLE)->insert([
-                'server_id' => $server->id,
-                'user_id' => $userId,
-                'payload' => json_encode(['raw' => $raw, 'edits' => $edits], JSON_THROW_ON_ERROR),
-                'start_after' => true,
-                'status' => 'waiting',
-                'error' => null,
-                'created_at' => CarbonImmutable::now(),
-                'updated_at' => CarbonImmutable::now(),
-            ]);
-        });
+        $claimed = DB::table(self::TABLE)->where('server_id', $server->id)->where('status', 'writing')->exists();
+        if ($claimed) {
+            throw new HttpException(409, 'Earlier settings are being written right now. Save again in a minute.');
+        }
+
+        // A running server is started again after the write. One that is already
+        // stopping was stopped on purpose, so it stays off.
+        DB::table(self::TABLE)->updateOrInsert(['server_id' => $server->id], [
+            'user_id' => $userId,
+            'payload' => json_encode(['raw' => $raw, 'edits' => $edits], JSON_THROW_ON_ERROR),
+            'start_after' => $state === 'running',
+            'status' => 'waiting',
+            'error' => null,
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
+        ]);
 
         // A server that is already stopping just needs to finish; otherwise count down.
         if ($state === 'running' && ! $this->restarts->applying($server)) {
@@ -110,18 +119,42 @@ class ConfigApply
         ];
     }
 
-    /** Drop waiting settings and stop their countdown. */
+    /**
+     * Drop waiting settings and stop their countdown. When the countdown already
+     * stopped the server, it is started again, so cancelling never leaves it off.
+     */
     public function cancel(Server $server): void
     {
+        $row = DB::table(self::TABLE)->where('server_id', $server->id)->first();
+        if ($row !== null && $row->status === 'writing') {
+            throw new HttpException(409, 'The settings are being written right now and can no longer be cancelled.');
+        }
+
         DB::table(self::TABLE)->where('server_id', $server->id)->delete();
         if ($this->restarts->applying($server)) {
             $this->restarts->cancel($server);
+        }
+
+        if ($row !== null && $row->status === 'waiting' && $row->start_after) {
+            try {
+                if ($this->state->read($server)->state === 'offline') {
+                    $this->power->send($server, 'start');
+                }
+            } catch (DaemonConnectionException) {
+                // The node is unreachable; the server cannot be started from here anyway.
+            }
         }
     }
 
     /** Write waiting settings to every server that has stopped. Run every minute. */
     public function tick(): void
     {
+        // A worker that died mid-write leaves a claimed row; give it another go.
+        DB::table(self::TABLE)
+            ->where('status', 'writing')
+            ->where('updated_at', '<', CarbonImmutable::now()->subMinutes(self::STALE_WRITE_MINUTES))
+            ->update(['status' => 'waiting', 'updated_at' => CarbonImmutable::now()]);
+
         foreach (DB::table(self::TABLE)->where('status', 'waiting')->get() as $row) {
             $server = Server::query()->find($row->server_id);
             if (! $server instanceof Server) {
@@ -146,7 +179,7 @@ class ConfigApply
             return; // Node unreachable: try again next minute.
         }
 
-        if (! in_array($state, ['offline', 'stopped'], true)) {
+        if ($state !== 'offline') {
             $age = CarbonImmutable::parse($row->created_at)->diffInMinutes(CarbonImmutable::now());
             if ($age > self::GIVE_UP_MINUTES && ! $this->restarts->applying($server)) {
                 $this->fail($row->id, 'The server did not stop, so the settings were not written. Save them again.');
@@ -161,17 +194,41 @@ class ConfigApply
             return;
         }
 
-        $payload = json_decode($row->payload, true, flags: JSON_THROW_ON_ERROR);
-        $current = $this->files->read($server);
-        $changed = $this->model->apply($current, $payload['raw'] ?? [], $payload['edits'] ?? []);
-        if ($changed !== []) {
-            $this->files->write($server, $changed, $current);
+        // The countdown's last task would stop the server again once it is started.
+        $this->restarts->dropApplySchedule($server);
+
+        try {
+            $payload = json_decode($row->payload, true, flags: JSON_THROW_ON_ERROR);
+            $current = $this->files->read($server);
+            $changed = $this->model->apply($current, $payload['raw'] ?? [], $payload['edits'] ?? []);
+            if ($changed !== []) {
+                $this->files->write($server, $changed, $current);
+            }
+        } catch (DaemonConnectionException) {
+            // A node hiccup: nothing was written, so try again next minute.
+            DB::table(self::TABLE)->where('id', $row->id)->update(['status' => 'waiting', 'updated_at' => CarbonImmutable::now()]);
+
+            return;
         }
 
         DB::table(self::TABLE)->where('id', $row->id)->delete();
 
         if ($row->start_after) {
-            $this->power->send($server, 'start');
+            try {
+                $this->power->send($server, 'start');
+            } catch (Throwable $throwable) {
+                // The settings are written; only the start failed. Say so on the page.
+                DB::table(self::TABLE)->insert([
+                    'server_id' => $server->id,
+                    'user_id' => $row->user_id,
+                    'payload' => json_encode(['raw' => [], 'edits' => []]),
+                    'start_after' => false,
+                    'status' => 'failed',
+                    'error' => 'The settings were written, but the server could not be started: '.mb_substr($throwable->getMessage(), 0, 500).' Start it with the power buttons.',
+                    'created_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
+                ]);
+            }
         }
     }
 

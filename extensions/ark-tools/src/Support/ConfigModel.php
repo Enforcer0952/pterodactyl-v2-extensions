@@ -228,7 +228,8 @@ final class ConfigModel
         $secrets = implode('|', array_map(fn (string $key): string => preg_quote($key, '/'), $this->schema['secrets']));
 
         return (string) preg_replace_callback(
-            '/^(\h*(?:'.$secrets.')\h*=)(\h*\S.*?)(\h*)$/mi',
+            // [^\r\n] so a CRLF file keeps its \r after the mask.
+            '/^(\h*(?:'.$secrets.')\h*=)(\h*\S[^\r\n]*?)(\h*)(?=\r?$)/mi',
             fn (array $match): string => $match[1].self::MASK.$match[3],
             $contents,
         );
@@ -250,7 +251,9 @@ final class ConfigModel
 
         foreach ($raw as $file => $text) {
             $this->assertFile($file);
-            $result[$file] = $this->unmask($text, (string) ($current[$file] ?? ''));
+            $original = (string) ($current[$file] ?? '');
+            $result[$file] = $this->unmask($text, $original);
+            $this->assertSecretsUnchanged($file, $original, $result[$file]);
         }
 
         $inis = [];
@@ -330,13 +333,36 @@ final class ConfigModel
         }
     }
 
+    /**
+     * Passwords are managed on the Startup page; the raw editor may move or keep
+     * their lines but never change, add or remove a value.
+     */
+    private function assertSecretsUnchanged(string $file, string $original, string $updated): void
+    {
+        $values = function (string $contents): array {
+            $found = [];
+            foreach (Ini::parse($contents)->entries() as $entry) {
+                if ($this->isSecret($entry['key'])) {
+                    $found[strtolower(trim($entry['key']))][] = trim($entry['value']);
+                }
+            }
+            ksort($found);
+
+            return $found;
+        };
+
+        if ($values($original) !== $values($updated)) {
+            throw new InvalidArgumentException('Passwords in '.$file.' cannot be changed here. Change them on the Startup page.');
+        }
+    }
+
     private function unmask(string $text, string $original): string
     {
         $old = Ini::parse($original);
         $secrets = implode('|', array_map(fn (string $key): string => preg_quote($key, '/'), $this->schema['secrets']));
 
         return (string) preg_replace_callback(
-            '/^(\h*('.$secrets.')\h*=)\h*'.preg_quote(self::MASK, '/').'(\h*)$/mi',
+            '/^(\h*('.$secrets.')\h*=)\h*'.preg_quote(self::MASK, '/').'(\h*)(?=\r?$)/mi',
             function (array $match) use ($old): string {
                 $value = null;
                 foreach ($old->entries() as $entry) {

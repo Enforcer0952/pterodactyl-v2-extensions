@@ -81,6 +81,18 @@ class Restarts
         $this->runOnce($server, self::APPLY, $minutes, 'stop');
     }
 
+    /**
+     * Remove the settings countdown, so a server that is started again after the
+     * settings were written is not stopped by the countdown's last task.
+     */
+    public function dropApplySchedule(Server $server): void
+    {
+        $schedule = $this->find($server, self::APPLY);
+        if ($schedule !== null) {
+            $this->deletes->delete($schedule);
+        }
+    }
+
     /** Whether a settings countdown is under way. */
     public function applying(Server $server): bool
     {

@@ -64,7 +64,7 @@
         { "key": "NightTimeSpeedScale", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "survival", "label": "Nighttime speed", "help": "Higher makes nights shorter." },
         { "key": "GlobalSpoilingTimeMultiplier", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "float", "default": "1.0", "min": 0, "group": "survival", "label": "Spoiling time", "help": "Higher makes food last longer." },
 
-        { "key": "DifficultyOffset", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "0.2", "min": 0, "max": 1, "group": "difficulty", "label": "Difficulty offset", "help": "0 to 1. Together with official difficulty it sets the maximum wild creature level." },
+        { "key": "DifficultyOffset", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "max": 1, "group": "difficulty", "label": "Difficulty offset", "help": "0 to 1. Together with official difficulty it sets the maximum wild creature level." },
         { "key": "OverrideOfficialDifficulty", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "0", "min": 0, "group": "difficulty", "label": "Official difficulty override", "help": "5.0 gives level 150 wild creatures, 0 leaves it to the map." },
         { "key": "PlayerDamageMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "difficulty", "label": "Player damage", "help": "" },
         { "key": "PlayerResistanceMultiplier", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "1.0", "min": 0, "group": "difficulty", "label": "Player resistance", "help": "Lower takes less damage." },
@@ -98,9 +98,9 @@
 
         { "key": "MaxTamedDinos", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "int", "default": "5000", "min": 0, "group": "players", "label": "Max tamed creatures", "help": "Server-wide limit." },
         { "key": "MaxNumberOfPlayersInTribe", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "int", "default": "0", "min": 0, "group": "players", "label": "Max tribe size", "help": "0 is unlimited." },
-        { "key": "AllowThirdPersonPlayer", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "players", "label": "Third person", "help": "" },
-        { "key": "ShowMapPlayerLocation", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "players", "label": "Show position on map", "help": "" },
-        { "key": "ServerCrosshair", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "players", "label": "Crosshair", "help": "" },
+        { "key": "AllowThirdPersonPlayer", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "True", "group": "players", "label": "Third person", "help": "" },
+        { "key": "ShowMapPlayerLocation", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "True", "group": "players", "label": "Show position on map", "help": "" },
+        { "key": "ServerCrosshair", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "True", "group": "players", "label": "Crosshair", "help": "" },
         { "key": "AllowFlyingStaminaRecovery", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "bool", "default": "False", "group": "players", "label": "Flyer stamina recovery", "help": "Flyers recover stamina while hovering with a rider." },
         { "key": "bAllowUnlimitedRespecs", "file": "Game.ini", "section": "/Script/ShooterGame.ShooterGameMode", "type": "bool", "default": "False", "group": "players", "label": "Unlimited respecs", "help": "Mindwipe tonics without a cooldown." },
         { "key": "KickIdlePlayersPeriod", "file": "GameUserSettings.ini", "section": "ServerSettings", "type": "float", "default": "3600", "min": 0, "group": "players", "label": "Idle kick (s)", "help": "Only applies with the -EnableIdlePlayerKick launch option." },
