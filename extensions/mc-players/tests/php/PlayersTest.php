@@ -5,6 +5,7 @@ namespace McPlayers\Tests;
 use McPlayers\Support\BrokenListFile;
 use McPlayers\Support\ListFile;
 use McPlayers\Support\ListOutput;
+use McPlayers\Support\McBansRecord;
 use McPlayers\Support\Stats;
 use McPlayers\Support\Validates;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -149,5 +150,27 @@ final class PlayersTest extends TestCase
 
         $old = ['stat.playOneMinute' => 24000, 'stat.deaths' => 1, 'stat.walkOneCm' => 1000, 'stat.mineBlock.minecraft.stone' => 5, 'stat.mineBlock.minecraft.dirt' => 2];
         $this->assertSame(['play_seconds' => 1200, 'deaths' => 1, 'mob_kills' => 0, 'player_kills' => 0, 'distance_m' => 10, 'blocks_mined' => 7, 'jumps' => 0], Stats::summarize($old));
+    }
+
+    public function test_mcbans_record(): void
+    {
+        $uuid = 'fd1f32cca4884bbeb3c8305f93d8930f';
+        $player = ['playerId' => 1, 'name' => 'kip_holyfield', 'uuid' => $uuid, 'reputation' => 7.0, 'bansTotal' => 1];
+        $bans = ['items' => [[
+            'id' => 5636650, 'type' => 'global', 'permaban' => false, 'serverAddress' => 'play.example.net',
+            'adminName' => 'schneidertm', 'reason' => "hackclient\n(fly)", 'date' => '2026-02-01T17:16:12',
+        ]], 'total' => 1];
+
+        $record = McBansRecord::from($uuid, $player, $bans);
+        $this->assertTrue($record['known']);
+        $this->assertSame(7.0, $record['reputation']);
+        $this->assertSame(1, $record['bans_total']);
+        $this->assertSame('hackclient (fly)', $record['bans'][0]['reason']);
+        $this->assertSame('play.example.net', $record['bans'][0]['server']);
+        $this->assertSame('https://www.mcbans.com/player/'.$uuid, $record['url']);
+
+        $unknown = McBansRecord::from($uuid, null, null);
+        $this->assertFalse($unknown['known']);
+        $this->assertSame([], $unknown['bans']);
     }
 }

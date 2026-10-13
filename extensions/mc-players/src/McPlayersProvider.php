@@ -51,6 +51,15 @@ class McPlayersProvider extends ExtensionProvider
                 ])
                 ->frontend()
                 ->frontendType('array'),
+            ExtensionSettingDefinition::make('mcbans', 'mcbans', 'on', ['required', 'string', 'in:on,off'])
+                ->label('MCBans lookup')
+                ->help('Show a player\'s global ban history from mcbans.com on their profile. Sends the player\'s UUID to mcbans.com; only Mojang accounts are looked up.')
+                ->field('select', [
+                    ['value' => 'on', 'label' => 'On'],
+                    ['value' => 'off', 'label' => 'Off'],
+                ])
+                ->frontend()
+                ->frontendType('string'),
             ExtensionSettingDefinition::make('link_behaviour', 'link_behaviour', 'popup', ['required', 'string', 'in:popup,page'])
                 ->label('Clicking a player')
                 ->help('Open the player in a popup over the console, or go straight to the full player page.')

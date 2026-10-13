@@ -163,3 +163,27 @@ export async function runNetworkAction(
     });
     return data.results;
 }
+
+export interface McBansBan {
+    id: number | null;
+    type: 'global' | 'local' | string;
+    reason: string | null;
+    server: string | null;
+    admin: string | null;
+    date: string | null;
+    permanent: boolean;
+}
+
+export interface McBansRecord {
+    known: boolean;
+    url: string;
+    name?: string | null;
+    reputation: number | null;
+    bans_total: number;
+    bans: McBansBan[];
+}
+
+export async function getMcBans(uuid: string): Promise<McBansRecord> {
+    const { data } = await http.get<McBansRecord>('/api/client/extensions/mc-players/mcbans', { params: { uuid } });
+    return data;
+}

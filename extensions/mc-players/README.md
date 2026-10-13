@@ -24,6 +24,7 @@ Click any player name on the card to open their profile, as a popup over the con
 - **Name, UUID** (click to copy) and links to NameMC, Laby.net or mcuuid.net. Offline-mode UUIDs are marked as such, and profile links are left out for them.
 - **This server:** online or not, whitelisted, operator level, ban with reason and source, last seen, with every action.
 - **Stats** from the world's stats file: playtime, deaths, mob and player kills, distance, blocks mined, jumps.
+- **MCBans:** the player's global ban history from [mcbans.com](https://www.mcbans.com): reputation, every ban with reason, server, admin and date. Only Mojang accounts are looked up, and results are cached for 30 minutes.
 - **All servers:** the same player on every Minecraft server you can see players on (up to 30), with per-server actions and bulk Ban, Unban, Kick, Whitelist, Unwhitelist, Op and Deop on the servers you select. Each server is checked against your own permissions there.
 
 ## Requirements
@@ -38,7 +39,7 @@ Click any player name on the card to open their profile, as a popup over the con
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.3.0.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.4.0.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -49,7 +50,7 @@ Click any player name on the card to open their profile, as a popup over the con
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.3.0.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.4.0.pteroext --enable --replace
 ```
 
 Settings and data are kept.
@@ -69,6 +70,7 @@ Under **Admin → Extensions → Minecraft Players**:
 | Skins on offline-mode servers | Look up by name (default) or default skin. crafatar.com only knows account UUIDs, so it always shows the default skin here. |
 | Profile links | Any of NameMC, Laby.net, mcuuid.net |
 | Clicking a player | Popup (default) or full page |
+| MCBans lookup | On (default) or Off. When on, the player's UUID is sent to mcbans.com. |
 
 ## Permissions (Subusers)
 

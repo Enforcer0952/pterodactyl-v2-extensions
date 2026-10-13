@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Button, Checkbox, Spinner, httpErrorToHuman, toast, useServerPermission } from '@pterodactyl/sdk';
 import { Copy, ExternalLink } from 'lucide-react';
 import {
+    getMcBans,
     getNetworkPlayer,
     getPlayer,
     keys,
@@ -15,7 +16,7 @@ import {
     type PlayerOnServer,
     type PlayerStats,
 } from './api';
-import { profileLinks } from './config';
+import { mcbansEnabled, profileLinks } from './config';
 import { ReasonDialog, banDetail, type Prompt } from './shared';
 import SkinViewer from './SkinViewer';
 import { isPremiumUuid, profileUrls, skinUrl } from './skins';
@@ -57,6 +58,7 @@ export default function PlayerProfile({ server, name, footer }: { server: string
                 <p className={'mcp:text-xs mcp:text-muted-foreground'}>No stats file found for this player.</p>
             )}
 
+            {mcbansEnabled() && isPremiumUuid(uuid) && <McBansSection uuid={uuid} />}
             <AllServers name={shownName} current={server} />
             {footer}
         </div>
@@ -429,4 +431,92 @@ export function networkSummary(row: PlayerOnServer): string {
     if (!row.joined) parts.push('Never joined');
     else if (row.online !== true && row.last_seen) parts.push(seenText(row).replace(/\.$/, ''));
     return parts.join(' · ') || 'Joined before';
+}
+
+/** Global ban history from MCBans. Only shown for real accounts. */
+function McBansSection({ uuid }: { uuid: string }) {
+    const record = useQuery({
+        queryKey: ['mc-players', 'mcbans', uuid.replace(/-/g, '').toLowerCase()],
+        queryFn: () => getMcBans(uuid),
+        staleTime: 30 * 60_000,
+        retry: false,
+    });
+
+    return (
+        <section className={'mcp:flex mcp:flex-col mcp:gap-2'}>
+            <div className={'mcp:flex mcp:items-center mcp:justify-between mcp:gap-2'}>
+                <h3 className={'mcp:text-sm mcp:font-semibold mcp:text-foreground'}>MCBans</h3>
+                {record.data && (
+                    <a
+                        href={record.data.url}
+                        target={'_blank'}
+                        rel={'noreferrer noopener'}
+                        className={'mcp:flex mcp:items-center mcp:gap-1 mcp:text-xs mcp:text-primary mcp:hover:underline'}
+                    >
+                        mcbans.com
+                        <ExternalLink className={'mcp:size-3'} aria-hidden />
+                    </a>
+                )}
+            </div>
+            {record.isLoading ? (
+                <Spinner size={'small'} />
+            ) : record.error ? (
+                <p className={'mcp:text-sm mcp:text-muted-foreground'}>{httpErrorToHuman(record.error)}</p>
+            ) : !record.data?.known ? (
+                <p className={'mcp:text-sm mcp:text-muted-foreground'}>No MCBans record: never banned on a server that uses MCBans.</p>
+            ) : (
+                <>
+                    <div className={'mcp:flex mcp:flex-wrap mcp:gap-1.5'}>
+                        {record.data.reputation !== null && (
+                            <Badge tone={record.data.reputation >= 10 ? 'good' : record.data.reputation >= 5 ? 'muted' : 'bad'}>
+                                Reputation {record.data.reputation}/10
+                            </Badge>
+                        )}
+                        <Badge tone={record.data.bans_total > 0 ? 'bad' : 'good'}>
+                            {record.data.bans_total === 0
+                                ? 'No bans'
+                                : `${record.data.bans_total} ban${record.data.bans_total === 1 ? '' : 's'}`}
+                        </Badge>
+                    </div>
+                    {record.data.bans.length > 0 && (
+                        <ul className={'mcp:flex mcp:flex-col mcp:divide-y mcp:divide-border mcp:rounded-md mcp:border mcp:border-border'}>
+                            {record.data.bans.map((ban, index) => (
+                                <li key={ban.id ?? index} className={'mcp:flex mcp:flex-col mcp:gap-0.5 mcp:px-3 mcp:py-2'}>
+                                    <div className={'mcp:flex mcp:items-center mcp:gap-2'}>
+                                        <Badge tone={ban.type === 'global' ? 'bad' : 'muted'}>
+                                            {ban.type === 'global' ? 'Global' : 'Local'}
+                                        </Badge>
+                                        <span className={'mcp:truncate mcp:text-sm mcp:text-foreground'}>
+                                            {ban.reason ?? 'No reason given'}
+                                        </span>
+                                    </div>
+                                    <p className={'mcp:truncate mcp:text-xs mcp:text-muted-foreground'}>
+                                        {[
+                                            ban.server,
+                                            ban.admin ? `by ${ban.admin}` : null,
+                                            mcbansDate(ban.date),
+                                            ban.permanent ? 'permanent' : null,
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' · ')}
+                                    </p>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    {record.data.bans_total > record.data.bans.length && (
+                        <p className={'mcp:text-xs mcp:text-muted-foreground'}>
+                            Showing the latest {record.data.bans.length}; the rest are on mcbans.com.
+                        </p>
+                    )}
+                </>
+            )}
+        </section>
+    );
+}
+
+function mcbansDate(value: string | null): string | null {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString();
 }

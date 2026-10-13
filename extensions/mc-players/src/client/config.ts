@@ -26,3 +26,7 @@ export function profileLinks(): ProfileLink[] {
 export function linkBehaviour(): 'popup' | 'page' {
     return config.link_behaviour === 'page' ? 'page' : 'popup';
 }
+
+export function mcbansEnabled(): boolean {
+    return config.mcbans !== 'off';
+}
