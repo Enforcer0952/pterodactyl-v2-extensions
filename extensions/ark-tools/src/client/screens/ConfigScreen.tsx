@@ -217,7 +217,7 @@ export default function ConfigScreen() {
                     <div className={'ark:mx-auto ark:flex ark:max-w-5xl ark:flex-wrap ark:items-center ark:justify-between ark:gap-3'}>
                         <p className={'ark:text-sm ark:text-foreground'}>
                             {changes} unsaved change{changes === 1 ? '' : 's'}
-                            {invalid && <span className={'ark:ml-2 ark:text-red-400'}>Fix the highlighted values first.</span>}
+                            {invalid && <span className={'ark:ml-2 ark:text-destructive'}>Fix the highlighted values first.</span>}
                         </p>
                         <div className={'ark:flex ark:flex-wrap ark:items-center ark:gap-2'}>
                             {running ? (
@@ -467,7 +467,7 @@ function SettingRow({
             <div className={'ark:flex ark:items-center ark:justify-between ark:gap-2'}>
                 <label htmlFor={id} className={'ark:text-sm ark:font-medium ark:text-foreground'}>
                     {setting.label}
-                    {changed && <span className={'ark:ml-2 ark:text-xs ark:text-orange-400'}>changed</span>}
+                    {changed && <span className={'ark:ml-2 ark:text-xs ark:text-warning'}>changed</span>}
                 </label>
                 {!isDefault && !overridden && (
                     <button
@@ -502,9 +502,9 @@ function SettingRow({
             )}
 
             {error ? (
-                <p className={'ark:text-xs ark:text-red-400'}>{error}</p>
+                <p className={'ark:text-xs ark:text-destructive'}>{error}</p>
             ) : overridden ? (
-                <p className={'ark:text-xs ark:text-orange-400'}>Set by the startup command, which wins over this file. Change it on the Startup page.</p>
+                <p className={'ark:text-xs ark:text-warning'}>Set by the startup command, which wins over this file. Change it on the Startup page.</p>
             ) : (
                 <p className={'ark:text-xs ark:text-muted-foreground'}>
                     {setting.help}

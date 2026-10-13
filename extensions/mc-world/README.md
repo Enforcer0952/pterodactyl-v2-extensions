@@ -2,6 +2,9 @@
 
 Adds a **World** page to Minecraft Java servers in Pterodactyl 2.0. Back up, restore and reset worlds, switch between them, and edit `server.properties` with a proper form.
 
+![mc world worlds](../../docs/screenshots/mc-world-worlds.png)
+![mc world properties](../../docs/screenshots/mc-world-properties.png)
+
 ## Features
 
 ### Worlds

@@ -2,6 +2,10 @@
 
 Adds Minecraft-style command suggestions to the Pterodactyl 2.0 server console.
 
+![mc console gamemode](../../docs/screenshots/mc-console-gamemode.png)
+![mc console player](../../docs/screenshots/mc-console-player.png)
+![mc console plugin](../../docs/screenshots/mc-console-plugin.png)
+
 ## Features
 
 - Suggestions for all vanilla commands while you type, with a syntax line and description.
@@ -37,7 +41,6 @@ sudo -u www-data php artisan p:extension:install /path/to/mc-console-1.1.0.ptero
 ```
 
 Settings and data are kept.
-
 
 ## Setup
 

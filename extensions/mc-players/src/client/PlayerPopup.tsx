@@ -46,7 +46,7 @@ export default function PlayerPopup({ server, name, onClose }: { server: string;
             >
                 <div className={'mcp:flex mcp:items-center mcp:justify-end mcp:gap-1 mcp:border-b mcp:border-border mcp:px-3 mcp:py-2'}>
                     <PanelLink
-                        destination={{ extension: 'mc-players', screen: 'player', params: { player: name } }}
+                        destination={{ extension: 'mc-players', screen: 'player', params: { id: server, player: name } }}
                         className={
                             'mcp:flex mcp:items-center mcp:gap-1 mcp:rounded mcp:px-2 mcp:py-1 mcp:text-sm mcp:text-muted-foreground mcp:hover:bg-muted mcp:hover:text-foreground'
                         }

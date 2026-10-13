@@ -1,6 +1,8 @@
 # Minecraft Network: manage a proxy's backend servers from the panel
 
-Adds a **Network** page to BungeeCord and Waterfall proxy servers in Pterodactyl 2.0. It reads the proxy's `config.yml`, matches every backend with a server on the same node, points out what is broken, and lets you fix it without editing YAML by hand.
+Adds a **Proxy** page to BungeeCord and Waterfall proxy servers in Pterodactyl 2.0. It reads the proxy's `config.yml`, matches every backend with a server on the same node, points out what is broken, and lets you fix it without editing YAML by hand.
+
+![mc network proxy](../../docs/screenshots/mc-network-proxy.png)
 
 ## Features
 
@@ -53,7 +55,7 @@ sudo -u www-data php artisan p:extension:install /path/to/mc-network-1.0.0.ptero
 
 ## Setup
 
-Open the proxy server and click **Network** in the menu. It only appears on servers whose egg has one of the tags above. Add the tag under **Admin → Eggs → Tags** if your proxy egg has none.
+Open the proxy server and click **Proxy** in the menu. It only appears on servers whose egg has one of the tags above. Add the tag under **Admin → Eggs → Tags** if your proxy egg has none.
 
 Notes:
 
@@ -68,7 +70,7 @@ This extension adds no permissions of its own. It uses the panel's file and powe
 
 | Permission | Allows |
 |---|---|
-| `file.read` | See the Network page |
+| `file.read` | See the Proxy page |
 | `file.update` | Add, edit, remove and reorder, and save |
 | `control.restart` | The **Restart proxy** button |
 

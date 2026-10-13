@@ -2,6 +2,10 @@
 
 Adds a **Players** card under the console of Minecraft Java servers in Pterodactyl 2.0.
 
+![mc players online](../../docs/screenshots/mc-players-online.png)
+![mc players profile](../../docs/screenshots/mc-players-profile.png)
+![mc players bans](../../docs/screenshots/mc-players-bans.png)
+
 ## Features
 
 - **Online:** who is on right now (read with `list`), with Kick, Ban, Op and Whitelist buttons.
@@ -54,7 +58,6 @@ sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.4.1.ptero
 ```
 
 Settings and data are kept.
-
 
 ## Setup
 

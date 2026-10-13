@@ -160,7 +160,7 @@ export default function PropertiesCard({ identifier }: { identifier: string }) {
                     <div className={'mcw:mx-auto mcw:flex mcw:max-w-5xl mcw:flex-wrap mcw:items-center mcw:justify-between mcw:gap-3'}>
                         <p className={'mcw:text-sm mcw:text-foreground'}>
                             {edits.length} unsaved change{edits.length === 1 ? '' : 's'}
-                            {invalid && <span className={'mcw:ml-2 mcw:text-red-400'}>Fix the highlighted values first.</span>}
+                            {invalid && <span className={'mcw:ml-2 mcw:text-destructive'}>Fix the highlighted values first.</span>}
                             {!invalid && !isStopped(data.state) && (
                                 <span className={'mcw:ml-2 mcw:text-muted-foreground'}>Applies after a restart.</span>
                             )}
@@ -204,7 +204,7 @@ function PropertyRow({
             <label htmlFor={id} className={'mcw:text-sm mcw:font-medium mcw:text-foreground'}>
                 {def.label}
                 <span className={'mcw:ml-2 mcw:font-mono mcw:text-xs mcw:font-normal mcw:text-muted-foreground'}>{def.key}</span>
-                {changed && <span className={'mcw:ml-2 mcw:text-xs mcw:text-orange-400'}>changed</span>}
+                {changed && <span className={'mcw:ml-2 mcw:text-xs mcw:text-warning'}>changed</span>}
             </label>
 
             {def.type === 'bool' ? (
@@ -246,7 +246,7 @@ function PropertyRow({
             )}
 
             {error ? (
-                <p className={'mcw:text-xs mcw:text-red-400'}>{error}</p>
+                <p className={'mcw:text-xs mcw:text-destructive'}>{error}</p>
             ) : (
                 def.help && <p className={'mcw:text-xs mcw:text-muted-foreground'}>{def.help}</p>
             )}
@@ -355,7 +355,7 @@ function AllProperties({
                                 $hasError={keyError !== null}
                                 onChange={(event: React.ChangeEvent<HTMLInputElement>) => setNewKey(event.target.value.trim())}
                             />
-                            {keyError && <p className={'mcw:text-xs mcw:text-red-400'}>{keyError}</p>}
+                            {keyError && <p className={'mcw:text-xs mcw:text-destructive'}>{keyError}</p>}
                         </div>
                         <div className={'mcw:min-w-48 mcw:flex-1'}>
                             <Input

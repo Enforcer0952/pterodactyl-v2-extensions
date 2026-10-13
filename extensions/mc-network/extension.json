@@ -19,9 +19,9 @@
             {
                 "id": "network",
                 "area": "server",
-                "path": "network",
+                "path": "proxy",
                 "nav": {
-                    "label": "Network",
+                    "label": "Proxy",
                     "icon": "network",
                     "order": 13
                 },

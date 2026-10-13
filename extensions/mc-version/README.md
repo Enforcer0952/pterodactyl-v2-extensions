@@ -2,6 +2,9 @@
 
 Adds a **Version** page to Minecraft Java servers in Pterodactyl 2.0. It shows what a server really runs, switches it between Paper, Purpur, Fabric and Vanilla, and sets the Java version that fits.
 
+![mc version page](../../docs/screenshots/mc-version-page.png)
+![mc version plan](../../docs/screenshots/mc-version-plan.png)
+
 ## Features
 
 - **Current:** the software and Minecraft version, read from the server's files (the log of the last start first, then `version_history.json`, then the newest folder under `versions/`), next to the egg's startup variables `MINECRAFT_VERSION`, `BUILD_NUMBER` and `SERVER_JARFILE`.

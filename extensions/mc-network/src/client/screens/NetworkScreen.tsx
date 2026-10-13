@@ -460,8 +460,8 @@ function Th({ children }: { children: ReactNode }) {
 }
 
 const LEVEL_CLASS: Record<Level, string> = {
-    error: 'mcnet:border-red-500/40 mcnet:bg-red-500/10 mcnet:text-red-400',
-    warning: 'mcnet:border-amber-500/40 mcnet:bg-amber-500/10 mcnet:text-amber-400',
+    error: 'mcnet:border-destructive/40 mcnet:bg-destructive/10 mcnet:text-destructive',
+    warning: 'mcnet:border-warning/40 mcnet:bg-warning/10 mcnet:text-warning',
     info: 'mcnet:border-border mcnet:bg-muted mcnet:text-muted-foreground',
 };
 
@@ -477,10 +477,10 @@ function Badge({ problem }: { problem: Problem }) {
 }
 
 const STATE_DOT: Record<string, string> = {
-    running: 'mcnet:bg-green-500',
-    starting: 'mcnet:bg-amber-500',
-    stopping: 'mcnet:bg-amber-500',
-    offline: 'mcnet:bg-red-500',
+    running: 'mcnet:bg-success',
+    starting: 'mcnet:bg-warning',
+    stopping: 'mcnet:bg-warning',
+    offline: 'mcnet:bg-destructive',
 };
 
 function BackendRow({
@@ -670,7 +670,7 @@ function Priorities({
                                     {index + 1}. {name}
                                     {index === 0 && <span className={'mcnet:ml-2 mcnet:text-xs mcnet:text-muted-foreground'}>Default</span>}
                                     {!names.includes(name) && (
-                                        <span className={'mcnet:ml-2 mcnet:text-xs mcnet:text-red-400'}>Missing</span>
+                                        <span className={'mcnet:ml-2 mcnet:text-xs mcnet:text-destructive'}>Missing</span>
                                     )}
                                 </span>
                                 {canEdit && (
@@ -893,7 +893,7 @@ function Field({ label, error, help, children }: { label: string; error?: string
         <div className={'mcnet:flex mcnet:flex-col mcnet:gap-1'}>
             <span className={'mcnet:text-sm mcnet:font-medium mcnet:text-foreground'}>{label}</span>
             {children}
-            <span className={`mcnet:text-xs ${error ? 'mcnet:text-red-400' : 'mcnet:text-muted-foreground'}`}>{error ?? help}</span>
+            <span className={`mcnet:text-xs ${error ? 'mcnet:text-destructive' : 'mcnet:text-muted-foreground'}`}>{error ?? help}</span>
         </div>
     );
 }

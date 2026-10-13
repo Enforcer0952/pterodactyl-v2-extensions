@@ -452,7 +452,7 @@ function AddForm({
                     {button}
                 </Button>
             </div>
-            {error && <p className={'ark:text-xs ark:text-red-400'}>{error}</p>}
+            {error && <p className={'ark:text-xs ark:text-destructive'}>{error}</p>}
         </form>
     );
 }

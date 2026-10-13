@@ -217,8 +217,8 @@ function Badges({ player }: { player: PlayerOnServer }) {
 
 function Badge({ tone, children }: { tone: 'good' | 'bad' | 'muted'; children: ReactNode }) {
     const colours = {
-        good: 'mcp:bg-green-500/15 mcp:text-green-600 mcp:dark:text-green-400',
-        bad: 'mcp:bg-red-500/15 mcp:text-red-600 mcp:dark:text-red-400',
+        good: 'mcp:bg-success/15 mcp:text-success ',
+        bad: 'mcp:bg-destructive/15 mcp:text-destructive ',
         muted: 'mcp:bg-muted mcp:text-muted-foreground',
     };
     return <span className={`mcp:rounded mcp:px-1.5 mcp:py-0.5 mcp:text-xs mcp:font-medium ${colours[tone]}`}>{children}</span>;

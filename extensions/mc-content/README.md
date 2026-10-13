@@ -2,6 +2,10 @@
 
 Adds **Plugins** and **Mods** pages to Minecraft servers in Pterodactyl 2.0. Search Modrinth and install with one click. Files go straight into `/plugins` or `/mods`.
 
+![mc content browse](../../docs/screenshots/mc-content-browse.png)
+![mc content popup](../../docs/screenshots/mc-content-popup.png)
+![mc content installed](../../docs/screenshots/mc-content-installed.png)
+
 ## Features
 
 - Search Modrinth filtered to the server's loader and Minecraft version (both detected automatically).
@@ -40,7 +44,6 @@ sudo -u www-data php artisan p:extension:install /path/to/mc-content-1.6.1.ptero
 ```
 
 Settings and data are kept.
-
 
 ## Setup: egg tags
 

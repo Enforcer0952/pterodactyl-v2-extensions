@@ -10,7 +10,10 @@ Built for and used every day on a home-hosted panel with Minecraft (Paper, Fabri
 [![License: GPL-3.0](https://img.shields.io/github/license/Enforcer0952/pterodactyl-v2-extensions)](LICENSE)
 ![Pterodactyl 2.0](https://img.shields.io/badge/Pterodactyl-2.0-0e4688)
 
-![Install plugins from Modrinth on the Plugins page](docs/screenshots/mc-content-browse.png)
+| | |
+|---|---|
+| ![Modrinth project page inside the panel](docs/screenshots/mc-content-popup.png) | ![Player profile with 3D skin, stats and all servers](docs/screenshots/mc-players-profile.png) |
+| Any Modrinth plugin or mod, opened right inside the panel | Every player: 3D skin, stats, bans and actions on all your servers |
 
 > **Pterodactyl 2.0 only.** These use the panel's new native extension system (`p:extension:*`). They do not work on Pterodactyl 1.x or with Blueprint.
 
@@ -27,7 +30,7 @@ Built for and used every day on a home-hosted panel with Minecraft (Paper, Fabri
 | [**Minecraft Console**](extensions/mc-console) | Command autocomplete in the console: vanilla and plugin commands with syntax hints, player names, Tab to complete. |
 | [**Minecraft Version**](extensions/mc-version) | **Version** page: see what a server really runs, switch between Paper, Purpur, Fabric and Vanilla or to another Minecraft version, with the right Java image picked for you and a one-click way back. |
 | [**Minecraft World**](extensions/mc-world) | **World** page: back up, restore, reset and switch worlds, a "new hardcore run" button, and a proper form for `server.properties`. |
-| [**Minecraft Network**](extensions/mc-network) | **Network** page on BungeeCord and Waterfall proxies: every backend matched to its panel server with live state, broken entries flagged (wrong ports, duplicates, missing names) and fixed without editing YAML. |
+| [**Minecraft Network**](extensions/mc-network) | **Proxy** page on BungeeCord and Waterfall proxies: every backend matched to its panel server with live state, broken entries flagged (wrong ports, duplicates, missing names) and fixed without editing YAML. |
 
 ### ARK: Survival Evolved
 
@@ -45,11 +48,39 @@ More games are on the way. [Ask for yours](https://github.com/Enforcer0952/ptero
 
 ## Screenshots
 
+<details open>
+<summary><b>Minecraft</b></summary>
+
 | | |
 |---|---|
+| ![Plugins page](docs/screenshots/mc-content-browse.png) **Minecraft Content**: search Modrinth and install in one click | ![Installed plugins](docs/screenshots/mc-content-installed.png) Installed plugins, with updates ready to apply |
 | ![Players card](docs/screenshots/mc-players-online.png) **Minecraft Players**: online players with actions | ![Bans](docs/screenshots/mc-players-bans.png) Bans with reason, source and date |
-| ![Installed plugins](docs/screenshots/mc-content-installed.png) **Minecraft Content**: installed plugins with updates | ![Console autocomplete](docs/screenshots/mc-console-player.png) **Minecraft Console**: autocomplete with player names |
-| ![ARK mods](docs/screenshots/ark-mods.png) **ARK Tools**: Workshop mods | ![ARK admin](docs/screenshots/ark-admin.png) ARK admin actions and safe restarts |
+| ![Console autocomplete](docs/screenshots/mc-console-gamemode.png) **Minecraft Console**: command autocomplete and syntax hints | ![Player names](docs/screenshots/mc-console-player.png) Player names and plugin commands |
+| ![Version page](docs/screenshots/mc-version-page.png) **Minecraft Version**: switch software and version | ![Change plan](docs/screenshots/mc-version-plan.png) See exactly what changes before it happens |
+| ![Worlds](docs/screenshots/mc-world-worlds.png) **Minecraft World**: backups, resets, hardcore runs | ![server.properties form](docs/screenshots/mc-world-properties.png) A real form for server.properties |
+| ![Proxy page](docs/screenshots/mc-network-proxy.png) **Minecraft Network**: every backend checked and fixable | |
+
+</details>
+
+<details open>
+<summary><b>ARK: Survival Evolved</b></summary>
+
+| | |
+|---|---|
+| ![ARK config](docs/screenshots/ark-config.png) **Config page** with presets | ![Workshop mods](docs/screenshots/ark-mods.png) Workshop mods with update checks |
+| ![ARK players](docs/screenshots/ark-players.png) Players, whitelist, bans and admins | ![ARK admin](docs/screenshots/ark-admin.png) Admin actions and safe restarts |
+
+</details>
+
+<details open>
+<summary><b>Terraria</b></summary>
+
+| | |
+|---|---|
+| ![Terraria players](docs/screenshots/terraria-players.png) Online players and bans | ![Terraria admin](docs/screenshots/terraria-admin.png) Save, settle, time of day and broadcast |
+| ![Terraria worlds](docs/screenshots/terraria-worlds.png) Worlds with backups and new worlds | ![Terraria settings](docs/screenshots/terraria-settings.png) serverconfig.txt as a form |
+
+</details>
 
 ## Install
 

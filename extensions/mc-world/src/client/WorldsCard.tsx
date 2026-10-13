@@ -177,7 +177,7 @@ export default function WorldsCard({ identifier }: { identifier: string }) {
                     {data.hardcore && activeWorld && can.delete && can.update && (
                         <div
                             className={
-                                'mcw:flex mcw:flex-wrap mcw:items-center mcw:justify-between mcw:gap-3 mcw:rounded-md mcw:border mcw:border-red-500/50 mcw:bg-red-500/10 mcw:p-3'
+                                'mcw:flex mcw:flex-wrap mcw:items-center mcw:justify-between mcw:gap-3 mcw:rounded-md mcw:border mcw:border-destructive/50 mcw:bg-destructive/10 mcw:p-3'
                             }
                         >
                             <div className={'mcw:flex mcw:flex-col mcw:gap-1'}>
@@ -213,7 +213,7 @@ export default function WorldsCard({ identifier }: { identifier: string }) {
                                             {world.active && (
                                                 <span
                                                     className={
-                                                        'mcw:rounded mcw:bg-green-500/20 mcw:px-1.5 mcw:py-0.5 mcw:text-xs mcw:font-normal mcw:text-green-400'
+                                                        'mcw:rounded mcw:bg-success/20 mcw:px-1.5 mcw:py-0.5 mcw:text-xs mcw:font-normal mcw:text-success'
                                                     }
                                                 >
                                                     Active
@@ -509,7 +509,7 @@ function ResetDialog({
                             $hasError={seedError !== null}
                             onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSeed(event.target.value)}
                         />
-                        <p className={seedError ? 'mcw:text-xs mcw:text-red-400' : 'mcw:text-xs mcw:text-muted-foreground'}>
+                        <p className={seedError ? 'mcw:text-xs mcw:text-destructive' : 'mcw:text-xs mcw:text-muted-foreground'}>
                             {seedError ?? 'Leave empty for a random world.'}
                         </p>
                     </div>

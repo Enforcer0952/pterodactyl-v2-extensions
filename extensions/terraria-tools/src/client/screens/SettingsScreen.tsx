@@ -195,7 +195,7 @@ export default function SettingsScreen() {
                     >
                         <p className={'terra:text-sm terra:text-foreground'}>
                             {changes} unsaved change{changes === 1 ? '' : 's'}
-                            {invalid && <span className={'terra:ml-2 terra:text-red-400'}>Fix the highlighted values first.</span>}
+                            {invalid && <span className={'terra:ml-2 terra:text-destructive'}>Fix the highlighted values first.</span>}
                         </p>
                         <div className={'terra:flex terra:gap-2'}>
                             <Button isSecondary onClick={reset} disabled={save.isPending}>
@@ -249,7 +249,7 @@ function FieldRow({
             <div className={'terra:flex terra:items-center terra:justify-between terra:gap-2'}>
                 <label htmlFor={id} className={'terra:text-sm terra:font-medium terra:text-foreground'}>
                     {field.label}
-                    {changed && <span className={'terra:ml-2 terra:text-xs terra:text-orange-400'}>changed</span>}
+                    {changed && <span className={'terra:ml-2 terra:text-xs terra:text-warning'}>changed</span>}
                 </label>
                 {field.kind === 'secret' && !hidden && (
                     <button
@@ -289,7 +289,7 @@ function FieldRow({
             )}
 
             {error ? (
-                <p className={'terra:text-xs terra:text-red-400'}>{error}</p>
+                <p className={'terra:text-xs terra:text-destructive'}>{error}</p>
             ) : (
                 <p className={'terra:text-xs terra:text-muted-foreground'}>
                     {hidden ? 'A password is set. It is hidden because you may not edit the file or the startup variables.' : field.help}

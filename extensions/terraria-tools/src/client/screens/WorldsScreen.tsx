@@ -409,7 +409,7 @@ function Field({ label, htmlFor, error, children }: { label: string; htmlFor?: s
                 {label}
             </label>
             {children}
-            {error && <p className={'terra:text-xs terra:text-red-400'}>{error}</p>}
+            {error && <p className={'terra:text-xs terra:text-destructive'}>{error}</p>}
         </div>
     );
 }

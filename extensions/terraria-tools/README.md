@@ -2,6 +2,11 @@
 
 Adds a **Players** card, a **Server admin** card and console autocomplete under the console, plus **Worlds** and **Server settings** pages, to vanilla Terraria dedicated servers in Pterodactyl 2.0.
 
+![terraria players](../../docs/screenshots/terraria-players.png)
+![terraria worlds](../../docs/screenshots/terraria-worlds.png)
+![terraria settings](../../docs/screenshots/terraria-settings.png)
+![terraria admin](../../docs/screenshots/terraria-admin.png)
+
 ## Features
 
 - **Players:** who is online (read with the `playing` command), with Kick and Ban. Ban asks for confirmation. The list follows joins and leaves in the console, with no polling, and has a Refresh button.

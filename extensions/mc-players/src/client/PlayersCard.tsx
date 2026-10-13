@@ -51,7 +51,7 @@ export function PlayersCard({ server }: { server: SdkServer }) {
     const navigate = usePanelNavigate();
     const openPlayer = (name: string) => {
         if (linkBehaviour() === 'page') {
-            void navigate({ extension: 'mc-players', screen: 'player', params: { player: name } });
+            void navigate({ extension: 'mc-players', screen: 'player', params: { id: identifier, player: name } });
         } else {
             setProfile(name);
         }

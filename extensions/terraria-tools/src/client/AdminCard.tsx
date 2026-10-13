@@ -117,7 +117,7 @@ export function AdminCard({ server }: { server: SdkServer }) {
                             Say
                         </Button>
                     </div>
-                    <p className={tooLong ? 'terra:text-xs terra:text-red-400' : 'terra:text-xs terra:text-muted-foreground'}>
+                    <p className={tooLong ? 'terra:text-xs terra:text-destructive' : 'terra:text-xs terra:text-muted-foreground'}>
                         {tooLong ? `A message can be at most ${MAX_MESSAGE} characters.` : 'Shown in chat to everyone as a server message.'}
                     </p>
                 </form>

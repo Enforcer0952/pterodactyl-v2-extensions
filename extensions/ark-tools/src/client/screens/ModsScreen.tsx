@@ -288,7 +288,7 @@ function AddMods({
                 </Button>
             </div>
             {error ? (
-                <p className={'ark:text-xs ark:text-red-400'}>{error}</p>
+                <p className={'ark:text-xs ark:text-destructive'}>{error}</p>
             ) : (
                 <p className={'ark:text-xs ark:text-muted-foreground'}>
                     Find mods on the{' '}
@@ -304,9 +304,9 @@ function AddMods({
 
 const STATUS: Record<Mod['status'], { label: string; tone: string }> = {
     up_to_date: { label: 'Up to date', tone: 'ark:text-muted-foreground' },
-    update_available: { label: 'Update on restart', tone: 'ark:text-amber-400' },
-    not_downloaded: { label: 'Downloads on restart', tone: 'ark:text-sky-400' },
-    downloading: { label: 'Downloading', tone: 'ark:text-sky-400' },
+    update_available: { label: 'Update on restart', tone: 'ark:text-warning' },
+    not_downloaded: { label: 'Downloads on restart', tone: 'ark:text-primary' },
+    downloading: { label: 'Downloading', tone: 'ark:text-primary' },
 };
 
 function ModRow({
@@ -324,7 +324,7 @@ function ModRow({
 }) {
     const mod = item && 'status' in item ? item : null;
     const title = item?.title ?? (item && !item.found ? 'Not found on the Workshop' : id);
-    const status = pendingSave ? { label: 'Not saved yet', tone: 'ark:text-sky-400' } : mod && mod.listed ? STATUS[mod.status] : null;
+    const status = pendingSave ? { label: 'Not saved yet', tone: 'ark:text-primary' } : mod && mod.listed ? STATUS[mod.status] : null;
 
     return (
         <li className={'ark:flex ark:items-center ark:gap-3 ark:px-3 ark:py-2'}>
