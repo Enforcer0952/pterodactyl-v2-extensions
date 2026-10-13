@@ -7,3 +7,4 @@ use McPlayers\Http\Controllers\PlayersController;
 Route::get('/online', [PlayersController::class, 'online'])->middleware('throttle:30,1,mc-players-online')->name('online');
 Route::get('/lists', [PlayersController::class, 'lists'])->middleware('throttle:30,1,mc-players-lists')->name('lists');
 Route::post('/action', [PlayersController::class, 'action'])->middleware('throttle:30,1,mc-players-action')->name('action');
+Route::get('/player', [PlayersController::class, 'player'])->middleware('throttle:30,1,mc-players-player')->name('player');

@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import {
     Alert,
     Button,
-    Dialog,
     Input,
     SocketEvent,
     Spinner,
@@ -12,18 +11,21 @@ import {
     httpErrorToHuman,
     toast,
     useServerPermission,
+    usePanelNavigate,
     useServerWebsocketEvent,
     type SdkServer,
 } from '@pterodactyl/sdk';
 import { getLists, getOnline, keys, runAction, type Action, type Lists, type OnlineResponse } from './api';
 import { isValidName, parseConsoleLine } from './console';
+import { ReasonDialog, banDetail, type Prompt } from './shared';
+import { linkBehaviour } from './config';
+import { headUrl } from './skins';
+import PlayerPopup from './PlayerPopup';
+
+/** Opens a player's profile, as a popup or the full page depending on the extension setting. */
+const OpenPlayer = createContext<((name: string) => void) | null>(null);
 
 type Tab = 'online' | 'offline' | 'whitelist' | 'bans' | 'ops';
-
-interface Prompt {
-    action: Extract<Action, 'kick' | 'ban'>;
-    name: string;
-}
 
 /** Only Java Edition servers get the card; Bedrock eggs carry the minecraft tag too. */
 export default function PlayersSlot({ data: server }: { data: SdkServer }) {
@@ -45,6 +47,15 @@ export function PlayersCard({ server }: { server: SdkServer }) {
     const queryClient = useQueryClient();
     const [tab, setTab] = useState<Tab>('online');
     const [prompt, setPrompt] = useState<Prompt | null>(null);
+    const [profile, setProfile] = useState<string | null>(null);
+    const navigate = usePanelNavigate();
+    const openPlayer = (name: string) => {
+        if (linkBehaviour() === 'page') {
+            void navigate({ extension: 'mc-players', screen: 'player', params: { player: name } });
+        } else {
+            setProfile(name);
+        }
+    };
 
     const can = {
         kick: useServerPermission('ext.mc-players.kick'),
@@ -125,6 +136,7 @@ export function PlayersCard({ server }: { server: SdkServer }) {
     // While starting or stopping the backend refuses changes, so the buttons are off too.
     const busy = action.isPending || state === 'starting' || state === 'stopping';
     const opNames = new Set((lists.data?.ops ?? []).map((op) => op.name.toLowerCase()));
+    const uuids = new Map((lists.data?.known ?? []).map((player) => [player.name.toLowerCase(), player.uuid] as const));
     const count = online.data?.online;
     const onlineNames = new Set((online.data?.online?.players ?? []).map((name) => name.toLowerCase()));
     const offlinePlayers = (lists.data?.known ?? []).filter((player) => !onlineNames.has(player.name.toLowerCase()));
@@ -139,102 +151,110 @@ export function PlayersCard({ server }: { server: SdkServer }) {
     ];
 
     return (
-        <TitledGreyBox title={'Players'}>
-            <div className={'mcp:flex mcp:flex-col mcp:gap-3'}>
-                <div className={'mcp:flex mcp:flex-wrap mcp:items-center mcp:gap-2'} role={'tablist'}>
-                    {tabs.map((item) => (
-                        <Button
-                            key={item.id}
-                            size={'xsmall'}
-                            isSecondary={tab !== item.id}
-                            role={'tab'}
-                            aria-selected={tab === item.id}
-                            onClick={() => setTab(item.id)}
-                        >
-                            {item.label}
-                        </Button>
-                    ))}
-                    {tab === 'online' && running && (
-                        <Button.Text
-                            size={'xsmall'}
-                            className={'mcp:ml-auto'}
-                            isLoading={online.isFetching}
-                            onClick={() => queryClient.invalidateQueries({ queryKey: keys.online(identifier) })}
-                        >
-                            Refresh
-                        </Button.Text>
-                    )}
-                </div>
-
-                {state === 'offline' && tab !== 'online' && (
-                    <p className={'mcp:text-xs mcp:text-muted-foreground'}>
-                        The server is stopped. Changes are written to its files and apply on the next start.
-                    </p>
-                )}
-                {(state === 'starting' || state === 'stopping') && (
-                    <p className={'mcp:text-xs mcp:text-muted-foreground'}>The server is {state}. Changes are possible once it is running or stopped.</p>
-                )}
-                {tab !== 'online' && lists.data && Object.keys(lists.data.problems ?? {}).length > 0 && (
-                    <Alert type={'warning'}>
-                        {Object.values(lists.data.problems).map((problem) => (
-                            <p key={problem}>{problem}</p>
+        <OpenPlayer.Provider value={openPlayer}>
+            <TitledGreyBox title={'Players'}>
+                <div className={'mcp:flex mcp:flex-col mcp:gap-3'}>
+                    <div className={'mcp:flex mcp:flex-wrap mcp:items-center mcp:gap-2'} role={'tablist'}>
+                        {tabs.map((item) => (
+                            <Button
+                                key={item.id}
+                                size={'xsmall'}
+                                isSecondary={tab !== item.id}
+                                role={'tab'}
+                                aria-selected={tab === item.id}
+                                onClick={() => setTab(item.id)}
+                            >
+                                {item.label}
+                            </Button>
                         ))}
-                    </Alert>
-                )}
+                        {tab === 'online' && running && (
+                            <Button.Text
+                                size={'xsmall'}
+                                className={'mcp:ml-auto'}
+                                isLoading={online.isFetching}
+                                onClick={() => queryClient.invalidateQueries({ queryKey: keys.online(identifier) })}
+                            >
+                                Refresh
+                            </Button.Text>
+                        )}
+                    </div>
 
-                {tab === 'online' && (
-                    <OnlineTab
-                        query={online}
-                        running={running}
-                        state={state}
-                        opNames={opNames}
-                        can={can}
-                        pending={busy}
-                        onKick={(name) => setPrompt({ action: 'kick', name })}
-                        onBan={(name) => setPrompt({ action: 'ban', name })}
-                        onOp={(name, op) => run({ action: op ? 'deop' : 'op', target: name })}
-                        whitelisted={new Set((lists.data?.whitelist ?? []).map((player) => player.name.toLowerCase()))}
-                        onWhitelist={(name, listed) => run({ action: listed ? 'whitelist-remove' : 'whitelist-add', target: name })}
-                    />
-                )}
+                    {state === 'offline' && tab !== 'online' && (
+                        <p className={'mcp:text-xs mcp:text-muted-foreground'}>
+                            The server is stopped. Changes are written to its files and apply on the next start.
+                        </p>
+                    )}
+                    {(state === 'starting' || state === 'stopping') && (
+                        <p className={'mcp:text-xs mcp:text-muted-foreground'}>
+                            The server is {state}. Changes are possible once it is running or stopped.
+                        </p>
+                    )}
+                    {tab !== 'online' && lists.data && Object.keys(lists.data.problems ?? {}).length > 0 && (
+                        <Alert type={'warning'}>
+                            {Object.values(lists.data.problems).map((problem) => (
+                                <p key={problem}>{problem}</p>
+                            ))}
+                        </Alert>
+                    )}
 
-                {tab !== 'online' &&
-                    (lists.isLoading ? (
-                        <Spinner centered size={'small'} />
-                    ) : lists.error || !lists.data ? (
-                        <Alert type={'danger'}>{httpErrorToHuman(lists.error)}</Alert>
-                    ) : tab === 'offline' ? (
-                        <OfflineTab
-                            players={offlinePlayers}
-                            lists={lists.data}
+                    {tab === 'online' && (
+                        <OnlineTab
+                            query={online}
+                            running={running}
+                            state={state}
+                            opNames={opNames}
+                            uuids={uuids}
                             can={can}
                             pending={busy}
-                            run={run}
+                            onKick={(name) => setPrompt({ action: 'kick', name })}
                             onBan={(name) => setPrompt({ action: 'ban', name })}
+                            onOp={(name, op) => run({ action: op ? 'deop' : 'op', target: name })}
+                            whitelisted={new Set((lists.data?.whitelist ?? []).map((player) => player.name.toLowerCase()))}
+                            onWhitelist={(name, listed) => run({ action: listed ? 'whitelist-remove' : 'whitelist-add', target: name })}
                         />
-                    ) : tab === 'whitelist' ? (
-                        <WhitelistTab lists={lists.data} canEdit={can.whitelist} pending={busy} run={run} />
-                    ) : tab === 'bans' ? (
-                        <BansTab lists={lists.data} canEdit={can.ban} pending={busy} run={run} />
-                    ) : (
-                        <OpsTab lists={lists.data} canEdit={can.op} pending={busy} run={run} />
-                    ))}
-            </div>
+                    )}
 
-            {prompt && (
-                <ReasonDialog
-                    prompt={prompt}
-                    pending={busy}
-                    onClose={() => setPrompt(null)}
-                    onConfirm={(reason) => run({ action: prompt.action, target: prompt.name, reason })}
-                />
-            )}
-        </TitledGreyBox>
+                    {tab !== 'online' &&
+                        (lists.isLoading ? (
+                            <Spinner centered size={'small'} />
+                        ) : lists.error || !lists.data ? (
+                            <Alert type={'danger'}>{httpErrorToHuman(lists.error)}</Alert>
+                        ) : tab === 'offline' ? (
+                            <OfflineTab
+                                players={offlinePlayers}
+                                lists={lists.data}
+                                can={can}
+                                pending={busy}
+                                run={run}
+                                onBan={(name) => setPrompt({ action: 'ban', name })}
+                            />
+                        ) : tab === 'whitelist' ? (
+                            <WhitelistTab lists={lists.data} canEdit={can.whitelist} pending={busy} run={run} />
+                        ) : tab === 'bans' ? (
+                            <BansTab lists={lists.data} canEdit={can.ban} pending={busy} run={run} />
+                        ) : (
+                            <OpsTab lists={lists.data} canEdit={can.op} pending={busy} run={run} />
+                        ))}
+                </div>
+
+                {prompt && (
+                    <ReasonDialog
+                        prompt={prompt}
+                        pending={busy}
+                        onClose={() => setPrompt(null)}
+                        onConfirm={(reason) => run({ action: prompt.action, target: prompt.name, reason })}
+                    />
+                )}
+                {profile && <PlayerPopup server={identifier} name={profile} onClose={() => setProfile(null)} />}
+            </TitledGreyBox>
+        </OpenPlayer.Provider>
     );
 }
 
 interface OnlineTabProps {
     query: UseQueryResult<OnlineResponse>;
+    /** Lowercase name to UUID, from the server's usercache, for skin lookups. */
+    uuids: Map<string, string>;
     running: boolean;
     state: string | undefined;
     opNames: Set<string>;
@@ -247,7 +267,7 @@ interface OnlineTabProps {
     onWhitelist: (name: string, listed: boolean) => void;
 }
 
-function OnlineTab({ query, running, state, opNames, can, pending, onKick, onBan, onOp, whitelisted, onWhitelist }: OnlineTabProps) {
+function OnlineTab({ query, running, state, opNames, uuids, can, pending, onKick, onBan, onOp, whitelisted, onWhitelist }: OnlineTabProps) {
     if (query.isLoading) return <Spinner centered size={'small'} />;
     if (query.error) return <Alert type={'danger'}>{httpErrorToHuman(query.error)}</Alert>;
     if (!running) return <Empty>The server is {state ?? 'offline'}. Players show up here once it is running.</Empty>;
@@ -261,7 +281,7 @@ function OnlineTab({ query, running, state, opNames, can, pending, onKick, onBan
             {query.data.online.players.map((name) => {
                 const isOp = opNames.has(name.toLowerCase());
                 return (
-                    <Row key={name} name={name} badge={isOp ? 'Operator' : undefined}>
+                    <Row key={name} name={name} uuid={uuids.get(name.toLowerCase())} badge={isOp ? 'Operator' : undefined}>
                         {can.whitelist && (
                             <Button.Text
                                 size={'xsmall'}
@@ -349,6 +369,7 @@ function OfflineTab({ players, lists, can, pending, run, onBan }: OfflineTabProp
                             <Row
                                 key={player.uuid || player.name}
                                 name={player.name}
+                                uuid={player.uuid}
                                 badge={badges.join(' · ') || undefined}
                                 detail={player.last_seen ? `Last seen ${new Date(player.last_seen).toLocaleDateString()}` : undefined}
                             >
@@ -424,7 +445,7 @@ function WhitelistTab({ lists, canEdit, pending, run }: ListTabProps) {
             ) : (
                 <Rows>
                     {sortByName(lists.whitelist).map((player) => (
-                        <Row key={player.uuid || player.name} name={player.name}>
+                        <Row key={player.uuid || player.name} name={player.name} uuid={player.uuid}>
                             {canEdit && (
                                 <Button.Text
                                     size={'xsmall'}
@@ -475,7 +496,7 @@ function BansTab({ lists, canEdit, pending, run }: ListTabProps) {
             ) : (
                 <Rows>
                     {sortByName(lists.bans).map((ban) => (
-                        <Row key={ban.uuid || ban.name} name={ban.name} detail={banDetail(ban)}>
+                        <Row key={ban.uuid || ban.name} name={ban.name} uuid={ban.uuid} detail={banDetail(ban)}>
                             {canEdit && (
                                 <Button.Text size={'xsmall'} disabled={pending} onClick={() => run({ action: 'pardon', target: ban.name })}>
                                     Unban
@@ -518,7 +539,7 @@ function OpsTab({ lists, canEdit, pending, run }: ListTabProps) {
             ) : (
                 <Rows>
                     {sortByName(lists.ops).map((op) => (
-                        <Row key={op.uuid || op.name} name={op.name} badge={`Level ${op.level}`}>
+                        <Row key={op.uuid || op.name} name={op.name} uuid={op.uuid} badge={`Level ${op.level}`}>
                             {canEdit && (
                                 <Button.Text size={'xsmall'} disabled={pending} onClick={() => run({ action: 'deop', target: op.name })}>
                                     Deop
@@ -575,69 +596,34 @@ function AddForm({ placeholder, button, pending, danger, allowIp, extra, onSubmi
     );
 }
 
-function ReasonDialog({
-    prompt,
-    pending,
-    onClose,
-    onConfirm,
-}: {
-    prompt: Prompt;
-    pending: boolean;
-    onClose: () => void;
-    onConfirm: (reason: string) => void;
-}) {
-    const [reason, setReason] = useState('');
-    const verb = prompt.action === 'ban' ? 'Ban' : 'Kick';
-
-    return (
-        <Dialog.Confirm
-            open
-            title={`${verb} ${prompt.name}?`}
-            confirm={verb}
-            pending={pending}
-            onClose={onClose}
-            onConfirmed={() => onConfirm(reason)}
-        >
-            <div className={'mcp:flex mcp:flex-col mcp:gap-2'}>
-                <p className={'mcp:text-sm'}>
-                    {prompt.action === 'ban'
-                        ? `${prompt.name} is disconnected and cannot join again until unbanned.`
-                        : `${prompt.name} is disconnected but can join again.`}
-                </p>
-                <Input
-                    value={reason}
-                    placeholder={'Reason (optional)'}
-                    aria-label={'Reason'}
-                    maxLength={120}
-                    onChange={(event) => setReason(event.target.value)}
-                />
-            </div>
-        </Dialog.Confirm>
-    );
-}
-
 function Rows({ children }: { children: ReactNode }) {
     return <ul className={'mcp:flex mcp:max-h-80 mcp:flex-col mcp:divide-y mcp:divide-border mcp:overflow-y-auto'}>{children}</ul>;
 }
 
 function Row({
     name,
+    uuid,
     badge,
     detail,
     avatar = true,
     children,
 }: {
     name: string;
+    uuid?: string | null;
     badge?: string;
     detail?: string;
     avatar?: boolean;
     children?: ReactNode;
 }) {
+    const open = useContext(OpenPlayer);
+    const head = avatar ? headUrl(name, uuid, 24) : null;
+    const clickable = avatar && open !== null;
+
     return (
         <li className={'mcp:flex mcp:items-center mcp:gap-3 mcp:py-2'}>
-            {avatar ? (
+            {avatar && head ? (
                 <img
-                    src={`https://mc-heads.net/avatar/${encodeURIComponent(name.replace(/^\./, ''))}/24`}
+                    src={head}
                     alt={''}
                     width={24}
                     height={24}
@@ -649,7 +635,18 @@ function Row({
             )}
             <div className={'mcp:min-w-0 mcp:flex-1'}>
                 <div className={'mcp:flex mcp:items-center mcp:gap-2'}>
-                    <span className={'mcp:truncate mcp:text-sm mcp:font-medium mcp:text-foreground'}>{name}</span>
+                    {clickable ? (
+                        <button
+                            type={'button'}
+                            className={'mcp:truncate mcp:text-left mcp:text-sm mcp:font-medium mcp:text-foreground mcp:hover:underline'}
+                            title={`Show ${name}`}
+                            onClick={() => open(name)}
+                        >
+                            {name}
+                        </button>
+                    ) : (
+                        <span className={'mcp:truncate mcp:text-sm mcp:font-medium mcp:text-foreground'}>{name}</span>
+                    )}
                     {badge && (
                         <span className={'mcp:rounded mcp:bg-muted mcp:px-1.5 mcp:py-0.5 mcp:text-[11px] mcp:text-muted-foreground'}>
                             {badge}
@@ -669,13 +666,6 @@ function Empty({ children }: { children: ReactNode }) {
 
 function sortByName<T extends { name: string }>(rows: T[]): T[] {
     return [...rows].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-}
-
-function banDetail(ban: { reason: string | null; source: string | null; created: string | null }): string {
-    const date = ban.created ? new Date(ban.created.replace(' ', 'T').replace(/ ([+-]\d{2})(\d{2})$/, '$1:$2')) : null;
-    return [ban.reason, ban.source ? `by ${ban.source}` : null, date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString() : null]
-        .filter(Boolean)
-        .join(' · ');
 }
 
 function successMessage(action: Action, target: string | undefined, state: string): string {

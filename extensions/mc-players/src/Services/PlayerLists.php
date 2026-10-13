@@ -267,9 +267,41 @@ class PlayerLists
     }
 
     /**
+     * The server's usercache.json rows (everyone who has joined), for one player's details.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function usercache(Server $server): array
+    {
+        return $this->safeJson($server, self::USERCACHE);
+    }
+
+    /**
+     * Contents of a file in the server, or null when it does not exist. For files
+     * outside the server root (a world's stats), the folder is listed first.
+     */
+    public function readFile(Server $server, string $directory, string $name, int $maxBytes = 1024 * 1024): ?string
+    {
+        try {
+            $entries = $this->directories->list($server, $directory);
+        } catch (DaemonConnectionException) {
+            return null;
+        }
+        if (! in_array($name, array_map(fn (array $entry): string => (string) ($entry['name'] ?? ''), $entries), true)) {
+            return null;
+        }
+
+        try {
+            return $this->reader->read($server, rtrim($directory, '/').'/'.$name, $maxBytes);
+        } catch (DaemonConnectionException|FileSizeTooLargeException) {
+            return null;
+        }
+    }
+
+    /**
      * @return array<string, string>
      */
-    private function properties(Server $server): array
+    public function properties(Server $server): array
     {
         $properties = [];
         foreach (preg_split('/\R/', $this->read($server, self::PROPERTIES) ?? '') ?: [] as $line) {

@@ -82,3 +82,84 @@ export async function runAction(server: string, action: Action, target?: string,
     const { data } = await http.post<Lists>(`${base(server)}/action`, { action, target: target ?? null, reason: reason || null });
     return data;
 }
+
+export interface PlayerStats {
+    play_seconds: number;
+    deaths: number;
+    mob_kills: number;
+    player_kills: number;
+    distance_m: number;
+    blocks_mined: number;
+    jumps: number;
+}
+
+export interface ServerRef {
+    id: string;
+    name: string;
+    uuid: string;
+}
+
+/** One player's standing on one server. `state: 'unreachable'` comes with `error` and nothing else. */
+export interface PlayerOnServer {
+    server: ServerRef;
+    state: ServerState | 'unreachable';
+    error?: string;
+    name?: string;
+    uuid?: string | null;
+    online_mode?: boolean | null;
+    /** null when the server is not running, or the online list is unknown. */
+    online?: boolean | null;
+    whitelist_enabled?: boolean | null;
+    whitelisted?: boolean;
+    op?: (ListedPlayer & { level: number }) | null;
+    ban?: Ban | null;
+    last_seen?: string | null;
+    joined?: boolean;
+    problems?: Record<string, string>;
+    stats?: PlayerStats | null;
+}
+
+export type NetworkAction = 'kick' | 'ban' | 'pardon' | 'whitelist-add' | 'whitelist-remove' | 'op' | 'deop';
+
+export interface NetworkPlayer {
+    name: string;
+    servers: (PlayerOnServer & { can?: Partial<Record<Action, boolean>> })[];
+}
+
+export interface NetworkResult {
+    server: ServerRef;
+    ok: boolean;
+    message: string;
+}
+
+const network = '/api/client/extensions/mc-players/network';
+
+export const playerKeys = {
+    onServer: (server: string, name: string) => ['mc-players', server, 'player', name.toLowerCase()] as const,
+    network: (name: string) => ['mc-players', 'network', name.toLowerCase()] as const,
+};
+
+export async function getPlayer(server: string, name: string): Promise<PlayerOnServer> {
+    const { data } = await http.get<PlayerOnServer>(`${base(server)}/player`, { params: { name } });
+    return data;
+}
+
+export async function getNetworkPlayer(name: string): Promise<NetworkPlayer> {
+    const { data } = await http.get<NetworkPlayer>(`${network}/player`, { params: { name } });
+    return data;
+}
+
+export async function runNetworkAction(
+    action: NetworkAction,
+    target: string,
+    servers: string[],
+    reason?: string,
+): Promise<NetworkResult[]> {
+    const { data } = await http.post<{ results: NetworkResult[] }>(`${network}/action`, {
+        action,
+        target,
+        servers,
+        reason: reason || null,
+    });
+    return data.results;
+}

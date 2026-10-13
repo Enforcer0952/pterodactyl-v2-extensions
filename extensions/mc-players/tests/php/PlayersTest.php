@@ -5,6 +5,7 @@ namespace McPlayers\Tests;
 use McPlayers\Support\BrokenListFile;
 use McPlayers\Support\ListFile;
 use McPlayers\Support\ListOutput;
+use McPlayers\Support\Stats;
 use McPlayers\Support\Validates;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -133,5 +134,20 @@ final class PlayersTest extends TestCase
         );
         // Chat that happens to contain the words is ignored.
         $this->assertNull(ListOutput::reply(['<Steve> Could not believe it'], 'op Steve'));
+    }
+
+    public function test_stats_from_modern_and_old_files(): void
+    {
+        $modern = ['stats' => [
+            'minecraft:custom' => ['minecraft:play_time' => 72000, 'minecraft:deaths' => 3, 'minecraft:mob_kills' => 40, 'minecraft:walk_one_cm' => 150000, 'minecraft:sprint_one_cm' => 50000, 'minecraft:jump' => 12],
+            'minecraft:mined' => ['minecraft:stone' => 100, 'minecraft:dirt' => 23],
+        ], 'DataVersion' => 3953];
+        $this->assertSame(['play_seconds' => 3600, 'deaths' => 3, 'mob_kills' => 40, 'player_kills' => 0, 'distance_m' => 2000, 'blocks_mined' => 123, 'jumps' => 12], Stats::summarize($modern));
+
+        // 1.13-1.16 named it play_one_minute (still ticks).
+        $this->assertSame(1800, Stats::summarize(['stats' => ['minecraft:custom' => ['minecraft:play_one_minute' => 36000]]])['play_seconds']);
+
+        $old = ['stat.playOneMinute' => 24000, 'stat.deaths' => 1, 'stat.walkOneCm' => 1000, 'stat.mineBlock.minecraft.stone' => 5, 'stat.mineBlock.minecraft.dirt' => 2];
+        $this->assertSame(['play_seconds' => 1200, 'deaths' => 1, 'mob_kills' => 0, 'player_kills' => 0, 'distance_m' => 10, 'blocks_mined' => 7, 'jumps' => 0], Stats::summarize($old));
     }
 }

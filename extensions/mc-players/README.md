@@ -16,6 +16,16 @@ Adds a **Players** card under the console of Minecraft Java servers in Pterodact
 - Updates live from the console (joins, leaves, list changes), with no polling.
 - Input is validated, so a name or reason can never inject a second console command.
 
+### Player profile
+
+Click any player name on the card to open their profile, as a popup over the console or as a full page (`/server/<id>/player/<name>`).
+
+- **3D skin** you can rotate. The viewer loads only when a profile opens, so the console page stays light.
+- **Name, UUID** (click to copy) and links to NameMC, Laby.net or mcuuid.net. Offline-mode UUIDs are marked as such, and profile links are left out for them.
+- **This server:** online or not, whitelisted, operator level, ban with reason and source, last seen, with every action.
+- **Stats** from the world's stats file: playtime, deaths, mob and player kills, distance, blocks mined, jumps.
+- **All servers:** the same player on every Minecraft server you can see players on (up to 30), with per-server actions and bulk Ban, Unban, Kick, Whitelist, Unwhitelist, Op and Deop on the servers you select. Each server is checked against your own permissions there.
+
 ## Requirements
 
 - Pterodactyl Panel **2.0** (2.0.0-beta or newer; tested on 2.0-develop, October 2026)
@@ -28,7 +38,7 @@ Adds a **Players** card under the console of Minecraft Java servers in Pterodact
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.2.0.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.3.0.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -39,7 +49,7 @@ Adds a **Players** card under the console of Minecraft Java servers in Pterodact
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.2.0.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.3.0.pteroext --enable --replace
 ```
 
 Settings and data are kept.
@@ -48,6 +58,17 @@ Settings and data are kept.
 ## Setup
 
 The card appears on servers whose egg has the `minecraft` tag, or the `eula` feature that every Java egg has. It's hidden for Bedrock (`bedrock` tag) and for proxies (BungeeCord, Waterfall, Velocity).
+
+## Settings
+
+Under **Admin → Extensions → Minecraft Players**:
+
+| Setting | Options |
+|---|---|
+| Player skins | mc-heads.net (default), crafatar.com, or Off (no outside requests, default skin) |
+| Skins on offline-mode servers | Look up by name (default) or default skin. crafatar.com only knows account UUIDs, so it always shows the default skin here. |
+| Profile links | Any of NameMC, Laby.net, mcuuid.net |
+| Clicking a player | Popup (default) or full page |
 
 ## Permissions (Subusers)
 
