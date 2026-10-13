@@ -97,3 +97,33 @@ describe('helpers', () => {
         expect(usageToSyntax('warp', null)).toEqual(['warp']);
     });
 });
+
+describe('review fixes', () => {
+    it('treats runs of spaces as one and keeps quoted text together', () => {
+        expect(values('whitelist  a')).toEqual(['add']);
+        expect(values('  whitelist add S')).toEqual(['Steve']);
+    });
+
+    it('reads usage choices and multi-word arguments', () => {
+        expect(usageToSyntax('perm', '/<command> <add|remove> <player name> [reason text]')).toEqual([
+            'perm (add|remove) <player_name:players> [<reason_text:string>]',
+        ]);
+        expect(usageToSyntax('heal', 'Usage: /heal [player]')).toEqual(['heal [<player:players>]']);
+    });
+
+    it('a word it cannot read does not swallow the rest of the line', () => {
+        const [syntax] = usageToSyntax('x', '/x {weird} <player>');
+        const plugin: CommandDef = { name: 'x', aliases: [], description: '', syntax: [syntax], source: 'P' };
+        expect(assist('x foo S', [plugin], players).suggestions.map((s) => s.value)).toEqual(['Steve']);
+    });
+
+    it('stops following execute ... run after a few levels', () => {
+        const deep = 'execute as @a run '.repeat(20) + 'g';
+        expect(() => assist(deep, commands, players)).not.toThrow();
+    });
+
+    it('completes only the word being typed', () => {
+        expect(complete('ban  St', 'Steve')).toBe('ban  Steve ');
+        expect(complete('/g', 'gamemode')).toBe('/gamemode ');
+    });
+});

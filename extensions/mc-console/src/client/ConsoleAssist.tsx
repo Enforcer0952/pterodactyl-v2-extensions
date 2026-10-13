@@ -26,16 +26,19 @@ export default function ConsoleAssistSlot({ data: server }: { data: SdkServer })
     const tags = (server.attributes.egg_tags ?? []).map((tag) => tag.toLowerCase());
     const features = (server.attributes.egg_features ?? []).map((feature) => feature.toLowerCase());
     const canSend = useServerPermission('control.console');
+    // Plugin commands and player names come from the server's files, so they need
+    // their own permission; vanilla commands only need console access.
+    const canSeeServerData = useServerPermission('ext.mc-console.suggestions');
     const java = tags.includes('minecraft') || features.includes('eula');
 
     if (!canSend || !java || tags.includes('bedrock') || tags.includes('proxy')) {
         return null;
     }
 
-    return <ConsoleAssist server={server} />;
+    return <ConsoleAssist server={server} withServerData={canSeeServerData} />;
 }
 
-export function ConsoleAssist({ server }: { server: SdkServer }) {
+export function ConsoleAssist({ server, withServerData = true }: { server: SdkServer; withServerData?: boolean }) {
     const identifier = server.attributes.identifier;
     const input = useConsoleInput();
     const [text, setText] = useState('');
@@ -53,15 +56,26 @@ export function ConsoleAssist({ server }: { server: SdkServer }) {
         queryKey: ['mc-console', identifier, 'commands'],
         queryFn: async () => (await http.get<ServerCommands>(`/api/client/servers/${identifier}/extensions/mc-console/commands`)).data,
         staleTime: 5 * 60_000,
+        enabled: withServerData,
+        retry: false,
         // Plugins are read in batches; keep asking until all of them are done.
-        refetchInterval: (query) => ((query.state.data?.pending ?? 0) > 0 ? 2000 : false),
+        refetchInterval: (query) => ((query.state.data?.pending ?? 0) > 0 ? 3000 : false),
     });
 
     const commands = useMemo<CommandDef[]>(() => {
         const list: CommandDef[] = (vanilla.data ?? []).map((command) => ({ ...command, source: 'Minecraft' }));
         const known = new Set(list.flatMap((command) => [command.name, ...command.aliases]));
+        const byName = new Map(list.flatMap((command) => [command.name, ...command.aliases].map((name) => [name, command] as const)));
         for (const command of serverCommands.data?.plugins ?? []) {
-            if (known.has(command.name)) continue;
+            if (known.has(command.name)) {
+                // Plugins such as EssentialsX replace vanilla commands; offer their syntax too.
+                const existing = byName.get(command.name);
+                if (existing && command.usage) {
+                    existing.syntax = [...existing.syntax, ...usageToSyntax(command.name, command.usage)];
+                    existing.source = existing.source === 'Minecraft' ? `Minecraft / ${command.plugin}` : existing.source;
+                }
+                continue;
+            }
             known.add(command.name);
             list.push({
                 name: command.name,
@@ -98,6 +112,8 @@ export function ConsoleAssist({ server }: { server: SdkServer }) {
         const accept = (value: string) => {
             input.value = complete(input.value, value);
             input.setSelectionRange(input.value.length, input.value.length);
+            // Let the panel and other listeners know the value changed.
+            input.dispatchEvent(new Event('input', { bubbles: true }));
             setText(input.value);
         };
 
@@ -107,8 +123,12 @@ export function ConsoleAssist({ server }: { server: SdkServer }) {
             const { open: isOpen, index: current, result: assistResult } = state.current;
             const suggestions = assistResult.suggestions;
 
+            // Leave typing with an input method and modifier shortcuts alone.
+            if (event.isComposing || event.ctrlKey || event.altKey || event.metaKey) return;
+
             if (event.key === 'Tab') {
-                if (suggestions.length > 0 && !event.shiftKey) {
+                // Only while the list is showing, so Tab still moves focus after Esc.
+                if (isOpen && suggestions.length > 0 && !event.shiftKey) {
                     event.preventDefault();
                     event.stopPropagation();
                     accept(suggestions[current]?.value ?? suggestions[0].value);
@@ -165,6 +185,16 @@ export function ConsoleAssist({ server }: { server: SdkServer }) {
         listRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' });
     }, [index, open]);
 
+    // Combobox wiring on the panel's input, for screen readers.
+    useEffect(() => {
+        if (!input) return;
+        const showing = open && result.suggestions.length > 0;
+        input.setAttribute('aria-expanded', String(showing));
+        input.setAttribute('aria-controls', 'mccon-suggestions');
+        if (showing) input.setAttribute('aria-activedescendant', `mccon-option-${index}`);
+        else input.removeAttribute('aria-activedescendant');
+    }, [input, open, index, result.suggestions.length]);
+
     if (!input?.parentElement || !open) return null;
 
     return createPortal(
@@ -176,16 +206,18 @@ export function ConsoleAssist({ server }: { server: SdkServer }) {
             {result.suggestions.length > 0 && (
                 <ul
                     ref={listRef}
+                    id={'mccon-suggestions'}
                     role={'listbox'}
                     aria-label={'Command suggestions'}
                     className={
-                        'mccon:max-h-60 mccon:overflow-y-auto mccon:rounded-sm mccon:border mccon:border-border mccon:bg-popover mccon:py-1 mccon:shadow-lg'
+                        'mccon:overflow-y-auto mccon:rounded-sm mccon:border mccon:border-border mccon:bg-popover mccon:py-1 mccon:shadow-lg'
                     }
                     style={{ maxHeight: `${VISIBLE * 1.75}rem` }}
                 >
                     {result.suggestions.map((suggestion, position) => (
                         <li
                             key={suggestion.value}
+                            id={`mccon-option-${position}`}
                             role={'option'}
                             aria-selected={position === index}
                             onMouseDown={(event) => {
@@ -213,7 +245,7 @@ export function ConsoleAssist({ server }: { server: SdkServer }) {
                         'mccon:rounded-sm mccon:border mccon:border-border mccon:bg-popover mccon:px-2 mccon:py-1.5 mccon:text-muted-foreground mccon:shadow-lg'
                     }
                 >
-                    {result.hints.slice(0, 4).map((line, position) => (
+                    {result.hints.slice(0, 6).map((line, position) => (
                         <div key={position} className={'mccon:truncate'}>
                             {line.parts.map((part, partIndex) => (
                                 <Fragment key={partIndex}>
@@ -227,6 +259,8 @@ export function ConsoleAssist({ server }: { server: SdkServer }) {
                     {result.description && <div className={'mccon:mt-1 mccon:font-sans mccon:text-foreground/80'}>{result.description}</div>}
                     <div className={'mccon:mt-1 mccon:font-sans mccon:text-[11px]'}>
                         Tab to complete · ↑↓ to choose · Esc to hide
+                        {withServerData && (serverCommands.data?.pending ?? 0) > 0 && ` · reading plugins (${serverCommands.data?.pending} left)`}
+                        {withServerData && serverCommands.isError && ' · plugin commands unavailable'}
                     </div>
                 </div>
             )}
@@ -245,9 +279,20 @@ function useConsoleInput(): HTMLInputElement | null {
             setInput((current) => (current === element ? current : element));
         };
         find();
-        const observer = new MutationObserver(find);
+        // Every console line is a DOM change, so the check is throttled to one per frame.
+        let frame = 0;
+        const observer = new MutationObserver(() => {
+            if (frame !== 0) return;
+            frame = requestAnimationFrame(() => {
+                frame = 0;
+                find();
+            });
+        });
         observer.observe(document.body, { childList: true, subtree: true });
-        return () => observer.disconnect();
+        return () => {
+            observer.disconnect();
+            cancelAnimationFrame(frame);
+        };
     }, []);
 
     return input;

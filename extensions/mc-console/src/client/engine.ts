@@ -123,33 +123,82 @@ export function usageToSyntax(name: string, usage: string | null): string[] {
 
     return usage
         .split(/\r?\n/)
-        .map((line) => line.replace(/§[0-9a-fk-or]/gi, '').trim())
+        .map((line) => line.replace(/§[0-9a-fk-or]/gi, '').replace(/^\s*usage:\s*/i, '').trim())
         .filter((line) => /^\/?(<command>|\S+)/.test(line))
         .map((line) => {
-            const words = line.replace(/^\//, '').split(/\s+/);
-            words[0] = name;
-            return words
-                .map((word, index) => {
-                    if (index === 0) return word;
-                    const arg = /^<([^>:]+)>$/.exec(word);
-                    if (arg) return `<${arg[1]}:${guessType(arg[1])}>`;
-                    const optional = /^\[([^\]:<>]+)\]$/.exec(word);
-                    if (optional) return `[<${optional[1]}:${guessType(optional[1])}>]`;
-                    return /^[\w|()-]+$/.test(word) ? word : `<${word.replace(/[<>[\]]/g, '')}:any>`;
-                })
-                .join(' ');
+            const parts = groups(line.replace(/^\//, ''));
+            parts[0] = name;
+            return parts.map((part, index) => (index === 0 ? part : usageWord(part))).join(' ');
         })
         .slice(0, 8);
+}
+
+/** Split a usage line into words, keeping "<player name>" and "[a|b c]" together. */
+function groups(line: string): string[] {
+    const parts: string[] = [];
+    let current = '';
+    let depth = 0;
+    for (const char of line) {
+        if ('<[('.includes(char)) depth++;
+        if ('>])'.includes(char)) depth = Math.max(0, depth - 1);
+        if (/\s/.test(char) && depth === 0) {
+            if (current) parts.push(current);
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    if (current) parts.push(current);
+    return parts;
+}
+
+/** One usage word as syntax. Anything unreadable becomes a single string, never "rest of line". */
+function usageWord(word: string): string {
+    const optional = /^\[(.*)\]$/.exec(word);
+    const inner = optional ? optional[1].trim() : word;
+    const wrap = (text: string) => (optional ? `[${text}]` : text);
+
+    const arg = /^<([^>]+)>$/.exec(inner);
+    const body = arg ? arg[1] : inner;
+
+    // "<add|remove>", "[on|off]" and bare "a|b" are fixed choices.
+    if (body.includes('|')) {
+        const values = body.split('|').map((value) => value.trim().replace(/[<>[\]()]/g, '')).filter((value) => /^[\w.-]+$/.test(value));
+        if (values.length > 1) return wrap(`(${values.join('|')})`);
+    }
+
+    if (!arg && !optional && /^[\w-]+$/.test(word)) return word;
+
+    const name = body.replace(/[<>[\]():]/g, '').trim().replace(/\s+/g, '_') || 'value';
+    return wrap(`<${name}:${guessType(name)}>`);
 }
 
 function guessType(name: string): string {
     return /player|target|user|name/i.test(name) ? 'players' : 'string';
 }
 
-/** Split typed text into words; a trailing space starts a new, empty word. */
-function words(input: string): string[] {
-    const parts = input.replace(/^\s*\//, '').split(' ');
-    return parts.length === 0 ? [''] : parts;
+/**
+ * Split typed text into words. Runs of spaces count as one, a trailing space starts
+ * a new empty word, and "quoted text" stays one word.
+ */
+export function words(input: string): string[] {
+    const text = input.replace(/^\s*\//, '').replace(/^\s+/, '');
+    const parts: string[] = [];
+    let current = '';
+    let quoted = false;
+    for (const char of text) {
+        if (char === '"') {
+            quoted = !quoted;
+            current += char;
+        } else if (char === ' ' && !quoted) {
+            if (current !== '') parts.push(current);
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    parts.push(current);
+    return parts;
 }
 
 export function findCommand(commands: CommandDef[], name: string): CommandDef | undefined {
@@ -160,7 +209,10 @@ export function findCommand(commands: CommandDef[], name: string): CommandDef | 
 /**
  * Work out suggestions and syntax hints for what has been typed so far.
  */
-export function assist(input: string, commands: CommandDef[], players: string[]): Assist {
+/** How many commands deep "execute ... run execute ... run" is followed. */
+const MAX_NESTING = 8;
+
+export function assist(input: string, commands: CommandDef[], players: string[], depth = 0): Assist {
     const typed = words(input);
 
     if (typed.length === 1) {
@@ -203,11 +255,13 @@ export function assist(input: string, commands: CommandDef[], players: string[])
 
         if (next?.kind === 'arg' && next.type === 'command') {
             // Commands like "execute ... run <command>" continue with another command.
+            if (depth >= MAX_NESTING) continue;
             const rest = args.slice(position.start).join(' ');
-            const nested = assist(rest, commands, players);
+            const nested = assist(rest, commands, players, depth + 1);
             nested.suggestions.forEach((suggestion) => suggestions.set(suggestion.value, suggestion));
             if (nested.hints.length) hints.push(...nested.hints);
-            continue;
+            // One nested answer is enough; other "run" syntaxes would give the same one.
+            break;
         }
 
         if (!next || position.inside) continue;
@@ -291,7 +345,8 @@ function dedupe(hints: Assist['hints']): Assist['hints'] {
 
 /** Replace the word being typed with a suggestion and add a space after it. */
 export function complete(input: string, value: string): string {
-    const lastSpace = input.lastIndexOf(' ');
-    const head = lastSpace === -1 ? (input.startsWith('/') ? '/' : '') : input.slice(0, lastSpace + 1);
+    const typed = words(input);
+    const current = typed[typed.length - 1];
+    const head = input.slice(0, input.length - current.length);
     return `${head}${value} `;
 }
