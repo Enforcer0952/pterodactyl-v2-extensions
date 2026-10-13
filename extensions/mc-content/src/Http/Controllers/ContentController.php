@@ -151,7 +151,7 @@ class ContentController extends Controller
         $data = $this->validateSearch($request, $type);
 
         $gameVersion = ContentKind::isProxy($data['loader']) ? null : ($data['game_version'] ?? null);
-        $versions = $this->modrinth->versions($project, ContentKind::compatibleLoaders($data['loader']), $gameVersion);
+        $versions = $this->modrinth->versions($project, ContentKind::compatibleLoaders($data['loader']), $gameVersion, true);
         $versions = array_values(array_filter($versions, fn (array $version): bool => $version['file'] !== null));
 
         if (! $this->setting('allow_prereleases')) {
@@ -174,6 +174,40 @@ class ContentController extends Controller
                 'version_number' => $current->version_number,
             ],
         ]);
+    }
+
+    /**
+     * The project popup: the Modrinth page's content, plus which of its required
+     * dependencies are already on this server.
+     */
+    public function project(Request $request, Server $server, string $kind, string $project): JsonResponse
+    {
+        $type = ContentKind::from($kind);
+        $this->authorizeRead($request, $server);
+
+        $details = $this->modrinth->projectDetails($project);
+
+        $installed = Install::query()->where('server_id', $server->id)->where('kind', $type->value)->pluck('version_number', 'project_id')->all();
+
+        return new JsonResponse([
+            ...$details,
+            'installed' => $installed[$details['id']] ?? null,
+            'installed_projects' => array_keys($installed),
+        ]);
+    }
+
+    /**
+     * Names and icons for a list of project ids (dependencies).
+     */
+    public function projectNames(Request $request, Server $server, string $kind): JsonResponse
+    {
+        $this->authorizeRead($request, $server);
+        $ids = $request->validate([
+            'ids' => ['required', 'array', 'max:50'],
+            'ids.*' => ['string', 'regex:/^[A-Za-z0-9]{8}$/'],
+        ])['ids'];
+
+        return new JsonResponse(['data' => $this->modrinth->projectNames(array_values(array_unique($ids)))]);
     }
 
     /**

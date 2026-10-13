@@ -6,6 +6,7 @@ Adds **Plugins** and **Mods** pages to Minecraft servers in Pterodactyl 2.0. Sea
 
 - Search Modrinth filtered to the server's loader and Minecraft version (both detected automatically).
 - Works out what the server really runs from its files, so a Fabric server started from a Paper egg gets the Mods page, not Plugins. Each server only shows the page it needs.
+- Click a project to open its Modrinth page in a popup inside the panel: description, screenshots, versions with changelogs and install buttons, dependencies (marked when already installed) and links. A setting switches this to opening modrinth.com in a new tab instead.
 - One-click install, update and uninstall. Required dependencies are installed too (can be turned off).
 - Recognises jars you added by hand (SHA-1 lookup on Modrinth), so they show as installed and get update checks.
 - Updates only offer stable releases for the server's Minecraft version, never a backport (unless you are already on a beta, or turn pre-releases on).
@@ -24,7 +25,7 @@ Adds **Plugins** and **Mods** pages to Minecraft servers in Pterodactyl 2.0. Sea
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/mc-content-1.5.0.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/mc-content-1.6.0.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -35,7 +36,7 @@ Adds **Plugins** and **Mods** pages to Minecraft servers in Pterodactyl 2.0. Sea
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/mc-content-1.5.0.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/mc-content-1.6.0.pteroext --enable --replace
 ```
 
 Settings and data are kept.
@@ -60,6 +61,7 @@ Users need the **file.read** permission to see the pages, and file create/delete
 
 - Install required dependencies (default on)
 - Offer beta and alpha versions (default off)
+- Clicking a project: popup in the panel (default) or modrinth.com in a new tab
 - Search results per page (default 20)
 
 ## Support

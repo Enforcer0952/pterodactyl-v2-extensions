@@ -22,9 +22,11 @@ interface Props {
     kind: ContentKind;
     filters: Filters;
     directory: string;
+    /** Open a project's page; only for files recognised on Modrinth. */
+    onOpen?: (projectId: string) => void;
 }
 
-export default function InstalledList({ kind, filters, directory }: Props) {
+export default function InstalledList({ kind, filters, directory, onOpen }: Props) {
     const server = useCurrentServerRequired();
     const identifier = server.attributes.identifier;
     const queryClient = useQueryClient();
@@ -84,7 +86,17 @@ export default function InstalledList({ kind, filters, directory }: Props) {
                 <div className={'mcc:flex mcc:items-center mcc:gap-3'}>
                     <ProjectIcon url={file.icon_url} title={file.title ?? file.filename} />
                     <div className={'mcc:min-w-0'}>
-                        <p className={'mcc:truncate mcc:font-medium mcc:text-foreground'}>{file.title ?? file.filename}</p>
+                        {file.project_id && onOpen ? (
+                            <button
+                                type={'button'}
+                                onClick={() => onOpen(file.project_id as string)}
+                                className={'mcc:block mcc:max-w-full mcc:truncate mcc:text-left mcc:font-medium mcc:text-foreground mcc:hover:underline'}
+                            >
+                                {file.title ?? file.filename}
+                            </button>
+                        ) : (
+                            <p className={'mcc:truncate mcc:font-medium mcc:text-foreground'}>{file.title ?? file.filename}</p>
+                        )}
                         <p className={'mcc:truncate mcc:text-xs mcc:text-muted-foreground'}>
                             {file.title ? file.filename : 'Not found on Modrinth'}
                             {file.disabled ? ' · disabled' : ''}

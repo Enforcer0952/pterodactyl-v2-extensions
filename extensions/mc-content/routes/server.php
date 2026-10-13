@@ -12,6 +12,11 @@ Route::prefix('{kind}')->whereIn('kind', ['plugins', 'mods'])->group(function ()
     Route::get('/context', [ContentController::class, 'context'])->middleware('throttle:60,1,mc-content-read')->name('context');
     Route::post('/preferences', [ContentController::class, 'preferences'])->middleware('throttle:30,1,mc-content-write')->name('preferences');
     Route::get('/search', [ContentController::class, 'search'])->middleware('throttle:60,1,mc-content-read')->name('search');
+    Route::get('/projects/{project}', [ContentController::class, 'project'])
+        ->where('project', '[A-Za-z0-9_-]{1,64}')
+        ->middleware('throttle:60,1,mc-content-read')
+        ->name('project');
+    Route::get('/project-names', [ContentController::class, 'projectNames'])->middleware('throttle:60,1,mc-content-read')->name('project-names');
     Route::get('/projects/{project}/versions', [ContentController::class, 'versions'])
         ->where('project', '[A-Za-z0-9_-]{1,64}')
         ->middleware('throttle:60,1,mc-content-read')

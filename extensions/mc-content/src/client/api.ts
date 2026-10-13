@@ -63,6 +63,51 @@ export interface ProjectVersion {
     date_published: string | null;
     downloads: number;
     file: { filename: string; size: number } | null;
+    dependencies?: { project_id: string | null; version_id: string | null; type: string }[];
+    /** Markdown, only on the versions endpoint. */
+    changelog?: string;
+}
+
+export interface ProjectDetails {
+    id: string;
+    slug: string;
+    project_type: string;
+    title: string;
+    description: string;
+    body: string;
+    icon_url: string | null;
+    downloads: number;
+    followers: number;
+    categories: string[];
+    loaders: string[];
+    client_side: string;
+    server_side: string;
+    published: string | null;
+    updated: string | null;
+    license: { id: string; name: string; url: string | null };
+    links: { label: string; url: string }[];
+    gallery: { url: string; raw_url: string; title: string | null; description: string | null; featured: boolean }[];
+    /** Version number installed on this server, if any. */
+    installed: string | null;
+    installed_projects: string[];
+}
+
+export async function getProject(server: string, kind: ContentKind, project: string): Promise<ProjectDetails> {
+    const { data } = await http.get<ProjectDetails>(`${base(server, kind)}/projects/${encodeURIComponent(project)}`);
+    return data;
+}
+
+export async function getProjectNames(
+    server: string,
+    kind: ContentKind,
+    ids: string[],
+): Promise<Record<string, { title: string; slug: string; icon_url: string | null }>> {
+    if (ids.length === 0) return {};
+    const { data } = await http.get<{ data: Record<string, { title: string; slug: string; icon_url: string | null }> }>(
+        `${base(server, kind)}/project-names`,
+        { params: { ids } },
+    );
+    return Array.isArray(data.data) ? {} : data.data;
 }
 
 export interface InstalledFile {
@@ -99,6 +144,7 @@ export const keys = {
     platform: (server: string) => ['mc-content', server, 'platform'] as const,
     context: (server: string, kind: ContentKind) => ['mc-content', server, kind, 'context'] as const,
     search: (server: string, kind: ContentKind, params: unknown) => ['mc-content', server, kind, 'search', params] as const,
+    project: (server: string, kind: ContentKind, project: string) => ['mc-content', server, kind, 'project', project] as const,
     versions: (server: string, kind: ContentKind, project: string, filters: Filters) =>
         ['mc-content', server, kind, 'versions', project, filters] as const,
     installed: (server: string, kind: ContentKind) => ['mc-content', server, kind, 'installed'] as const,

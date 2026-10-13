@@ -15,11 +15,11 @@ import {
     type SelectOption,
 } from '@pterodactyl/sdk';
 import { getContext, getInstalled, keys, saveGameVersion, search, type ContentKind, type Filters, type SearchHit } from './api';
-import { resultsPerPage } from './config';
+import { projectLinks, resultsPerPage } from './config';
 import { formatCount, isProxyLoader, loaderLabel } from './format';
 import InstalledList from './InstalledList';
 import ProjectIcon from './ProjectIcon';
-import VersionDialog from './VersionDialog';
+import ProjectPopup from './ProjectPopup';
 
 const ANY_VERSION = 'any';
 
@@ -68,7 +68,15 @@ export default function ContentBrowser({ kind, title }: Props) {
     const [query, setQuery] = useState('');
     const [sort, setSort] = useState('relevance');
     const [page, setPage] = useState(1);
-    const [selected, setSelected] = useState<SearchHit | null>(null);
+    // The project open in the popup, and the tab it opened on.
+    const [selected, setSelected] = useState<{ id: string; tab: 'description' | 'versions' } | null>(null);
+    const openProject = (id: string, slug: string, tab: 'description' | 'versions' = 'description') => {
+        if (projectLinks() === 'modrinth' && tab === 'description') {
+            window.open(`https://modrinth.com/project/${encodeURIComponent(slug || id)}`, '_blank', 'noopener,noreferrer');
+        } else {
+            setSelected({ id, tab });
+        }
+    };
 
     // Seed the filters from what the backend detected about this server.
     useEffect(() => {
@@ -222,7 +230,7 @@ export default function ContentBrowser({ kind, title }: Props) {
                 )}
 
                 {tab === 'installed' ? (
-                    <InstalledList kind={kind} filters={filters} directory={context.data.directory} />
+                    <InstalledList kind={kind} filters={filters} directory={context.data.directory} onOpen={(id) => openProject(id, id)} />
                 ) : (
                     <TitledGreyBox title={`Find ${noun}s on Modrinth`}>
                         <div className={'mcc:flex mcc:flex-col mcc:gap-3'}>
@@ -257,7 +265,8 @@ export default function ContentBrowser({ kind, title }: Props) {
                                             hit={hit}
                                             canInstall={canInstall}
                                             canChangeVersion={canChangeVersion}
-                                            onInstall={() => setSelected(hit)}
+                                            onInstall={() => openProject(hit.project_id, hit.slug, 'versions')}
+                                            onOpen={() => openProject(hit.project_id, hit.slug)}
                                         />
                                     ))}
                                 </ul>
@@ -293,10 +302,12 @@ export default function ContentBrowser({ kind, title }: Props) {
             </div>
 
             {selected && (
-                <VersionDialog
+                <ProjectPopup
+                    key={selected.id}
                     kind={kind}
-                    project={selected}
+                    projectId={selected.id}
                     filters={filters}
+                    initialTab={selected.tab}
                     onClose={() => setSelected(null)}
                     onInstalled={() => setTab('installed')}
                 />
@@ -310,9 +321,10 @@ interface ResultRowProps {
     canInstall: boolean;
     canChangeVersion: boolean;
     onInstall: () => void;
+    onOpen: () => void;
 }
 
-function ResultRow({ hit, canInstall, canChangeVersion, onInstall }: ResultRowProps) {
+function ResultRow({ hit, canInstall, canChangeVersion, onInstall, onOpen }: ResultRowProps) {
     const installed = hit.installed;
 
     return (
@@ -322,14 +334,9 @@ function ResultRow({ hit, canInstall, canChangeVersion, onInstall }: ResultRowPr
             </div>
             <div className={`mcc:min-w-0 mcc:flex-1 ${installed ? 'mcc:opacity-60' : ''}`}>
                 <div className={'mcc:flex mcc:flex-wrap mcc:items-baseline mcc:gap-x-2'}>
-                    <a
-                        href={`https://modrinth.com/project/${hit.slug || hit.project_id}`}
-                        target={'_blank'}
-                        rel={'noreferrer noopener'}
-                        className={'mcc:font-medium mcc:text-foreground mcc:hover:underline'}
-                    >
+                    <button type={'button'} onClick={onOpen} className={'mcc:text-left mcc:font-medium mcc:text-foreground mcc:hover:underline'}>
                         {hit.title}
-                    </a>
+                    </button>
                     <span className={'mcc:text-xs mcc:text-muted-foreground'}>by {hit.author}</span>
                     {installed && (
                         <span className={'mcc:rounded mcc:bg-muted mcc:px-1.5 mcc:py-0.5 mcc:text-xs mcc:font-medium mcc:text-foreground'}>

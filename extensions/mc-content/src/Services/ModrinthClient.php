@@ -74,7 +74,7 @@ class ModrinthClient
      * @param  list<string>  $loaders
      * @return list<array<string, mixed>>
      */
-    public function versions(string $project, array $loaders, ?string $gameVersion): array
+    public function versions(string $project, array $loaders, ?string $gameVersion, bool $withChangelog = false): array
     {
         $params = ['loaders' => json_encode($loaders, JSON_THROW_ON_ERROR)];
         if ($gameVersion !== null) {
@@ -85,9 +85,93 @@ class ModrinthClient
             ->get('/project/'.rawurlencode($project).'/version', $params)->throw()->json());
 
         return array_values(array_map(
-            fn (array $version): array => $this->summarizeVersion($version),
+            fn (array $version): array => $this->summarizeVersion($version, $withChangelog),
             array_filter((array) $data, 'is_array'),
         ));
+    }
+
+    /**
+     * Everything the project popup shows, trimmed to what is safe and useful to pass on.
+     *
+     * @return array<string, mixed>
+     */
+    public function projectDetails(string $id): array
+    {
+        $project = $this->project($id);
+        $links = [];
+        foreach (['source_url' => 'Source', 'wiki_url' => 'Wiki', 'issues_url' => 'Issues', 'discord_url' => 'Discord'] as $key => $label) {
+            if (self::isWebUrl($project[$key] ?? null)) {
+                $links[] = ['label' => $label, 'url' => $project[$key]];
+            }
+        }
+        foreach (array_slice((array) ($project['donation_urls'] ?? []), 0, 5) as $donation) {
+            if (is_array($donation) && self::isWebUrl($donation['url'] ?? null)) {
+                $links[] = ['label' => 'Donate ('.mb_substr((string) ($donation['platform'] ?? 'link'), 0, 30).')', 'url' => $donation['url']];
+            }
+        }
+
+        $gallery = [];
+        foreach (array_slice((array) ($project['gallery'] ?? []), 0, 30) as $image) {
+            if (is_array($image) && self::isWebUrl($image['url'] ?? null)) {
+                $gallery[] = [
+                    'url' => $image['url'],
+                    'raw_url' => self::isWebUrl($image['raw_url'] ?? null) ? $image['raw_url'] : $image['url'],
+                    'title' => is_string($image['title'] ?? null) ? mb_substr($image['title'], 0, 200) : null,
+                    'description' => is_string($image['description'] ?? null) ? mb_substr($image['description'], 0, 500) : null,
+                    'featured' => (bool) ($image['featured'] ?? false),
+                ];
+            }
+        }
+        usort($gallery, fn (array $a, array $b): int => (int) $b['featured'] <=> (int) $a['featured']);
+
+        $license = is_array($project['license'] ?? null) ? $project['license'] : [];
+
+        return [
+            'id' => (string) ($project['id'] ?? $id),
+            'slug' => (string) ($project['slug'] ?? $id),
+            'project_type' => (string) ($project['project_type'] ?? ''),
+            'title' => (string) ($project['title'] ?? ''),
+            'description' => (string) ($project['description'] ?? ''),
+            // Markdown; the browser sanitises it before showing it.
+            'body' => mb_substr((string) ($project['body'] ?? ''), 0, 200_000),
+            'icon_url' => self::isWebUrl($project['icon_url'] ?? null) ? $project['icon_url'] : null,
+            'downloads' => (int) ($project['downloads'] ?? 0),
+            'followers' => (int) ($project['followers'] ?? 0),
+            'categories' => array_values(array_filter((array) ($project['categories'] ?? []), 'is_string')),
+            'loaders' => array_values(array_filter((array) ($project['loaders'] ?? []), 'is_string')),
+            'client_side' => (string) ($project['client_side'] ?? 'unknown'),
+            'server_side' => (string) ($project['server_side'] ?? 'unknown'),
+            'published' => $project['published'] ?? null,
+            'updated' => $project['updated'] ?? null,
+            'license' => ['id' => (string) ($license['id'] ?? ''), 'name' => (string) ($license['name'] ?? ''), 'url' => self::isWebUrl($license['url'] ?? null) ? $license['url'] : null],
+            'links' => $links,
+            'gallery' => $gallery,
+        ];
+    }
+
+    /**
+     * Projects a set of project ids are, for naming dependencies.
+     *
+     * @param  list<string>  $ids
+     * @return array<string, array{title: string, slug: string, icon_url: ?string}>
+     */
+    public function projectNames(array $ids): array
+    {
+        $result = [];
+        foreach ($this->projects($ids) as $id => $project) {
+            $result[$id] = [
+                'title' => (string) ($project['title'] ?? $id),
+                'slug' => (string) ($project['slug'] ?? $id),
+                'icon_url' => self::isWebUrl($project['icon_url'] ?? null) ? $project['icon_url'] : null,
+            ];
+        }
+
+        return $result;
+    }
+
+    private static function isWebUrl(mixed $url): bool
+    {
+        return is_string($url) && strlen($url) < 2048 && preg_match('#^https?://[^\s]+$#i', $url) === 1;
     }
 
     /**
@@ -257,11 +341,11 @@ class ModrinthClient
      * @param  array<string, mixed>  $version
      * @return array<string, mixed>
      */
-    public function summarizeVersion(array $version): array
+    public function summarizeVersion(array $version, bool $withChangelog = false): array
     {
         $jar = $this->primaryJar($version);
 
-        return [
+        $summary = [
             'id' => (string) ($version['id'] ?? ''),
             'project_id' => (string) ($version['project_id'] ?? ''),
             'name' => (string) ($version['name'] ?? ''),
@@ -278,6 +362,12 @@ class ModrinthClient
                 'type' => $dep['dependency_type'] ?? 'optional',
             ], array_filter((array) ($version['dependencies'] ?? []), 'is_array'))),
         ];
+
+        if ($withChangelog) {
+            $summary['changelog'] = mb_substr((string) ($version['changelog'] ?? ''), 0, 20_000);
+        }
+
+        return $summary;
     }
 
     private function request(): PendingRequest

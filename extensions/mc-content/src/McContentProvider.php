@@ -29,6 +29,15 @@ class McContentProvider extends ExtensionProvider
                 ->label('Offer beta and alpha versions')
                 ->help('Show pre-release versions in the version picker, not only releases.')
                 ->field('toggle'),
+            ExtensionSettingDefinition::make('project_links', 'project_links', 'popup', ['required', 'string', 'in:popup,modrinth'])
+                ->label('Clicking a project')
+                ->help('Show the project page in a popup inside the panel, or open it on modrinth.com in a new tab.')
+                ->field('select', [
+                    ['value' => 'popup', 'label' => 'Open a popup in the panel'],
+                    ['value' => 'modrinth', 'label' => 'Open modrinth.com in a new tab'],
+                ])
+                ->frontend()
+                ->frontendType('string'),
             ExtensionSettingDefinition::make('results_per_page', 'results_per_page', 20, ['required', 'integer', 'min:5', 'max:50'])
                 ->label('Search results per page')
                 ->field('number')
