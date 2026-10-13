@@ -64,7 +64,7 @@ export function PlayersCard({ server }: { server: SdkServer }) {
             if (input.action === 'kick' || input.action === 'ban') {
                 updateOnline((players) => players.filter((name) => name.toLowerCase() !== input.target?.toLowerCase()));
             }
-            toast.success(successMessage(input.action, input.target, result.state));
+            toast.success(result.reply ? result.reply : successMessage(input.action, input.target, result.state));
             setPrompt(null);
         },
         onError: (error) => toast.error(httpErrorToHuman(error)),
@@ -122,6 +122,8 @@ export function PlayersCard({ server }: { server: SdkServer }) {
 
     const state = online.data?.state ?? lists.data?.state;
     const running = state === 'running';
+    // While starting or stopping the backend refuses changes, so the buttons are off too.
+    const busy = action.isPending || state === 'starting' || state === 'stopping';
     const opNames = new Set((lists.data?.ops ?? []).map((op) => op.name.toLowerCase()));
     const count = online.data?.online;
     const onlineNames = new Set((online.data?.online?.players ?? []).map((name) => name.toLowerCase()));
@@ -164,10 +166,20 @@ export function PlayersCard({ server }: { server: SdkServer }) {
                     )}
                 </div>
 
-                {state && state !== 'running' && tab !== 'online' && (
+                {state === 'offline' && tab !== 'online' && (
                     <p className={'mcp:text-xs mcp:text-muted-foreground'}>
-                        The server is {state}. Changes are written to its files and apply on the next start.
+                        The server is stopped. Changes are written to its files and apply on the next start.
                     </p>
+                )}
+                {(state === 'starting' || state === 'stopping') && (
+                    <p className={'mcp:text-xs mcp:text-muted-foreground'}>The server is {state}. Changes are possible once it is running or stopped.</p>
+                )}
+                {tab !== 'online' && lists.data && Object.keys(lists.data.problems ?? {}).length > 0 && (
+                    <Alert type={'warning'}>
+                        {Object.values(lists.data.problems).map((problem) => (
+                            <p key={problem}>{problem}</p>
+                        ))}
+                    </Alert>
                 )}
 
                 {tab === 'online' && (
@@ -177,7 +189,7 @@ export function PlayersCard({ server }: { server: SdkServer }) {
                         state={state}
                         opNames={opNames}
                         can={can}
-                        pending={action.isPending}
+                        pending={busy}
                         onKick={(name) => setPrompt({ action: 'kick', name })}
                         onBan={(name) => setPrompt({ action: 'ban', name })}
                         onOp={(name, op) => run({ action: op ? 'deop' : 'op', target: name })}
@@ -196,23 +208,23 @@ export function PlayersCard({ server }: { server: SdkServer }) {
                             players={offlinePlayers}
                             lists={lists.data}
                             can={can}
-                            pending={action.isPending}
+                            pending={busy}
                             run={run}
                             onBan={(name) => setPrompt({ action: 'ban', name })}
                         />
                     ) : tab === 'whitelist' ? (
-                        <WhitelistTab lists={lists.data} canEdit={can.whitelist} pending={action.isPending} run={run} />
+                        <WhitelistTab lists={lists.data} canEdit={can.whitelist} pending={busy} run={run} />
                     ) : tab === 'bans' ? (
-                        <BansTab lists={lists.data} canEdit={can.ban} pending={action.isPending} run={run} />
+                        <BansTab lists={lists.data} canEdit={can.ban} pending={busy} run={run} />
                     ) : (
-                        <OpsTab lists={lists.data} canEdit={can.op} pending={action.isPending} run={run} />
+                        <OpsTab lists={lists.data} canEdit={can.op} pending={busy} run={run} />
                     ))}
             </div>
 
             {prompt && (
                 <ReasonDialog
                     prompt={prompt}
-                    pending={action.isPending}
+                    pending={busy}
                     onClose={() => setPrompt(null)}
                     onConfirm={(reason) => run({ action: prompt.action, target: prompt.name, reason })}
                 />

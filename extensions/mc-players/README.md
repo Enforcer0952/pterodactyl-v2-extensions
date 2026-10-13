@@ -10,7 +10,9 @@ Adds a **Players** card under the console of Minecraft Java servers in Pterodact
 - **Bans:** player and IP bans with reason, source and date, plus Unban.
 - **Operators:** op and deop.
 - Works while the server is **stopped** too: changes are written to `whitelist.json`, `ops.json`, `banned-players.json` and `server.properties`, and apply on the next start.
-- Online-mode servers look players up with Mojang; offline-mode servers get the correct offline UUIDs.
+- Players who joined before keep the UUID the server recorded (right for offline mode, proxies and Floodgate). New players are looked up with Mojang on online-mode servers and get the offline UUID otherwise.
+- A list file that is not valid JSON is never overwritten: the card shows what is wrong and leaves the file alone.
+- Shows the server's own answer to a command, so "That player does not exist" is an error, not a success.
 - Updates live from the console (joins, leaves, list changes), with no polling.
 - Input is validated, so a name or reason can never inject a second console command.
 
@@ -26,7 +28,7 @@ Adds a **Players** card under the console of Minecraft Java servers in Pterodact
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.1.0.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.2.0.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -37,7 +39,7 @@ Adds a **Players** card under the console of Minecraft Java servers in Pterodact
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.1.0.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.2.0.pteroext --enable --replace
 ```
 
 Settings and data are kept.

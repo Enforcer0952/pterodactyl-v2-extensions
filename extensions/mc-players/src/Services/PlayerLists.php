@@ -3,11 +3,17 @@
 namespace McPlayers\Services;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use McPlayers\Support\BrokenListFile;
+use McPlayers\Support\ListFile;
 use McPlayers\Support\Validates;
+use Pterodactyl\Contracts\Files\ListsDirectories;
 use Pterodactyl\Contracts\Files\ReadsFileContents;
 use Pterodactyl\Contracts\Files\WritesFileContents;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
+use Pterodactyl\Exceptions\Http\Server\FileSizeTooLargeException;
 use Pterodactyl\Models\Server;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -31,11 +37,22 @@ class PlayerLists
     /** Every player who has joined, with an expiry one month after they were last seen. */
     public const string USERCACHE = '/usercache.json';
 
-    private const int MAX_BYTES = 1024 * 1024;
+    /** usercache.json and ban lists of big servers grow past 1 MB. */
+    private const int MAX_BYTES = 8 * 1024 * 1024;
+
+    /** @var array<string, list<string>> server uuid => file names in the server root, per request */
+    private array $rootFiles = [];
+
+    /** @var array<string, ?string> server uuid + file => contents, per request */
+    private array $contents = [];
+
+    /** @var array<string, string> file => why it could not be read, for the last all() */
+    private array $problems = [];
 
     public function __construct(
         private readonly ReadsFileContents $reader,
         private readonly WritesFileContents $writer,
+        private readonly ListsDirectories $directories,
     ) {}
 
     /**
@@ -43,20 +60,21 @@ class PlayerLists
      */
     public function all(Server $server): array
     {
+        $this->problems = [];
         $properties = $this->properties($server);
 
-        return [
+        $lists = [
             'whitelist_enabled' => isset($properties['white-list']) ? $properties['white-list'] === 'true' : null,
             'online_mode' => isset($properties['online-mode']) ? $properties['online-mode'] !== 'false' : null,
             'whitelist' => array_map(fn (array $row): array => [
                 'name' => (string) ($row['name'] ?? ''),
                 'uuid' => (string) ($row['uuid'] ?? ''),
-            ], $this->json($server, self::WHITELIST)),
+            ], $this->safeJson($server, self::WHITELIST)),
             'ops' => array_map(fn (array $row): array => [
                 'name' => (string) ($row['name'] ?? ''),
                 'uuid' => (string) ($row['uuid'] ?? ''),
                 'level' => (int) ($row['level'] ?? 4),
-            ], $this->json($server, self::OPS)),
+            ], $this->safeJson($server, self::OPS)),
             'bans' => array_map(fn (array $row): array => [
                 'name' => (string) ($row['name'] ?? ''),
                 'uuid' => (string) ($row['uuid'] ?? ''),
@@ -64,16 +82,21 @@ class PlayerLists
                 'source' => $row['source'] ?? null,
                 'created' => $row['created'] ?? null,
                 'expires' => $row['expires'] ?? null,
-            ], $this->json($server, self::BANNED_PLAYERS)),
+            ], $this->safeJson($server, self::BANNED_PLAYERS)),
             'ip_bans' => array_map(fn (array $row): array => [
                 'ip' => (string) ($row['ip'] ?? ''),
                 'reason' => $row['reason'] ?? null,
                 'source' => $row['source'] ?? null,
                 'created' => $row['created'] ?? null,
                 'expires' => $row['expires'] ?? null,
-            ], $this->json($server, self::BANNED_IPS)),
+            ], $this->safeJson($server, self::BANNED_IPS)),
             'known' => $this->known($server),
         ];
+
+        // Files that exist but could not be read: shown instead of an empty list.
+        $lists['problems'] = $this->problems;
+
+        return $lists;
     }
 
     /**
@@ -84,7 +107,7 @@ class PlayerLists
     private function known(Server $server): array
     {
         $players = [];
-        foreach ($this->json($server, self::USERCACHE) as $row) {
+        foreach ($this->safeJson($server, self::USERCACHE) as $row) {
             $name = (string) ($row['name'] ?? '');
             if (preg_match(Validates::NAME, $name) !== 1) {
                 continue;
@@ -117,14 +140,17 @@ class PlayerLists
         match ($action) {
             'whitelist-add' => $this->upsert($server, self::WHITELIST, $this->profile($server, $target)),
             'whitelist-remove' => $this->remove($server, self::WHITELIST, 'name', $target),
-            'op' => $this->upsert($server, self::OPS, [...$this->profile($server, $target), 'level' => 4, 'bypassesPlayerLimit' => false]),
+            // Re-opping someone keeps the level and limit bypass they already had.
+            'op' => $this->upsert($server, self::OPS, [...$this->profile($server, $target), 'level' => 4, 'bypassesPlayerLimit' => false], 'uuid', ['level', 'bypassesPlayerLimit']),
             'deop' => $this->remove($server, self::OPS, 'name', $target),
             'ban' => $this->upsert($server, self::BANNED_PLAYERS, [
                 ...$this->profile($server, $target),
                 ...$this->banFields($reason, $actor),
             ]),
             'pardon' => $this->remove($server, self::BANNED_PLAYERS, 'name', $target),
-            'ban-ip' => $this->upsert($server, self::BANNED_IPS, ['ip' => $target, ...$this->banFields($reason, $actor)], 'ip'),
+            'ban-ip' => filter_var($target, FILTER_VALIDATE_IP) === false
+                ? throw new HttpException(422, 'The server is stopped, so a player name cannot be turned into their IP address. Enter the IP address, or start the server.')
+                : $this->upsert($server, self::BANNED_IPS, ['ip' => $target, ...$this->banFields($reason, $actor)], 'ip'),
             'pardon-ip' => $this->remove($server, self::BANNED_IPS, 'ip', $target),
             'whitelist-on' => $this->setProperty($server, 'white-list', 'true'),
             'whitelist-off' => $this->setProperty($server, 'white-list', 'false'),
@@ -133,21 +159,41 @@ class PlayerLists
     }
 
     /**
-     * The UUID and correctly-cased name for a player: Mojang's for online-mode
-     * servers, the derived offline UUID otherwise.
+     * The UUID and correctly-cased name for a player. A player who has joined before
+     * gets the UUID the server itself recorded, which is right for offline mode,
+     * proxies and Floodgate alike. Otherwise: Mojang's for online-mode servers, the
+     * derived offline UUID for offline-mode ones.
      *
      * @return array{uuid: string, name: string}
      */
     private function profile(Server $server, string $name): array
     {
-        if (str_starts_with($name, '.') || ($this->properties($server)['online-mode'] ?? 'true') === 'false') {
+        $cached = ListFile::cachedProfile($this->safeJson($server, self::USERCACHE), $name);
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        if (str_starts_with($name, '.')) {
+            throw new HttpException(422, 'Bedrock players (names starting with a dot) need to join once first, or be added with the server running.');
+        }
+
+        if (($this->properties($server)['online-mode'] ?? 'true') === 'false') {
             return ['uuid' => Validates::offlineUuid($name), 'name' => $name];
         }
 
-        $response = Http::withUserAgent('pterodactyl-mc-players/1.0')
-            ->connectTimeout(5)
-            ->timeout(10)
-            ->get('https://api.mojang.com/users/profiles/minecraft/'.rawurlencode($name));
+        $known = Cache::get('ext:mc-players:mojang:'.strtolower($name));
+        if (is_array($known)) {
+            return $known;
+        }
+
+        try {
+            $response = Http::withUserAgent('pterodactyl-mc-players/1.2')
+                ->connectTimeout(5)
+                ->timeout(10)
+                ->get('https://api.mojang.com/users/profiles/minecraft/'.rawurlencode($name));
+        } catch (ConnectionException) {
+            throw new HttpException(502, 'Could not reach Mojang to look up '.$name.'. Try again, or start the server and use the console.');
+        }
 
         if ($response->status() === 404 || $response->status() === 204) {
             throw new HttpException(422, 'There is no Minecraft account called '.$name.'.');
@@ -157,7 +203,10 @@ class PlayerLists
             throw new HttpException(502, 'Could not look up '.$name.' with Mojang. Try again, or start the server and use the console.');
         }
 
-        return ['uuid' => Validates::dashed($response->json('id')), 'name' => (string) $response->json('name', $name)];
+        $profile = ['uuid' => Validates::dashed($response->json('id')), 'name' => (string) $response->json('name', $name)];
+        Cache::put('ext:mc-players:mojang:'.strtolower($name), $profile, now()->addDay());
+
+        return $profile;
     }
 
     /**
@@ -175,29 +224,30 @@ class PlayerLists
 
     /**
      * @param  array<string, mixed>  $entry
+     * @param  list<string>  $keep
      */
-    private function upsert(Server $server, string $file, array $entry, string $key = 'uuid'): void
+    private function upsert(Server $server, string $file, array $entry, string $key = 'uuid', array $keep = []): void
     {
-        $rows = array_values(array_filter(
-            $this->json($server, $file),
-            fn (array $row): bool => strcasecmp((string) ($row[$key] ?? ''), (string) $entry[$key]) !== 0
-                && ($key !== 'uuid' || strcasecmp((string) ($row['name'] ?? ''), (string) ($entry['name'] ?? '')) !== 0),
-        ));
-        $rows[] = $entry;
-
-        $this->writer->write($server, $file, json_encode($rows, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
+        $this->write($server, $file, ListFile::upsert($this->json($server, $file), $entry, $key, $keep));
     }
 
     private function remove(Server $server, string $file, string $key, string $value): void
     {
-        $rows = $this->json($server, $file);
-        $kept = array_values(array_filter($rows, fn (array $row): bool => strcasecmp((string) ($row[$key] ?? ''), $value) !== 0));
-
-        if (count($kept) === count($rows)) {
+        $kept = ListFile::remove($this->json($server, $file), $key, $value);
+        if ($kept === null) {
             throw new HttpException(404, $value.' is not on that list.');
         }
 
-        $this->writer->write($server, $file, json_encode($kept, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
+        $this->write($server, $file, $kept);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     */
+    private function write(Server $server, string $file, array $rows): void
+    {
+        $this->writer->write($server, $file, ListFile::encode($rows));
+        unset($this->contents[$server->uuid.$file], $this->rootFiles[$server->uuid]);
     }
 
     private function setProperty(Server $server, string $key, string $value): void
@@ -213,6 +263,7 @@ class PlayerLists
             : rtrim($contents)."\n".$key.'='.$value."\n";
 
         $this->writer->write($server, self::PROPERTIES, (string) $contents);
+        unset($this->contents[$server->uuid.self::PROPERTIES]);
     }
 
     /**
@@ -233,25 +284,89 @@ class PlayerLists
     }
 
     /**
+     * Rows of a list file that is about to be edited. A broken file stops the edit.
+     *
      * @return list<array<string, mixed>>
      */
     private function json(Server $server, string $file): array
     {
-        $decoded = json_decode($this->read($server, $file) ?? '[]', true);
-
-        return is_array($decoded) ? array_values(array_filter($decoded, 'is_array')) : [];
+        try {
+            return ListFile::decode($this->read($server, $file), $file);
+        } catch (BrokenListFile $exception) {
+            throw new HttpException(409, $exception->getMessage());
+        }
     }
 
-    private function read(Server $server, string $file): ?string
+    /**
+     * Rows of a list file for display. A file that cannot be read shows as empty,
+     * with the reason in "problems", so one bad file does not break every tab.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function safeJson(Server $server, string $file): array
     {
         try {
-            return $this->reader->read($server, $file, self::MAX_BYTES);
+            return ListFile::decode($this->read($server, $file), $file);
+        } catch (BrokenListFile $exception) {
+            $this->problems[ltrim($file, '/')] = $exception->getMessage();
+        } catch (FileSizeTooLargeException) {
+            $this->problems[ltrim($file, '/')] = ltrim($file, '/').' is larger than 8 MB, so it is not shown.';
+        } catch (DaemonConnectionException) {
+            $this->problems[ltrim($file, '/')] = 'Could not read '.ltrim($file, '/').' from the node.';
+        }
+
+        return [];
+    }
+
+    /**
+     * Contents of a file in the server root, or null when it does not exist. Some
+     * Wings versions answer a read of a missing file with a 500, so the root is
+     * listed first and only files that exist are read.
+     */
+    private function read(Server $server, string $file): ?string
+    {
+        $key = $server->uuid.$file;
+        if (array_key_exists($key, $this->contents)) {
+            return $this->contents[$key];
+        }
+
+        if (! in_array(ltrim($file, '/'), $this->rootFiles($server), true)) {
+            return $this->contents[$key] = null;
+        }
+
+        try {
+            return $this->contents[$key] = $this->reader->read($server, $file, self::MAX_BYTES);
         } catch (DaemonConnectionException $exception) {
             if ($exception->getStatusCode() === 404) {
-                return null;
+                return $this->contents[$key] = null;
             }
 
             throw $exception;
         }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function rootFiles(Server $server): array
+    {
+        return $this->rootFiles[$server->uuid] ??= array_values(array_map(
+            fn (array $entry): string => (string) ($entry['name'] ?? ''),
+            array_filter($this->directories->list($server, '/'), fn (array $entry): bool => ($entry['file'] ?? true) !== false),
+        ));
+    }
+
+    /** Whether a name or IP is already on a list, for removals of odd legacy names. */
+    public function listed(Server $server, string $action, string $target): bool
+    {
+        [$file, $key] = match ($action) {
+            'whitelist-remove' => [self::WHITELIST, 'name'],
+            'deop' => [self::OPS, 'name'],
+            'pardon' => [self::BANNED_PLAYERS, 'name'],
+            'pardon-ip' => [self::BANNED_IPS, 'ip'],
+            default => [null, null],
+        };
+
+        return $file !== null && ListFile::has($this->safeJson($server, $file), $key, $target);
     }
 }

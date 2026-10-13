@@ -9,8 +9,12 @@ namespace McPlayers\Support;
  */
 final class Validates
 {
-    /** Java names are 3-16 of [A-Za-z0-9_]; Floodgate prefixes Bedrock players with a dot. */
-    public const string NAME = '/^\.?[A-Za-z0-9_]{1,16}$/';
+    /**
+     * Java names are [A-Za-z0-9_], up to 16 long (a few very old accounts are shorter
+     * than 3); Floodgate prefixes Bedrock players with a dot. "D" stops "$" from
+     * accepting a trailing newline.
+     */
+    public const string NAME = '/^\.?[A-Za-z0-9_]{1,16}$/D';
 
     public static function reason(?string $reason): ?string
     {
@@ -18,7 +22,12 @@ final class Validates
             return null;
         }
 
-        $clean = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $reason) ?? '');
+        if (! mb_check_encoding($reason, 'UTF-8')) {
+            throw new \InvalidArgumentException('The reason contains invalid characters.');
+        }
+
+        // Control characters, including C1 and Unicode line breaks, could end the command early.
+        $clean = trim(preg_replace('/[\p{Cc}\p{Zl}\p{Zp}]+/u', ' ', $reason) ?? '');
 
         return $clean === '' ? null : mb_substr($clean, 0, 120);
     }

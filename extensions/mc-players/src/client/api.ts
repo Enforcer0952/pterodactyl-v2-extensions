@@ -42,6 +42,10 @@ export interface Lists {
     bans: Ban[];
     ip_bans: IpBan[];
     known: (ListedPlayer & { last_seen: string | null })[];
+    /** Files that exist but could not be read, with the reason. Their lists show as empty. */
+    problems: Record<string, string>;
+    /** The server's own answer to a command, when it printed one. */
+    reply?: string | null;
 }
 
 export type Action =

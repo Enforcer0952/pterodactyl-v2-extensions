@@ -20,14 +20,15 @@ final class ListOutput
         for ($i = count($lines) - 1; $i >= 0; $i--) {
             $line = $lines[$i];
 
-            // "There are 2 of a max of 20 players online: Steve, Alex"
-            if (preg_match('/There are (\d+) of a max(?:imum)? of (\d+) players online:?\s*(.*)$/i', $line, $m) === 1) {
+            // "There are 2 of a max of 20 players online: Steve, Alex". Anchored to the
+            // start, so a chat line ("<Steve> There are 99 of ...") cannot fake it.
+            if (preg_match('/^There are (\d+) of a max(?:imum)? of (\d+) players online:?\s*(.*)$/i', $line, $m) === 1) {
                 return self::result((int) $m[1], (int) $m[2], self::names($m[3]));
             }
 
             // "There are 2/20 players online:" with names on the next line (1.12 and older)
             // "There are 2 out of maximum 20 players online." with "group: names" lines (Essentials)
-            if (preg_match('/There are (\d+)(?:\/| out of maximum )(\d+) players online/i', $line, $m) === 1) {
+            if (preg_match('/^There are (\d+)(?:\/| out of maximum )(\d+) players online/i', $line, $m) === 1) {
                 $names = [];
                 for ($j = $i + 1; $j < min(count($lines), $i + 12); $j++) {
                     $next = $lines[$j];
@@ -41,6 +42,58 @@ final class ListOutput
                 }
 
                 return self::result((int) $m[1], (int) $m[2], $names);
+            }
+        }
+
+        return null;
+    }
+
+    /** Messages a server prints when a player command did nothing. */
+    private const array FAILURES = [
+        'That player does not exist', 'No player was found', 'Unknown player', 'Player not found', 'Could not',
+        'Nothing changed', 'is already', 'is not whitelisted', 'is not banned', 'is not an operator',
+        'Invalid IP', 'Invalid player', 'not a valid', 'Incorrect argument', 'Unknown or incomplete command',
+        'You do not have permission',
+    ];
+
+    /** Messages that confirm a player command worked. */
+    private const array SUCCESSES = [
+        'Kicked', 'Banned', 'Unbanned', 'Made ', 'Added ', 'Removed ', 'Whitelist is now', 'Turned on', 'Turned off',
+        'no longer a server operator', 'Banned IP', 'Unbanned IP',
+    ];
+
+    /**
+     * The server's answer to a command that was just sent: the first line after the
+     * command that reads like a result.
+     *
+     * @param  list<string>  $lines  console lines, oldest first
+     * @return array{failed: bool, message: string}|null
+     */
+    public static function reply(array $lines, string $command): ?array
+    {
+        $lines = array_map([self::class, 'clean'], $lines);
+
+        // Start after the echo of the command itself when the console shows it.
+        $start = 0;
+        foreach ($lines as $index => $line) {
+            if (str_ends_with($line, $command)) {
+                $start = $index + 1;
+            }
+        }
+
+        foreach (array_slice($lines, $start) as $line) {
+            if ($line === '' || str_starts_with($line, '<')) {
+                continue;
+            }
+            foreach (self::FAILURES as $failure) {
+                if (stripos($line, $failure) !== false) {
+                    return ['failed' => true, 'message' => mb_substr($line, 0, 200)];
+                }
+            }
+            foreach (self::SUCCESSES as $success) {
+                if (stripos($line, $success) !== false) {
+                    return ['failed' => false, 'message' => mb_substr($line, 0, 200)];
+                }
             }
         }
 

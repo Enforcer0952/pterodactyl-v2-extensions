@@ -2,6 +2,7 @@
 
 namespace McPlayers\Http\Controllers;
 
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -13,7 +14,6 @@ use Pterodactyl\Contracts\Servers\ReadsServerLogs;
 use Pterodactyl\Contracts\Servers\ReadsServerState;
 use Pterodactyl\Contracts\Servers\SendsServerCommands;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
-use Pterodactyl\Facades\Activity;
 use Pterodactyl\Models\Server;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -61,14 +61,37 @@ class PlayersController extends Controller
             return new JsonResponse(['state' => $state, 'online' => null]);
         }
 
-        $online = Cache::remember('ext:mc-players:online:'.$server->uuid, 5, function () use ($server) {
-            $this->commands->send($server, 'list');
-            usleep(self::ANSWER_DELAY_MS * 1000);
+        $key = 'ext:mc-players:online:'.$server->uuid;
+        $online = Cache::get($key);
+        if ($online === null) {
+            // One "list" per server at a time: other viewers wait for its answer.
+            try {
+                $online = Cache::lock($key.':lock', 5)->block(3, function () use ($server, $key) {
+                    $cached = Cache::get($key);
+                    if ($cached !== null) {
+                        return $cached;
+                    }
 
-            return ListOutput::parse($this->logs->read($server, 60));
-        });
+                    $before = count($this->logs->read($server, 60));
+                    $this->commands->send($server, 'list');
+                    usleep(self::ANSWER_DELAY_MS * 1000);
+                    $lines = $this->logs->read($server, 60);
 
-        return new JsonResponse(['state' => $state, 'online' => $online]);
+                    // Only lines that arrived after the command, so an old answer is never reused.
+                    $parsed = ListOutput::parse(array_slice($lines, max(0, min($before, count($lines) - 15))));
+
+                    // A failed parse is remembered too (briefly), so it is not retried on every poll.
+                    Cache::put($key, $parsed ?? false, $parsed === null ? 15 : 5);
+
+                    return $parsed ?? false;
+                });
+            } catch (LockTimeoutException) {
+                // Another request is still waiting for the server's answer.
+                $online = Cache::get($key, false);
+            }
+        }
+
+        return new JsonResponse(['state' => $state, 'online' => $online === false ? null : $online]);
     }
 
     public function lists(Request $request, Server $server): JsonResponse
@@ -102,27 +125,55 @@ class PlayersController extends Controller
             'You do not have permission to do that on this server.',
         );
 
-        $target = $this->target($action, $data['target'] ?? null);
-        $reason = Validates::reason($data['reason'] ?? null);
+        try {
+            $reason = Validates::reason($data['reason'] ?? null);
+        } catch (\InvalidArgumentException $exception) {
+            throw new HttpException(422, $exception->getMessage());
+        }
         $state = $this->serverState($server);
+        $reply = null;
 
         if ($state === 'running') {
+            $target = $this->target($action, $data['target'] ?? null);
             $command = $this->command($action, $target, $reason);
+            // The panel's command action records this in the activity log.
+            $before = count($this->logs->read($server, 40));
             $this->commands->send($server, $command);
-            Activity::event('server:console.command')->property('command', $command)->log();
 
-            // Give the server a moment to write its list files before they are read back.
+            // Give the server a moment to answer and write its list files.
             usleep(self::ANSWER_DELAY_MS * 1000);
             Cache::forget('ext:mc-players:online:'.$server->uuid);
+
+            $reply = ListOutput::reply(array_slice($this->logs->read($server, 40), max(0, $before - 5)), $command);
+            if ($reply !== null && $reply['failed']) {
+                throw new HttpException(422, $reply['message']);
+            }
         } elseif ($state === 'offline') {
-            $this->lists->applyOffline($server, $action, (string) $target, $reason, $request->user()->username);
-            Activity::event('server:file.write')->property('file', 'player lists ('.$action.' '.$target.')')->log();
+            // Removing an entry is allowed for any name already on the list, even one
+            // that no longer passes today's username rules. Nothing reaches a command here.
+            $raw = trim((string) ($data['target'] ?? ''));
+            $target = $raw !== '' && $this->lists->listed($server, $action, $raw) ? $raw : $this->target($action, $raw);
+
+            // One edit per server at a time, and the server must still be off when writing,
+            // or it would overwrite the change from memory when it stops again.
+            try {
+                Cache::lock('ext:mc-players:files:'.$server->uuid, 15)->block(10, function () use ($server, $action, $target, $reason, $request): void {
+                    if (($now = $this->serverState($server)) !== 'offline') {
+                        throw new HttpException(409, 'The server is '.$now.' now. Try again once it is running or stopped.');
+                    }
+                    // The panel's file write action records this in the activity log.
+                    $this->lists->applyOffline($server, $action, (string) $target, $reason, $request->user()->username);
+                });
+            } catch (LockTimeoutException) {
+                throw new HttpException(409, 'Someone else is changing the player lists. Try again in a moment.');
+            }
         } else {
             throw new HttpException(409, 'The server is '.$state.'. Wait until it is running or stopped.');
         }
 
         return new JsonResponse([
             'state' => $state,
+            'reply' => $reply['message'] ?? null,
             ...$this->lists->all($server),
         ]);
     }
@@ -134,13 +185,14 @@ class PlayersController extends Controller
         }
 
         $target = trim((string) $target);
+        // Vanilla ban-ip and pardon-ip only understand IPv4 addresses (or, for ban-ip, a name).
         $valid = str_ends_with($action, '-ip')
-            ? filter_var($target, FILTER_VALIDATE_IP) !== false || ($action === 'ban-ip' && preg_match(Validates::NAME, $target) === 1)
+            ? filter_var($target, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false || ($action === 'ban-ip' && preg_match(Validates::NAME, $target) === 1)
             : preg_match(Validates::NAME, $target) === 1;
 
         if (! $valid) {
             throw new HttpException(422, str_ends_with($action, '-ip')
-                ? 'Enter a valid IP address.'
+                ? 'Enter a valid IPv4 address.'
                 : 'Enter a valid Minecraft username (letters, numbers and underscores).');
         }
 
