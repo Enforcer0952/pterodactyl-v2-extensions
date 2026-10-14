@@ -77,7 +77,7 @@ More games are on the way. [Ask for yours](https://github.com/Enforcer0952/ptero
 | ![Console autocomplete](docs/screenshots/mc-console-gamemode.png) **Minecraft Console**: command autocomplete and syntax hints | ![Player names](docs/screenshots/mc-console-player.png) Player names and plugin commands |
 | ![Version page](docs/screenshots/mc-version-page.png) **Minecraft Version**: switch software and version | ![Change plan](docs/screenshots/mc-version-plan.png) See exactly what changes before it happens |
 | ![Worlds](docs/screenshots/mc-world-worlds.png) **Minecraft World**: backups, resets, hardcore runs | ![server.properties form](docs/screenshots/mc-world-properties.png) A real form for server.properties |
-| ![Proxy page](docs/screenshots/mc-network-proxy.png) **Minecraft Network**: every backend checked and fixable | |
+| ![Proxy page](docs/screenshots/mc-network-proxy.png) **Minecraft Network**: every backend checked and fixable | ![Crash verdicts](docs/screenshots/mc-crash-reports.png) **Minecraft Crashes**: what broke, who did it, how to fix it |
 
 </details>
 
@@ -98,6 +98,25 @@ More games are on the way. [Ask for yours](https://github.com/Enforcer0952/ptero
 |---|---|
 | ![Terraria players](docs/screenshots/terraria-players.png) Online players and bans | ![Terraria admin](docs/screenshots/terraria-admin.png) Save, settle, time of day and broadcast |
 | ![Terraria worlds](docs/screenshots/terraria-worlds.png) Worlds with backups and new worlds | ![Terraria settings](docs/screenshots/terraria-settings.png) serverconfig.txt as a form |
+
+</details>
+
+<details open>
+<summary><b>Valheim and Palworld</b></summary>
+
+| | |
+|---|---|
+| ![Valheim mods](docs/screenshots/valheim-mods.png) **Valheim Tools**: Thunderstore mods for BepInEx | ![Valheim worlds](docs/screenshots/valheim-worlds.png) Worlds and backups |
+| ![Palworld settings](docs/screenshots/palworld-settings.png) **Palworld Tools**: settings as a form, with presets | ![Palworld players](docs/screenshots/palworld-players.png) Online players through the REST API |
+
+</details>
+
+<details open>
+<summary><b>Every game</b></summary>
+
+| | |
+|---|---|
+| ![Crash Guard banner](docs/screenshots/crash-guard-banner.png) **Crash Guard**: a crash loop is stopped and explained | ![Crash Guard page](docs/screenshots/crash-guard-page.png) Limits per server and the crash log |
 
 </details>
 

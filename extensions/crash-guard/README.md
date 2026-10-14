@@ -4,6 +4,9 @@ Adds **Crash Guard** to Pterodactyl 2.0. When a server crashes again and again, 
 
 It works on **every egg** (Minecraft, ARK, Terraria, anything else): it only looks at the server's power state.
 
+![crash guard banner](../../docs/screenshots/crash-guard-banner.png)
+![crash guard page](../../docs/screenshots/crash-guard-page.png)
+
 ## Features
 
 - **Per server on or off**, and a limit of N crashes within M minutes (default 3 in 10). Servers are unguarded until someone turns it on, or an admin turns it on for all servers.

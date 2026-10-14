@@ -2,6 +2,11 @@
 
 Adds a **Players** card and a **Server settings** card under the console, plus **Access lists**, **Worlds** and **Mods** pages, to Valheim dedicated servers in Pterodactyl 2.0.
 
+![valheim players](../../docs/screenshots/valheim-players.png)
+![valheim worlds](../../docs/screenshots/valheim-worlds.png)
+![valheim mods](../../docs/screenshots/valheim-mods.png)
+![valheim lists](../../docs/screenshots/valheim-lists.png)
+
 ## Features
 
 - **Players:** who is online, read from the console, and who was seen recently. Each player with a Steam ID has **Make admin**, **Permit** and **Ban** buttons that edit the access list files. The first and last time a player was seen is kept, so the names show up next to the IDs on the Access lists page.

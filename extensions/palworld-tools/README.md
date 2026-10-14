@@ -2,6 +2,10 @@
 
 Adds a settings editor, a **Players** card, world backups and the ban list to Palworld servers in Pterodactyl 2.0.
 
+![palworld settings](../../docs/screenshots/palworld-settings.png)
+![palworld players](../../docs/screenshots/palworld-players.png)
+![palworld saves](../../docs/screenshots/palworld-saves.png)
+
 ## Features
 
 - **Settings:** every option of `PalWorldSettings.ini` as a form with labels, help text, defaults and checks. Presets for Vanilla, 2x rates, 5x rates and Casual show what changes before you apply them. A raw editor is there for anything else.

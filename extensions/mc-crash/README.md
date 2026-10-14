@@ -2,6 +2,9 @@
 
 Adds a **Crashes** page to Minecraft servers in Pterodactyl 2.0. It reads crash reports and log errors and gives each one a one-line verdict with a plain fix.
 
+![mc crash reports](../../docs/screenshots/mc-crash-reports.png)
+![mc crash logs](../../docs/screenshots/mc-crash-logs.png)
+
 ## Features
 
 - **Crash reports:** lists `crash-reports/*.txt`, the crash sections of Forge and NeoForge `logs/debug.log`, and `hs_err_pid*.log` in the server folder. Newest first, with time, verdict and severity.
