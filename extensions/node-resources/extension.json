@@ -1,0 +1,44 @@
+{
+    "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
+    "id": "node-resources",
+    "name": "Node Resources",
+    "version": "1.0.0",
+    "requires": {
+        "panel": "^2.0.0-dev",
+        "sdk": "^2.0.0-beta.4",
+        "php": "^8.3"
+    },
+    "description": "Shows how much memory, disk and CPU each node really has, how much is promised to servers, how much they use and how much is left, with history graphs and a disk-full forecast.",
+    "author": "Anton van Zanten",
+    "provider": "NodeResources\\NodeResourcesProvider",
+    "ui": {
+        "entry": "dist/client.js",
+        "mode": "native",
+        "prefix": "nr",
+        "screens": [
+            {
+                "id": "overview",
+                "area": "admin",
+                "path": "node-resources",
+                "nav": {
+                    "label": "Node Resources",
+                    "icon": "hard-drive"
+                }
+            },
+            {
+                "id": "node",
+                "area": "admin",
+                "parent": "admin.node",
+                "path": "resources",
+                "nav": {
+                    "label": "Resources",
+                    "icon": "gauge"
+                }
+            }
+        ]
+    },
+    "icon": "gauge",
+    "autoload": {
+        "NodeResources\\": "src"
+    }
+}

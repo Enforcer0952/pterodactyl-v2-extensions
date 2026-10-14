@@ -1,0 +1,34 @@
+{
+    "_comment": "Egg for the Node Resources extension: a tiny server that reports how much memory and disk its node really has.",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2026-10-14T12:00:00+00:00",
+    "name": "Node Probe",
+    "author": "Enforcer0952@users.noreply.github.com",
+    "description": "Prints the free disk space, memory and load of its node once a minute. Used by the Node Resources extension. Safe to delete together with its server.",
+    "features": null,
+    "tags": [
+        "node-probe"
+    ],
+    "docker_images": {
+        "Alpine": "ghcr.io/pterodactyl/yolks:alpine"
+    },
+    "file_denylist": [],
+    "startup": "ash ./nrprobe.sh",
+    "config": {
+        "files": "{}",
+        "startup": "{\"done\":\"NRPROBE\"}",
+        "logs": "{}",
+        "stop": "^C"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!/bin/ash\nmkdir -p /mnt/server\ncat > /mnt/server/nrprobe.sh <<'NRPROBE_EOF'\n#!/bin/ash\n# Node Resources probe. Prints one line about this machine every 60 seconds.\n# It reads three files and runs df. It writes nothing and opens no ports.\ntrap 'exit 0' INT TERM\n\nwhile :; do\n    DF=$(df -P -k /home/container 2>/dev/null | tail -n 1 | tr -d '\"\\\\')\n    MEM=$(grep -E '^(MemTotal|MemFree|MemAvailable|Buffers|Cached):' /proc/meminfo 2>/dev/null | tr -s ' ' | tr '\\n' ';')\n    LOAD=$(cut -d ' ' -f 1-3 /proc/loadavg 2>/dev/null)\n    CPUS=$(nproc 2>/dev/null || echo 0)\n    echo \"NRPROBE {\\\"v\\\":1,\\\"ts\\\":$(date +%s),\\\"cpus\\\":${CPUS},\\\"df\\\":\\\"${DF}\\\",\\\"mem\\\":\\\"${MEM}\\\",\\\"load\\\":\\\"${LOAD}\\\"}\"\n    sleep 60 &\n    wait $!\ndone\nNRPROBE_EOF\nchmod 755 /mnt/server/nrprobe.sh\necho \"Probe script written.\"\n",
+            "container": "ghcr.io/pterodactyl/installers:alpine",
+            "entrypoint": "ash"
+        }
+    },
+    "variables": []
+}

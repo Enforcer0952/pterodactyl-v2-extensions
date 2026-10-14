@@ -61,6 +61,7 @@ Built for and used every day on a home-hosted panel with Minecraft (Paper, Fabri
 
 | Extension | What it does |
 |---|---|
+| [**Node Resources**](extensions/node-resources) | How much RAM, disk and CPU each node really has, what is allocated, what servers really use and what is free, with 24 h and 7 day graphs, a disk-full forecast, warnings, a helper on the server create and build pages, and suggested limits for unlimited servers. |
 | [**Crash Guard**](extensions/crash-guard) | Stops a crash loop instead of letting a broken server restart forever: after N crashes in M minutes the server is held stopped, with a banner and a crash log. Works on any egg. |
 
 More games are on the way. [Ask for yours](https://github.com/Enforcer0952/pterodactyl-v2-extensions/issues/new?template=feature_request.yml).

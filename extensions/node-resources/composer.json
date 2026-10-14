@@ -1,0 +1,12 @@
+{
+    "description": "Real RAM, disk and CPU per node, what is allocated to servers, what they really use, and history graphs.",
+    "autoload": {
+        "psr-4": {
+            "NodeResources\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "NodeResourcesExtension"
+    },
+    "license": "GPL-3.0-or-later"
+}
