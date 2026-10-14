@@ -1,0 +1,36 @@
+---- Minecraft Crash Report ----
+// Why did you do that?
+
+Time: 2026-10-12 21:30:14 CEST
+Description: Exception in server tick loop
+
+java.lang.NullPointerException: Cannot invoke "org.bukkit.block.Sign.getLine(int)" because "sign" is null
+	at ChestShopLite-2.1.0.jar//com.chestshoplite.listener.SignListener.onInteract(SignListener.java:88)
+	at com.destroystokyo.paper.event.executor.MethodHandleEventExecutor.execute(MethodHandleEventExecutor.java:40)
+	at co.aikar.timings.TimedEventExecutor.execute(TimedEventExecutor.java:80)
+	at org.bukkit.plugin.RegisteredListener.callEvent(RegisteredListener.java:70)
+	at io.papermc.paper.plugin.manager.PaperEventManager.callEvent(PaperEventManager.java:54)
+	at net.minecraft.server.MinecraftServer.tickChildren(MinecraftServer.java:1673)
+	at net.minecraft.server.dedicated.DedicatedServer.tickChildren(DedicatedServer.java:489)
+	at net.minecraft.server.MinecraftServer.tickServer(MinecraftServer.java:1587)
+	at net.minecraft.server.MinecraftServer.runServer(MinecraftServer.java:1296)
+	at net.minecraft.server.MinecraftServer.lambda$spin$0(MinecraftServer.java:329)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+
+A detailed walkthrough of the error, its code path and all known details is as follows:
+---------------------------------------------------------------------------------------
+
+-- System Details --
+Details:
+	Minecraft Version: 1.21.1
+	Minecraft Version ID: 1.21.1
+	Operating System: Linux (amd64) version 6.1.0-25-amd64
+	Java Version: 21.0.4, Eclipse Adoptium
+	Java VM Version: OpenJDK 64-Bit Server VM (mixed mode, sharing), Eclipse Adoptium
+	Memory: 1493172224 bytes (1424 MiB) / 3221225472 bytes (3072 MiB) up to 3221225472 bytes (3072 MiB)
+	Server Running: true
+	Player Count: 3 / 20; [ServerPlayer['Steve'/12, l='ServerLevel[world]', x=104.50, y=64.00, z=-33.20]]
+	Data Packs: vanilla, file/bukkit (incompatible), Paper (incompatible)
+	Is Modded: Definitely; Server brand changed to 'Paper'
+	Type: Dedicated Server (map_server.txt)

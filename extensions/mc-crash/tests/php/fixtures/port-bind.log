@@ -1,0 +1,7 @@
+[22:15:07] [Server thread/INFO]: Starting minecraft server version 1.21.1
+[22:15:07] [Server thread/INFO]: Loading properties
+[22:15:08] [Server thread/INFO]: Starting Minecraft server on *:25565
+[22:15:08] [Server thread/WARN]: **** FAILED TO BIND TO PORT!
+[22:15:08] [Server thread/WARN]: The exception was: java.net.BindException: Address already in use
+[22:15:08] [Server thread/WARN]: Perhaps a server is already running on that port?
+[22:15:08] [Server thread/INFO]: Stopping server

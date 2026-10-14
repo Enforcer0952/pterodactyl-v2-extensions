@@ -1,0 +1,1087 @@
+{
+    "_source": "Setting names and descriptions follow https://docs.palworldgame.com/settings-and-operation/configuration (version 1.0.4). Defaults and the environment variable names of the common egg (pelican-eggs/games-steamcmd, palworld) come from the default settings file and the egg parser tool. Ranges are only set where the docs give one.",
+    "files": {
+        "PalWorldSettings.ini": {
+            "linux": "Pal/Saved/Config/LinuxServer/PalWorldSettings.ini",
+            "windows": "Pal/Saved/Config/WindowsServer/PalWorldSettings.ini"
+        },
+        "template": "DefaultPalWorldSettings.ini"
+    },
+    "section": "/Script/Pal.PalGameWorldSettings",
+    "secrets": [
+        "ServerPassword",
+        "AdminPassword"
+    ],
+    "groups": [
+        {
+            "id": "server",
+            "label": "Server"
+        },
+        {
+            "id": "network",
+            "label": "Network and API"
+        },
+        {
+            "id": "rates",
+            "label": "Rates"
+        },
+        {
+            "id": "difficulty",
+            "label": "Difficulty and survival"
+        },
+        {
+            "id": "guild",
+            "label": "Guilds and bases"
+        },
+        {
+            "id": "world",
+            "label": "World and gameplay"
+        }
+    ],
+    "settings": [
+        {
+            "key": "ServerName",
+            "group": "server",
+            "type": "string",
+            "default": "Default Palworld Server",
+            "label": "Server name",
+            "help": "Shown to players when they join.",
+            "max": 64,
+            "env": "SERVER_NAME"
+        },
+        {
+            "key": "ServerDescription",
+            "group": "server",
+            "type": "string",
+            "default": "",
+            "label": "Description",
+            "help": "Shown in the server details.",
+            "max": 128,
+            "env": "SERVER_DESCRIPTION"
+        },
+        {
+            "key": "ServerPlayerMaxNum",
+            "group": "server",
+            "type": "int",
+            "default": "32",
+            "label": "Player slots",
+            "help": "Most players that can be on the server at once.",
+            "min": 1,
+            "max": 32,
+            "env": "MAX_PLAYERS"
+        },
+        {
+            "key": "ServerPassword",
+            "group": "server",
+            "type": "string",
+            "default": "",
+            "label": "Join password",
+            "help": "Players must enter this to join. Leave empty for no password.",
+            "secret": true,
+            "max": 64,
+            "env": "SERVER_PASSWORD"
+        },
+        {
+            "key": "AdminPassword",
+            "group": "server",
+            "type": "string",
+            "default": "",
+            "label": "Admin password",
+            "help": "Gives admin rights in game, and is the password the REST API and RCON use.",
+            "secret": true,
+            "max": 64,
+            "env": "ADMIN_PASSWORD"
+        },
+        {
+            "key": "bAllowClientMod",
+            "group": "server",
+            "type": "bool",
+            "default": "True",
+            "label": "Allow players with mods",
+            "help": "Let players who run mods join."
+        },
+        {
+            "key": "bShowPlayerList",
+            "group": "server",
+            "type": "bool",
+            "default": "False",
+            "label": "Player list in the menu",
+            "help": "Show the list of players in the ESC menu.",
+            "env": "SHOW_PLAYER_LIST"
+        },
+        {
+            "key": "bIsShowJoinLeftMessage",
+            "group": "server",
+            "type": "bool",
+            "default": "True",
+            "label": "Join and leave messages",
+            "help": "Show a message in game when a player joins or leaves."
+        },
+        {
+            "key": "ChatPostLimitPerMinute",
+            "group": "server",
+            "type": "int",
+            "default": "30",
+            "label": "Chat limit per minute",
+            "help": "Most chat messages one player can send per minute.",
+            "min": 0,
+            "env": "CHAT_POST_LIMIT"
+        },
+        {
+            "key": "PublicPort",
+            "group": "network",
+            "type": "int",
+            "default": "8211",
+            "label": "Public port",
+            "help": "The port shown for community servers. It does not change the port the server listens on.",
+            "min": 1,
+            "max": 65535,
+            "env": "SERVER_PORT"
+        },
+        {
+            "key": "PublicIP",
+            "group": "network",
+            "type": "string",
+            "default": "",
+            "label": "Public IP",
+            "help": "The external IP shown for community servers. Empty means it is detected.",
+            "max": 64,
+            "env": "PUBLIC_IP"
+        },
+        {
+            "key": "Region",
+            "group": "network",
+            "type": "string",
+            "default": "",
+            "label": "Region",
+            "help": "Region label for the server.",
+            "max": 32,
+            "env": "SERVER_REGION"
+        },
+        {
+            "key": "CrossplayPlatforms",
+            "group": "network",
+            "type": "list",
+            "default": "Steam,Xbox,PS5,Mac",
+            "label": "Crossplay platforms",
+            "help": "Platforms that may join.",
+            "options": [
+                "Steam",
+                "Xbox",
+                "PS5",
+                "Mac"
+            ],
+            "env": "CROSSPLAY_PLATFORMS"
+        },
+        {
+            "key": "RCONEnabled",
+            "group": "network",
+            "type": "bool",
+            "default": "False",
+            "label": "RCON",
+            "help": "Turn on RCON. Many eggs need this on for the console input.",
+            "env": "RCON_ENABLE"
+        },
+        {
+            "key": "RCONPort",
+            "group": "network",
+            "type": "int",
+            "default": "25575",
+            "label": "RCON port",
+            "help": "Port RCON listens on.",
+            "min": 1,
+            "max": 65535,
+            "env": "RCON_PORT"
+        },
+        {
+            "key": "RESTAPIEnabled",
+            "group": "network",
+            "type": "bool",
+            "default": "False",
+            "label": "REST API",
+            "help": "Turn on the REST API. The Players card needs it. Do not expose its port to the internet.",
+            "env": "REST_API_ENABLED"
+        },
+        {
+            "key": "RESTAPIPort",
+            "group": "network",
+            "type": "int",
+            "default": "8212",
+            "label": "REST API port",
+            "help": "Port the REST API listens on.",
+            "min": 1,
+            "max": 65535,
+            "env": "REST_API_PORT"
+        },
+        {
+            "key": "bUseAuth",
+            "group": "network",
+            "type": "bool",
+            "default": "True",
+            "label": "Use authentication",
+            "help": "Check player accounts when they join.",
+            "env": "USE_AUTH"
+        },
+        {
+            "key": "BanListURL",
+            "group": "network",
+            "type": "string",
+            "default": "https://api.palworldgame.com/api/banlist.txt",
+            "label": "Ban list URL",
+            "help": "Where the global ban list is fetched from.",
+            "max": 200,
+            "env": "BAN_LIST_URL"
+        },
+        {
+            "key": "LogFormatType",
+            "group": "network",
+            "type": "enum",
+            "default": "Text",
+            "label": "Log format",
+            "help": "Console log format.",
+            "options": [
+                "Text",
+                "Json"
+            ],
+            "env": "LOG_FORMAT_TYPE"
+        },
+        {
+            "key": "ExpRate",
+            "group": "rates",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Experience",
+            "help": "Experience gain multiplier.",
+            "min": 0,
+            "env": "EXP_RATE"
+        },
+        {
+            "key": "PalCaptureRate",
+            "group": "rates",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Pal capture rate",
+            "help": "Capture rate multiplier.",
+            "min": 0,
+            "env": "PAL_CAPTURE_RATE"
+        },
+        {
+            "key": "PalSpawnNumRate",
+            "group": "rates",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Pal spawn amount",
+            "help": "Wild Pal spawn rate. Higher values cost performance.",
+            "min": 0,
+            "env": "PAL_SPAWN_NUM_RATE"
+        },
+        {
+            "key": "CollectionDropRate",
+            "group": "rates",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Gathering drops",
+            "help": "Multiplier for items from gatherable objects.",
+            "min": 0,
+            "env": "COLLECTION_DROP_RATE"
+        },
+        {
+            "key": "EnemyDropItemRate",
+            "group": "rates",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Enemy drops",
+            "help": "Multiplier for items dropped by enemies.",
+            "min": 0,
+            "env": "ENEMY_DROP_ITEM_RATE"
+        },
+        {
+            "key": "WorkSpeedRate",
+            "group": "rates",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Work speed",
+            "help": "Work speed multiplier.",
+            "min": 0,
+            "env": "WORK_SPEED_RATE"
+        },
+        {
+            "key": "DayTimeSpeedRate",
+            "group": "rates",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Day speed",
+            "help": "How fast daytime passes.",
+            "min": 0,
+            "env": "DAY_TIME_SPEED_RATE"
+        },
+        {
+            "key": "NightTimeSpeedRate",
+            "group": "rates",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Night speed",
+            "help": "How fast night passes.",
+            "min": 0,
+            "env": "NIGHT_TIME_SPEED_RATE"
+        },
+        {
+            "key": "PalEggDefaultHatchingTime",
+            "group": "rates",
+            "type": "float",
+            "default": "72.000000",
+            "label": "Huge egg hatching time",
+            "help": "Hours a Huge Egg takes to hatch. Other eggs take less.",
+            "min": 0,
+            "env": "PAL_EGG_DEFAULT_HATCHING_TIME"
+        },
+        {
+            "key": "CollectionObjectHpRate",
+            "group": "rates",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Gatherable health",
+            "help": "Health multiplier for gatherable objects.",
+            "min": 0,
+            "env": "COLLECTION_OBJECT_HP_RATE"
+        },
+        {
+            "key": "CollectionObjectRespawnSpeedRate",
+            "group": "rates",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Gatherable respawn",
+            "help": "Respawn speed of gatherable objects.",
+            "min": 0,
+            "env": "COLLECTION_OBJECT_RESPAWN_SPEED_RATE"
+        },
+        {
+            "key": "ItemWeightRate",
+            "group": "rates",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Item weight",
+            "help": "Item weight multiplier.",
+            "min": 0,
+            "env": "ITEM_WEIGHT_RATE"
+        },
+        {
+            "key": "EquipmentDurabilityDamageRate",
+            "group": "rates",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Equipment wear",
+            "help": "How fast equipment loses durability.",
+            "min": 0,
+            "env": "EQUIPMENT_DURABILITY_DAMAGE_RATE"
+        },
+        {
+            "key": "ItemCorruptionMultiplier",
+            "group": "rates",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Item spoil speed",
+            "help": "How fast food and other items spoil.",
+            "min": 0,
+            "env": "ITEM_CORRUPTION_MULTIPLIER"
+        },
+        {
+            "key": "SupplyDropSpan",
+            "group": "rates",
+            "type": "int",
+            "default": "180",
+            "label": "Supply drop interval",
+            "help": "Minutes between meteorite and supply drops.",
+            "min": 0,
+            "env": "SUPPLY_DROP_SPAN"
+        },
+        {
+            "key": "Difficulty",
+            "group": "difficulty",
+            "type": "enum",
+            "default": "None",
+            "label": "Difficulty preset",
+            "help": "A built-in difficulty. None uses the individual values below.",
+            "options": [
+                "None",
+                "Casual",
+                "Normal",
+                "Hard"
+            ],
+            "env": "DIFFICULTY"
+        },
+        {
+            "key": "DeathPenalty",
+            "group": "difficulty",
+            "type": "enum",
+            "default": "All",
+            "label": "Death penalty",
+            "help": "None drops nothing, Item drops all items except equipment, ItemAndEquipment drops all items, All also drops the Pals on your team.",
+            "options": [
+                "None",
+                "Item",
+                "ItemAndEquipment",
+                "All"
+            ],
+            "env": "DEATH_PENALTY"
+        },
+        {
+            "key": "PalDamageRateAttack",
+            "group": "difficulty",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Pal damage dealt",
+            "help": "Damage dealt by Pals.",
+            "min": 0,
+            "env": "PAL_DAMAGE_RATE_ATTACK"
+        },
+        {
+            "key": "PalDamageRateDefense",
+            "group": "difficulty",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Pal damage taken",
+            "help": "Damage taken by Pals.",
+            "min": 0,
+            "env": "PAL_DAMAGE_RATE_DEFENSE"
+        },
+        {
+            "key": "PlayerDamageRateAttack",
+            "group": "difficulty",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Player damage dealt",
+            "help": "Damage dealt by players.",
+            "min": 0,
+            "env": "PLAYER_DAMAGE_RATE_ATTACK"
+        },
+        {
+            "key": "PlayerDamageRateDefense",
+            "group": "difficulty",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Player damage taken",
+            "help": "Damage taken by players.",
+            "min": 0,
+            "env": "PLAYER_DAMAGE_RATE_DEFENSE"
+        },
+        {
+            "key": "PlayerStomachDecreaceRate",
+            "group": "difficulty",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Player hunger",
+            "help": "How fast players get hungry.",
+            "min": 0,
+            "env": "PLAYER_STOMACH_DECREACE_RATE"
+        },
+        {
+            "key": "PlayerStaminaDecreaceRate",
+            "group": "difficulty",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Player stamina use",
+            "help": "How fast players lose stamina.",
+            "min": 0,
+            "env": "PLAYER_STAMINA_DECREACE_RATE"
+        },
+        {
+            "key": "PlayerAutoHPRegeneRate",
+            "group": "difficulty",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Player health regeneration",
+            "help": "Natural health regeneration of players.",
+            "min": 0,
+            "env": "PLAYER_AUTO_HP_REGENE_RATE"
+        },
+        {
+            "key": "PlayerAutoHpRegeneRateInSleep",
+            "group": "difficulty",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Player regeneration asleep",
+            "help": "Health regeneration of players while sleeping.",
+            "min": 0,
+            "env": "PLAYER_AUTO_HP_REGENE_RATE_IN_SLEEP"
+        },
+        {
+            "key": "PalStomachDecreaceRate",
+            "group": "difficulty",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Pal hunger",
+            "help": "How fast Pals get hungry.",
+            "min": 0,
+            "env": "PAL_STOMACH_DECREACE_RATE"
+        },
+        {
+            "key": "PalStaminaDecreaceRate",
+            "group": "difficulty",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Pal stamina use",
+            "help": "How fast Pals lose stamina.",
+            "min": 0,
+            "env": "PAL_STAMINA_DECREACE_RATE"
+        },
+        {
+            "key": "PalAutoHPRegeneRate",
+            "group": "difficulty",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Pal health regeneration",
+            "help": "Natural health regeneration of Pals.",
+            "min": 0,
+            "env": "PAL_AUTO_HP_REGENE_RATE"
+        },
+        {
+            "key": "PalAutoHpRegeneRateInSleep",
+            "group": "difficulty",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Pal regeneration in the Palbox",
+            "help": "Health regeneration of Pals while sleeping in the Palbox.",
+            "min": 0,
+            "env": "PAL_AUTO_HP_REGENE_RATE_IN_SLEEP"
+        },
+        {
+            "key": "BuildObjectHpRate",
+            "group": "difficulty",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Building health",
+            "help": "Health multiplier for buildings.",
+            "min": 0,
+            "env": "BUILD_OBJECT_HP_RATE"
+        },
+        {
+            "key": "BuildObjectDamageRate",
+            "group": "difficulty",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Damage to buildings",
+            "help": "Damage multiplier against buildings.",
+            "min": 0,
+            "env": "BUILD_OBJECT_DAMAGE_RATE"
+        },
+        {
+            "key": "BuildObjectDeteriorationDamageRate",
+            "group": "difficulty",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Building decay",
+            "help": "How fast buildings decay.",
+            "min": 0,
+            "env": "BUILD_OBJECT_DETERIORATION_DAMAGE_RATE"
+        },
+        {
+            "key": "BlockRespawnTime",
+            "group": "difficulty",
+            "type": "float",
+            "default": "5.000000",
+            "label": "Respawn cooldown",
+            "help": "Seconds before a player can respawn after dying.",
+            "min": 0
+        },
+        {
+            "key": "bEnableInvaderEnemy",
+            "group": "difficulty",
+            "type": "bool",
+            "default": "True",
+            "label": "Raids",
+            "help": "Enable invaders that attack your base. It has a large effect on memory use.",
+            "env": "ENABLE_ENEMY"
+        },
+        {
+            "key": "bHardcore",
+            "group": "difficulty",
+            "type": "bool",
+            "default": "False",
+            "label": "Hardcore",
+            "help": "Players cannot respawn after dying.",
+            "env": "HARDCORE"
+        },
+        {
+            "key": "bCharacterRecreateInHardcore",
+            "group": "difficulty",
+            "type": "bool",
+            "default": "False",
+            "label": "Recreate character in Hardcore",
+            "help": "Allow a new character after dying in Hardcore.",
+            "env": "CHARACTER_RECREATE_IN_HARDCORE"
+        },
+        {
+            "key": "bPalLost",
+            "group": "difficulty",
+            "type": "bool",
+            "default": "False",
+            "label": "Lose Pals on death",
+            "help": "Pals that die are lost for good.",
+            "env": "PAL_LOST"
+        },
+        {
+            "key": "bIsPvP",
+            "group": "difficulty",
+            "type": "bool",
+            "default": "False",
+            "label": "PvP",
+            "help": "Enable player versus player.",
+            "env": "IS_PVP"
+        },
+        {
+            "key": "bEnablePlayerToPlayerDamage",
+            "group": "difficulty",
+            "type": "bool",
+            "default": "False",
+            "label": "Player to player damage",
+            "help": "Players can hurt each other.",
+            "env": "ENABLE_PLAYER_TO_PLAYER_DAMAGE"
+        },
+        {
+            "key": "bEnableFriendlyFire",
+            "group": "difficulty",
+            "type": "bool",
+            "default": "False",
+            "label": "Friendly fire",
+            "help": "Guild members can hurt each other.",
+            "env": "ENABLE_FRIENDLY_FIRE"
+        },
+        {
+            "key": "bEnableNonLoginPenalty",
+            "group": "difficulty",
+            "type": "bool",
+            "default": "True",
+            "label": "Penalty for not logging in",
+            "help": "Pals suffer when their owner is away for a long time.",
+            "env": "ENABLE_NON_LOGIN_PENALTY"
+        },
+        {
+            "key": "EnablePredatorBossPal",
+            "group": "difficulty",
+            "type": "bool",
+            "default": "True",
+            "label": "Predator boss Pals",
+            "help": "Allow predator boss Pals to spawn.",
+            "env": "ENABLE_PREDATOR_BOSS_PAL"
+        },
+        {
+            "key": "BaseCampMaxNum",
+            "group": "guild",
+            "type": "int",
+            "default": "128",
+            "label": "Bases on the server",
+            "help": "Total number of bases across the server.",
+            "min": 0,
+            "env": "BASE_CAMP_MAX_NUM"
+        },
+        {
+            "key": "BaseCampMaxNumInGuild",
+            "group": "guild",
+            "type": "int",
+            "default": "4",
+            "label": "Bases per guild",
+            "help": "Most bases one guild can have (up to 10). More bases cost performance.",
+            "min": 1,
+            "max": 10,
+            "env": "BASE_CAMP_MAX_NUM_IN_GUILD"
+        },
+        {
+            "key": "BaseCampWorkerMaxNum",
+            "group": "guild",
+            "type": "int",
+            "default": "15",
+            "label": "Pals per base",
+            "help": "Most Pals working at one base (up to 50). More Pals cost performance.",
+            "min": 1,
+            "max": 50,
+            "env": "BASE_CAMP_WORKER_MAX_NUM"
+        },
+        {
+            "key": "GuildPlayerMaxNum",
+            "group": "guild",
+            "type": "int",
+            "default": "20",
+            "label": "Players per guild",
+            "help": "Most players in one guild.",
+            "min": 1,
+            "env": "GUILD_PLAYER_MAX_NUM"
+        },
+        {
+            "key": "CoopPlayerMaxNum",
+            "group": "guild",
+            "type": "int",
+            "default": "4",
+            "label": "Co-op group size",
+            "help": "Most players in one co-op group.",
+            "min": 1,
+            "max": 4,
+            "env": "COOP_PLAYER_MAX_NUM"
+        },
+        {
+            "key": "MaxBuildingLimitNum",
+            "group": "guild",
+            "type": "int",
+            "default": "0",
+            "label": "Building limit per player",
+            "help": "Most structures per player. 0 means unlimited.",
+            "min": 0,
+            "env": "MAX_BUILDING_LIMIT_NUM"
+        },
+        {
+            "key": "bBuildAreaLimit",
+            "group": "guild",
+            "type": "bool",
+            "default": "False",
+            "label": "Block building near landmarks",
+            "help": "Prevent building near structures such as fast travel points.",
+            "env": "BUILD_AREA_LIMIT"
+        },
+        {
+            "key": "bAutoResetGuildNoOnlinePlayers",
+            "group": "guild",
+            "type": "bool",
+            "default": "False",
+            "label": "Reset inactive guilds",
+            "help": "Delete the structures and base Pals of a guild when nobody logs in.",
+            "env": "AUTO_RESET_GUILD_NO_ONLINE_PLAYERS"
+        },
+        {
+            "key": "AutoResetGuildTimeNoOnlinePlayers",
+            "group": "guild",
+            "type": "float",
+            "default": "72.000000",
+            "label": "Hours before a guild resets",
+            "help": "Hours without a login before the guild is reset. Only used when resetting is on.",
+            "min": 0,
+            "env": "AUTO_RESET_GUILD_TIME_NO_ONLINE_PLAYERS"
+        },
+        {
+            "key": "GuildRejoinCooldownMinutes",
+            "group": "guild",
+            "type": "int",
+            "default": "0",
+            "label": "Guild rejoin cooldown",
+            "help": "Minutes before a player can rejoin a guild.",
+            "min": 0
+        },
+        {
+            "key": "bInvisibleOtherGuildBaseCampAreaFX",
+            "group": "guild",
+            "type": "bool",
+            "default": "False",
+            "label": "Hide other base borders",
+            "help": "Hide the boundary of bases from other guilds.",
+            "env": "INVISIBLE_OTHER_GUILD_BASE"
+        },
+        {
+            "key": "bEnableDefenseOtherGuildPlayer",
+            "group": "guild",
+            "type": "bool",
+            "default": "False",
+            "label": "Defend against other guilds",
+            "help": "Base defenses also attack players of other guilds.",
+            "env": "ENABLE_DEFENSE_OTHER_GUILD_PLAYER"
+        },
+        {
+            "key": "bCanPickupOtherGuildDeathPenaltyDrop",
+            "group": "guild",
+            "type": "bool",
+            "default": "False",
+            "label": "Pick up other guilds drops",
+            "help": "Players can pick up items dropped by members of other guilds.",
+            "env": "CAN_PICKUP_OTHER_GUILD_DEATH_PENALTY_DROP"
+        },
+        {
+            "key": "bAllowGlobalPalboxExport",
+            "group": "guild",
+            "type": "bool",
+            "default": "True",
+            "label": "Global Palbox export",
+            "help": "Allow saving to the Global Palbox.",
+            "env": "ALLOW_GLOBAL_PALBOX_EXPORT"
+        },
+        {
+            "key": "bAllowGlobalPalboxImport",
+            "group": "guild",
+            "type": "bool",
+            "default": "False",
+            "label": "Global Palbox import",
+            "help": "Allow loading from the Global Palbox.",
+            "env": "ALLOW_GLOBAL_PALBOX_IMPORT"
+        },
+        {
+            "key": "DropItemMaxNum",
+            "group": "guild",
+            "type": "int",
+            "default": "3000",
+            "label": "Dropped items",
+            "help": "Most dropped items that exist in the world at once.",
+            "min": 0,
+            "env": "DROP_ITEM_MAX_NUM"
+        },
+        {
+            "key": "DropItemAliveMaxHours",
+            "group": "guild",
+            "type": "float",
+            "default": "1.000000",
+            "label": "Dropped item lifetime",
+            "help": "Hours a dropped item stays in the world.",
+            "min": 0,
+            "env": "DROP_ITEM_ALIVE_MAX_HOURS"
+        },
+        {
+            "key": "ServerReplicatePawnCullDistance",
+            "group": "guild",
+            "type": "float",
+            "default": "15000.000000",
+            "label": "Pal sync distance",
+            "help": "Distance in cm at which Pals are synced to players, from 5000 to 15000. Lower values save bandwidth.",
+            "min": 5000,
+            "max": 15000,
+            "env": "SERVER_REPLICATE_PAWN_CULL_DISTANCE"
+        },
+        {
+            "key": "bIsMultiplay",
+            "group": "world",
+            "type": "bool",
+            "default": "False",
+            "label": "Multiplayer mode",
+            "help": "Enable multiplayer features.",
+            "env": "IS_MULTIPLAY"
+        },
+        {
+            "key": "bEnableFastTravel",
+            "group": "world",
+            "type": "bool",
+            "default": "True",
+            "label": "Fast travel",
+            "help": "Enable fast travel.",
+            "env": "ENABLE_FAST_TRAVEL"
+        },
+        {
+            "key": "bEnableFastTravelOnlyBaseCamp",
+            "group": "world",
+            "type": "bool",
+            "default": "False",
+            "label": "Fast travel only between bases",
+            "help": "Limit fast travel to going between bases."
+        },
+        {
+            "key": "bIsStartLocationSelectByMap",
+            "group": "world",
+            "type": "bool",
+            "default": "True",
+            "label": "Choose start location",
+            "help": "Let players pick their starting location on the map.",
+            "env": "IS_START_LOCATION_SELECT_BY_MAP"
+        },
+        {
+            "key": "bExistPlayerAfterLogout",
+            "group": "world",
+            "type": "bool",
+            "default": "False",
+            "label": "Players stay after logout",
+            "help": "Players fall asleep where they logged out.",
+            "env": "EXIST_PLAYER_AFTER_LOGOUT"
+        },
+        {
+            "key": "AutoSaveSpan",
+            "group": "world",
+            "type": "float",
+            "default": "30.000000",
+            "label": "Autosave interval",
+            "help": "Seconds between automatic saves.",
+            "min": 1,
+            "env": "AUTO_SAVE_SPAN"
+        },
+        {
+            "key": "bIsUseBackupSaveData",
+            "group": "world",
+            "type": "bool",
+            "default": "True",
+            "label": "Game backups",
+            "help": "Let the game keep its own backups of the world. This raises disk use.",
+            "env": "USE_BACKUP_SAVE_DATA"
+        },
+        {
+            "key": "RandomizerType",
+            "group": "world",
+            "type": "enum",
+            "default": "None",
+            "label": "Pal spawn randomizer",
+            "help": "None keeps normal spawns, Region shuffles per region, All shuffles everything.",
+            "options": [
+                "None",
+                "Region",
+                "All"
+            ],
+            "env": "RANDOMIZER_TYPE"
+        },
+        {
+            "key": "RandomizerSeed",
+            "group": "world",
+            "type": "string",
+            "default": "",
+            "label": "Randomizer seed",
+            "help": "Seed used when the randomizer is on.",
+            "max": 64,
+            "env": "RANDOMIZER_SEED"
+        },
+        {
+            "key": "bIsRandomizerPalLevelRandom",
+            "group": "world",
+            "type": "bool",
+            "default": "False",
+            "label": "Random wild Pal levels",
+            "help": "Wild Pal levels are fully random instead of staying near the area level.",
+            "env": "IS_RANDOMIZER_PAL_LEVEL_RANDOM"
+        },
+        {
+            "key": "bEnableAimAssistPad",
+            "group": "world",
+            "type": "bool",
+            "default": "True",
+            "label": "Aim assist, controller",
+            "help": "Aim assist for controllers.",
+            "env": "ENABLE_AIM_ASSIST_PAD"
+        },
+        {
+            "key": "bEnableAimAssistKeyboard",
+            "group": "world",
+            "type": "bool",
+            "default": "False",
+            "label": "Aim assist, keyboard",
+            "help": "Aim assist for keyboard and mouse.",
+            "env": "ENABLE_AIM_ASSIST_KEYBOARD"
+        },
+        {
+            "key": "bAllowEnhanceStat_Health",
+            "group": "world",
+            "type": "bool",
+            "default": "True",
+            "label": "Stat points: health",
+            "help": "Allow players to spend stat points on health."
+        },
+        {
+            "key": "bAllowEnhanceStat_Attack",
+            "group": "world",
+            "type": "bool",
+            "default": "True",
+            "label": "Stat points: attack",
+            "help": "Allow players to spend stat points on attack."
+        },
+        {
+            "key": "bAllowEnhanceStat_Stamina",
+            "group": "world",
+            "type": "bool",
+            "default": "True",
+            "label": "Stat points: stamina",
+            "help": "Allow players to spend stat points on stamina."
+        },
+        {
+            "key": "bAllowEnhanceStat_Weight",
+            "group": "world",
+            "type": "bool",
+            "default": "True",
+            "label": "Stat points: carry weight",
+            "help": "Allow players to spend stat points on carry weight."
+        },
+        {
+            "key": "bAllowEnhanceStat_WorkSpeed",
+            "group": "world",
+            "type": "bool",
+            "default": "True",
+            "label": "Stat points: work speed",
+            "help": "Allow players to spend stat points on work speed."
+        }
+    ],
+    "presets": [
+        {
+            "id": "vanilla",
+            "label": "Vanilla",
+            "description": "Puts the rates and survival values back to the game defaults.",
+            "values": {
+                "ExpRate": "1.000000",
+                "PalCaptureRate": "1.000000",
+                "PalSpawnNumRate": "1.000000",
+                "CollectionDropRate": "1.000000",
+                "EnemyDropItemRate": "1.000000",
+                "WorkSpeedRate": "1.000000",
+                "DayTimeSpeedRate": "1.000000",
+                "NightTimeSpeedRate": "1.000000",
+                "PalEggDefaultHatchingTime": "72.000000",
+                "CollectionObjectHpRate": "1.000000",
+                "CollectionObjectRespawnSpeedRate": "1.000000",
+                "ItemWeightRate": "1.000000",
+                "EquipmentDurabilityDamageRate": "1.000000",
+                "ItemCorruptionMultiplier": "1.000000",
+                "SupplyDropSpan": "180",
+                "DeathPenalty": "All",
+                "PalDamageRateAttack": "1.000000",
+                "PalDamageRateDefense": "1.000000",
+                "PlayerDamageRateAttack": "1.000000",
+                "PlayerDamageRateDefense": "1.000000",
+                "PlayerStomachDecreaceRate": "1.000000",
+                "PlayerStaminaDecreaceRate": "1.000000",
+                "PlayerAutoHPRegeneRate": "1.000000",
+                "PlayerAutoHpRegeneRateInSleep": "1.000000",
+                "PalStomachDecreaceRate": "1.000000",
+                "PalStaminaDecreaceRate": "1.000000",
+                "PalAutoHPRegeneRate": "1.000000",
+                "PalAutoHpRegeneRateInSleep": "1.000000",
+                "BuildObjectHpRate": "1.000000",
+                "BuildObjectDamageRate": "1.000000",
+                "BuildObjectDeteriorationDamageRate": "1.000000",
+                "BlockRespawnTime": "5.000000",
+                "Difficulty": "None"
+            }
+        },
+        {
+            "id": "x2",
+            "label": "2x rates",
+            "description": "Twice the experience, drops, work speed and capture rate, and eggs hatch in half the time.",
+            "values": {
+                "ExpRate": "2.000000",
+                "PalCaptureRate": "2.000000",
+                "CollectionDropRate": "2.000000",
+                "EnemyDropItemRate": "2.000000",
+                "WorkSpeedRate": "2.000000",
+                "PalEggDefaultHatchingTime": "36.000000"
+            }
+        },
+        {
+            "id": "x5",
+            "label": "5x rates",
+            "description": "Five times the experience, drops and work speed, a better capture rate, and eggs that hatch in 8 hours.",
+            "values": {
+                "ExpRate": "5.000000",
+                "PalCaptureRate": "3.000000",
+                "CollectionDropRate": "5.000000",
+                "EnemyDropItemRate": "5.000000",
+                "WorkSpeedRate": "5.000000",
+                "PalEggDefaultHatchingTime": "8.000000"
+            }
+        },
+        {
+            "id": "casual",
+            "label": "Casual",
+            "description": "Relaxed play: slower hunger and stamina use, faster regeneration, no raids and only items drop on death.",
+            "values": {
+                "ExpRate": "2.000000",
+                "PalCaptureRate": "2.000000",
+                "PlayerStomachDecreaceRate": "0.500000",
+                "PlayerStaminaDecreaceRate": "0.500000",
+                "PlayerAutoHPRegeneRate": "2.000000",
+                "PlayerAutoHpRegeneRateInSleep": "2.000000",
+                "PalStomachDecreaceRate": "0.500000",
+                "PalStaminaDecreaceRate": "0.500000",
+                "PalAutoHPRegeneRate": "2.000000",
+                "PalAutoHpRegeneRateInSleep": "2.000000",
+                "PalEggDefaultHatchingTime": "12.000000",
+                "DeathPenalty": "Item",
+                "bEnableInvaderEnemy": "False"
+            }
+        }
+    ]
+}

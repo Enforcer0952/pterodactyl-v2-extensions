@@ -1,0 +1,1 @@
+[16:02:44] [main/WARN] [mixin/]: @Redirect conflict. Skipping modernfix.mixins.json:perf.dynamic_resources.MixinModelBakery->@Redirect::redirectLoad(...) with priority 1000, already redirected by embeddium.mixins.json:core.MixinModelBakery->@Redirect::fastLoad(...)

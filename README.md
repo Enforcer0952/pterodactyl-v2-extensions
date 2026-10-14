@@ -1,6 +1,6 @@
 # Pterodactyl 2.0 Extensions
 
-Free, open-source extensions for **Pterodactyl Panel 2.0** that turn the panel into a real game-server control room: install Minecraft plugins and mods from Modrinth, manage players across all your servers, switch Minecraft versions, back up and reset worlds, run ARK and Terraria servers without touching config files.
+Free, open-source extensions for **Pterodactyl Panel 2.0** that turn the panel into a real game-server control room: install Minecraft plugins and mods from Modrinth, manage players across all your servers, switch Minecraft versions, back up and reset worlds, run ARK, Terraria, Valheim and Palworld servers without touching config files, and stop crash loops on any game.
 
 Built for and used every day on a home-hosted panel with Minecraft (Paper, Fabric, a Waterfall network), ARK: Survival Evolved and Terraria servers.
 
@@ -30,6 +30,7 @@ Built for and used every day on a home-hosted panel with Minecraft (Paper, Fabri
 | [**Minecraft Console**](extensions/mc-console) | Command autocomplete in the console: vanilla and plugin commands with syntax hints, player names, Tab to complete. |
 | [**Minecraft Version**](extensions/mc-version) | **Version** page: see what a server really runs, switch between Paper, Purpur, Fabric and Vanilla or to another Minecraft version, with the right Java image picked for you and a one-click way back. |
 | [**Minecraft World**](extensions/mc-world) | **World** page: back up, restore, reset and switch worlds, a "new hardcore run" button, and a proper form for `server.properties`. |
+| [**Minecraft Crashes**](extensions/mc-crash) | **Crashes** page: every crash report and log error turned into a one-line verdict, the plugin or mod that caused it, and how to fix it. Share a report to mclo.gs in one click. |
 | [**Minecraft Network**](extensions/mc-network) | **Proxy** page on BungeeCord and Waterfall proxies: every backend matched to its panel server with live state, broken entries flagged (wrong ports, duplicates, missing names) and fixed without editing YAML. |
 
 ### ARK: Survival Evolved
@@ -43,6 +44,24 @@ Built for and used every day on a home-hosted panel with Minecraft (Paper, Fabri
 | Extension | What it does |
 |---|---|
 | [**Terraria Tools**](extensions/terraria-tools) | Online players with kick and ban, ban list, admin buttons (save, settle, time of day, broadcast), **Worlds** page with backups, restore and new worlds, a **Server settings** page for `serverconfig.txt`, and console autocomplete. For vanilla Terraria servers. |
+
+### Valheim
+
+| Extension | What it does |
+|---|---|
+| [**Valheim Tools**](extensions/valheim-tools) | Online players with ban, admin and permit buttons, the access lists, a **Worlds** page with backups and Valheim's own automatic backups, a **Mods** page that installs BepInEx mods from Thunderstore with their dependencies, and the main server settings. |
+
+### Palworld
+
+| Extension | What it does |
+|---|---|
+| [**Palworld Tools**](extensions/palworld-tools) | A **Settings** page for `PalWorldSettings.ini` with presets (no more editing one 2000-character line), online players with kick, ban and announce through the REST API, save backups and restores, and the ban list. |
+
+### Every game
+
+| Extension | What it does |
+|---|---|
+| [**Crash Guard**](extensions/crash-guard) | Stops a crash loop instead of letting a broken server restart forever: after N crashes in M minutes the server is held stopped, with a banner and a crash log. Works on any egg. |
 
 More games are on the way. [Ask for yours](https://github.com/Enforcer0952/pterodactyl-v2-extensions/issues/new?template=feature_request.yml).
 

@@ -1,0 +1,57 @@
+{
+    "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
+    "id": "palworld-tools",
+    "name": "Palworld Tools",
+    "version": "1.0.0",
+    "requires": {
+        "panel": "^2.0.0-dev",
+        "sdk": "^2.0.0-beta.4",
+        "php": "^8.3"
+    },
+    "description": "Settings, players, world saves with backups and the ban list for Palworld servers.",
+    "author": "Anton van Zanten",
+    "provider": "PalworldTools\\PalworldToolsProvider",
+    "ui": {
+        "entry": "dist/client.js",
+        "mode": "native",
+        "prefix": "pal",
+        "screens": [
+            {
+                "id": "settings",
+                "area": "server",
+                "path": "palworld-settings",
+                "nav": {
+                    "label": "Palworld settings",
+                    "icon": "settings",
+                    "order": 11
+                },
+                "permission": [
+                    "ext.palworld-tools.settings"
+                ],
+                "when": {
+                    "runtime": true
+                }
+            },
+            {
+                "id": "saves",
+                "area": "server",
+                "path": "palworld-saves",
+                "nav": {
+                    "label": "Palworld saves",
+                    "icon": "save",
+                    "order": 12
+                },
+                "permission": [
+                    "ext.palworld-tools.saves"
+                ],
+                "when": {
+                    "runtime": true
+                }
+            }
+        ]
+    },
+    "icon": "paw-print",
+    "autoload": {
+        "PalworldTools\\": "src"
+    }
+}

@@ -1,0 +1,32 @@
+[23:58:01 INFO]: Done (8.412s)! For help, type "help"
+[23:58:20 WARN]: Can't keep up! Is the server overloaded? Running 2345ms or 46 ticks behind
+[23:58:44 ERROR]: Could not pass event PlayerInteractEvent to ChestShopLite v2.1.0
+org.bukkit.event.EventException: null
+	at org.bukkit.plugin.java.JavaPluginLoader$1.execute(JavaPluginLoader.java:310) ~[paper-api-1.21.1.jar:?]
+	at org.bukkit.plugin.RegisteredListener.callEvent(RegisteredListener.java:70) ~[paper-api-1.21.1.jar:?]
+Caused by: java.lang.NullPointerException: Cannot invoke "org.bukkit.block.Sign.getLine(int)" because "sign" is null
+	at ChestShopLite-2.1.0.jar//com.chestshoplite.listener.SignListener.onInteract(SignListener.java:88) ~[ChestShopLite-2.1.0.jar:?]
+	at com.destroystokyo.paper.event.executor.MethodHandleEventExecutor.execute(MethodHandleEventExecutor.java:40) ~[paper-api-1.21.1.jar:?]
+	... 12 more
+[23:58:50 INFO]: Steve joined the game
+[23:59:10 WARN]: Steve moved too quickly! 4.5,0.0,2.1
+[23:59:11 WARN]: Alex moved too quickly! 3.5,0.0,1.1
+[23:59:30 ERROR]: Could not pass event PlayerInteractEvent to ChestShopLite v2.1.0
+org.bukkit.event.EventException: null
+	at org.bukkit.plugin.java.JavaPluginLoader$1.execute(JavaPluginLoader.java:310) ~[paper-api-1.21.1.jar:?]
+Caused by: java.lang.NullPointerException: Cannot invoke "org.bukkit.block.Sign.getLine(int)" because "sign" is null
+	at ChestShopLite-2.1.0.jar//com.chestshoplite.listener.SignListener.onInteract(SignListener.java:88) ~[ChestShopLite-2.1.0.jar:?]
+	... 12 more
+[00:01:05 ERROR]: Could not pass event PlayerInteractEvent to ChestShopLite v2.1.0
+org.bukkit.event.EventException: null
+	at org.bukkit.plugin.java.JavaPluginLoader$1.execute(JavaPluginLoader.java:310) ~[paper-api-1.21.1.jar:?]
+Caused by: java.lang.NullPointerException: Cannot invoke "org.bukkit.block.Sign.getLine(int)" because "sign" is null
+	at ChestShopLite-2.1.0.jar//com.chestshoplite.listener.SignListener.onInteract(SignListener.java:88) ~[ChestShopLite-2.1.0.jar:?]
+	... 12 more
+[00:01:20 WARN]: Can't keep up! Is the server overloaded? Running 5120ms or 102 ticks behind
+[00:02:00 WARN]: [DynmapLite] Tile queue is 5000 long, rendering is behind
+[00:02:30 ERROR]: [DynmapLite] Could not write tile world/0_0.png
+java.io.IOException: No such file or directory
+	at java.base/sun.nio.fs.UnixException.translateToIOException(UnixException.java:92) ~[?:?]
+	at com.example.dynmaplite.render.TileWriter.write(TileWriter.java:55) ~[DynmapLite-1.4.jar:?]
+[00:03:00 INFO]: Alex left the game

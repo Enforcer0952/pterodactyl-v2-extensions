@@ -1,0 +1,14 @@
+[03:10:00 ERROR]: --- DO NOT REPORT THIS TO PAPER - THIS IS NOT A BUG OR A CRASH  - 1.21.1-130-master@abc (2026-10-01T00:00:00Z) ---
+[03:10:00 ERROR]: The server has not responded for 10 seconds! Creating thread dump
+[03:10:00 ERROR]: A single server tick took 60.00 seconds (should be max 0.05)
+[03:10:00 ERROR]: Considering it to be crashed, server will forcibly shutdown.
+[03:10:00 ERROR]: Server thread dump (Look for plugins here before reporting to Paper!):
+[03:10:00 ERROR]: Current Thread: Server thread
+[03:10:00 ERROR]: 	PID: 42 | Suspended: false | Native: false | State: RUNNABLE
+[03:10:00 ERROR]: 	Stack:
+[03:10:00 ERROR]: 		java.base/java.util.HashMap.getNode(HashMap.java:575)
+[03:10:00 ERROR]: 		java.base/java.util.HashMap.get(HashMap.java:564)
+[03:10:00 ERROR]: 		com.chestshoplite.util.PriceCache.lookup(PriceCache.java:44)
+[03:10:00 ERROR]: 		com.chestshoplite.tasks.RefreshTask.run(RefreshTask.java:31)
+[03:10:00 ERROR]: 		org.bukkit.craftbukkit.scheduler.CraftTask.run(CraftTask.java:101)
+[03:10:00 ERROR]: 		net.minecraft.server.MinecraftServer.tickServer(MinecraftServer.java:1587)

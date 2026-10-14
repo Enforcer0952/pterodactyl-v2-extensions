@@ -1,0 +1,12 @@
+{
+    "description": "Settings, players, saves with backups and the ban list for Palworld servers.",
+    "autoload": {
+        "psr-4": {
+            "PalworldTools\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "PalworldToolsExtension"
+    },
+    "license": "GPL-3.0-or-later"
+}

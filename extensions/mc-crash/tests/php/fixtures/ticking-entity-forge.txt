@@ -1,0 +1,29 @@
+---- Minecraft Crash Report ----
+// Don't do that.
+
+Time: 2026-10-09 11:12:13
+Description: Ticking entity
+
+java.lang.NullPointerException: Cannot invoke "net.minecraft.world.entity.Entity.m_20182_()" because "target" is null
+	at com.simibubi.create.content.contraptions.AbstractContraptionEntity.tick(AbstractContraptionEntity.java:310) ~[create-1.20.1-0.5.1.f.jar%23221!/:0.5.1.f] {re:classloading}
+	at net.minecraft.server.level.ServerLevel.m_8647_(ServerLevel.java:757) ~[server-1.20.1-20230612.114412-srg.jar%23187!/:?] {re:mixin,pl:accesstransformer:B,re:classloading}
+	at net.minecraft.server.MinecraftServer.m_5703_(MinecraftServer.java:864) ~[server-1.20.1-20230612.114412-srg.jar%23187!/:?] {re:classloading}
+
+A detailed walkthrough of the error, its code path and all known details is as follows:
+---------------------------------------------------------------------------------------
+
+-- Entity being ticked --
+Details:
+	Entity Type: create:stationary_contraption (com.simibubi.create.content.contraptions.StationaryContraptionEntity)
+	Entity ID: 4521
+	Entity Name: Contraption
+	Entity's Exact location: 104.50, 71.00, -233.50
+	Entity's Block location: World: (104,71,-234), Section: (at 8,7,6 in 6,4,-15; chunk contains blocks 96,-64,-240 to 111,319,-225), Region: (0,-1; contains chunks 0,-32 to 31,-1, blocks 0,-64,-512 to 511,319,-1)
+
+-- System Details --
+Details:
+	Minecraft Version: 1.20.1
+	Java Version: 17.0.12, Eclipse Adoptium
+	Suspected Mods: 
+		Create (create), Version: 0.5.1.f
+			Issue tracker URL: https://github.com/Creators-of-Create/Create/issues

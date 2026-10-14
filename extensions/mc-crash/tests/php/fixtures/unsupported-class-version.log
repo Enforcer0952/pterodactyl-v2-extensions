@@ -1,0 +1,12 @@
+[21:03:11] [ServerMain/INFO]: Environment: authHost='https://authserver.mojang.com', accountsHost='https://api.mojang.com', sessionHost='https://sessionserver.mojang.com', servicesHost='https://api.minecraftservices.com', name='PROD'
+[21:03:13] [Server thread/INFO]: Starting minecraft server version 1.20.4
+[21:03:14] [Server thread/ERROR]: [ModernPluginLoadingStrategy] Could not load plugin 'FancyHolograms-2.4.1.jar' in folder 'plugins'
+org.bukkit.plugin.InvalidPluginException: java.lang.UnsupportedClassVersionError: de/oliver/fancyholograms/FancyHolograms has been compiled by a more recent version of the Java Runtime (class file version 65.0), this version of the Java Runtime only recognizes class file versions up to 61.0
+	at io.papermc.paper.plugin.provider.type.spigot.SpigotPluginProvider.createInstance(SpigotPluginProvider.java:127) ~[paper-1.20.4.jar:git-Paper-497]
+	at io.papermc.paper.plugin.entrypoint.strategy.modern.ModernPluginLoadingStrategy.loadProviders(ModernPluginLoadingStrategy.java:116) ~[paper-1.20.4.jar:git-Paper-497]
+	at java.base/java.lang.Thread.run(Thread.java:840) ~[?:?]
+Caused by: java.lang.UnsupportedClassVersionError: de/oliver/fancyholograms/FancyHolograms has been compiled by a more recent version of the Java Runtime (class file version 65.0), this version of the Java Runtime only recognizes class file versions up to 61.0
+	at java.base/java.lang.ClassLoader.defineClass1(Native Method) ~[?:?]
+	at java.base/java.lang.ClassLoader.defineClass(ClassLoader.java:1012) ~[?:?]
+	at io.papermc.paper.plugin.provider.classloader.PluginClassLoader.findClass(PluginClassLoader.java:156) ~[paper-1.20.4.jar:git-Paper-497]
+	... 8 more

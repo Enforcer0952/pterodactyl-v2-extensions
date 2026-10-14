@@ -1,0 +1,12 @@
+{
+    "description": "Turns Minecraft crash reports and log errors into a one-line verdict: what broke, which plugin or mod did it, and how to fix it.",
+    "autoload": {
+        "psr-4": {
+            "McCrash\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "McCrashExtension"
+    },
+    "license": "GPL-3.0-or-later"
+}

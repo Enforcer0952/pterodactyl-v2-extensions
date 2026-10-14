@@ -35,7 +35,7 @@ Adds a **Players** card, a **Server admin** card and console autocomplete under 
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/terraria-tools-1.0.0.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/terraria-tools-1.0.1.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -46,7 +46,7 @@ Adds a **Players** card, a **Server admin** card and console autocomplete under 
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/terraria-tools-1.0.0.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/terraria-tools-1.0.1.pteroext --enable --replace
 ```
 
 Settings and data are kept.

@@ -1,0 +1,11 @@
+{
+  "name": "Doorbell",
+  "version_number": "1.0.1",
+  "website_url": "",
+  "description": "A buildable doorbell. Visitors can ring it even inside your ward, everyone nearby hears it, and the owner gets notified anywhere on the map.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2351",
+    "ValheimModding-Jotunn-2.30.2",
+    "shudnal-ConfigurationManager-1.1.22"
+  ]
+}

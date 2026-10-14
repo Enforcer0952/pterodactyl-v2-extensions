@@ -1,0 +1,131 @@
+{
+ "count": 126,
+ "next": "https://thunderstore.io/api/cyberstorm/listing/valheim/?deprecated=False&nsfw=False&ordering=most-downloaded&page=2&q=epic+loot",
+ "previous": null,
+ "results": [
+  {
+   "categories": [
+    {
+     "id": "21",
+     "name": "Gear",
+     "slug": "gear"
+    },
+    {
+     "id": "597",
+     "name": "Hildir's Request Update",
+     "slug": "hildirs-request-update"
+    },
+    {
+     "id": "26",
+     "name": "Crafting",
+     "slug": "crafting"
+    },
+    {
+     "id": "29",
+     "name": "Server-side",
+     "slug": "server-side"
+    },
+    {
+     "id": "30",
+     "name": "Client-side",
+     "slug": "client-side"
+    },
+    {
+     "id": "24",
+     "name": "Tools",
+     "slug": "tools"
+    },
+    {
+     "id": "42",
+     "name": "Utility",
+     "slug": "utility"
+    },
+    {
+     "id": "19",
+     "name": "Tweaks",
+     "slug": "tweaks"
+    },
+    {
+     "id": "834",
+     "name": "Ashlands Update",
+     "slug": "ashlands-update"
+    },
+    {
+     "id": "1068",
+     "name": "Bog Witch Update",
+     "slug": "bog-witch-update"
+    },
+    {
+     "id": "2611",
+     "name": "Deep North Update",
+     "slug": "deep-north-update"
+    }
+   ],
+   "community_identifier": "valheim",
+   "description": "Adds loot drops, magic items, and enchanting to Valheim.",
+   "download_count": 2306409,
+   "icon_url": "https://ccdn.thunderstore.io/live/repository/icons/RandyKnapp-EpicLoot-0.14.13.png",
+   "is_deprecated": false,
+   "is_nsfw": false,
+   "is_pinned": false,
+   "last_updated": "2026-09-24T03:57:00.533977Z",
+   "name": "EpicLoot",
+   "namespace": "RandyKnapp",
+   "rating_count": 350,
+   "size": 32706066,
+   "datetime_created": "2021-03-09T23:46:40.133413Z"
+  },
+  {
+   "categories": [
+    {
+     "id": "42",
+     "name": "Utility",
+     "slug": "utility"
+    },
+    {
+     "id": "17",
+     "name": "Mods",
+     "slug": "mods"
+    },
+    {
+     "id": "19",
+     "name": "Tweaks",
+     "slug": "tweaks"
+    },
+    {
+     "id": "2036",
+     "name": "AI Generated",
+     "slug": "ai-generated"
+    },
+    {
+     "id": "29",
+     "name": "Server-side",
+     "slug": "server-side"
+    },
+    {
+     "id": "30",
+     "name": "Client-side",
+     "slug": "client-side"
+    },
+    {
+     "id": "2611",
+     "name": "Deep North Update",
+     "slug": "deep-north-update"
+    }
+   ],
+   "community_identifier": "valheim",
+   "description": "Equipment/quick slots, multicraft, progressive rows, keep-on-death, favorites, scrollable tooltips, crafting grid/list/search/sort, container stack/restock/sort, item comparison and controller support. Compatible with EpicLoot and Jewelcrafting.",
+   "download_count": 102979,
+   "icon_url": "https://ccdn.thunderstore.io/live/repository/icons/sighsorry-InventorySlots-1.6.4.png",
+   "is_deprecated": false,
+   "is_nsfw": false,
+   "is_pinned": false,
+   "last_updated": "2026-10-13T08:12:49.817131Z",
+   "name": "InventorySlots",
+   "namespace": "sighsorry",
+   "rating_count": 21,
+   "size": 723612,
+   "datetime_created": "2026-05-15T09:46:58.071663Z"
+  }
+ ]
+}

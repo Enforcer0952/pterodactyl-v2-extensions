@@ -1,0 +1,73 @@
+{
+    "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
+    "id": "valheim-tools",
+    "name": "Valheim Tools",
+    "version": "1.0.0",
+    "requires": {
+        "panel": "^2.0.0-dev",
+        "sdk": "^2.0.0-beta.4",
+        "php": "^8.3"
+    },
+    "description": "Players, ban, admin and permit lists, worlds with backups, Thunderstore mods and server settings for Valheim dedicated servers.",
+    "author": "Anton van Zanten",
+    "provider": "ValheimTools\\ValheimToolsProvider",
+    "ui": {
+        "entry": "dist/client.js",
+        "mode": "native",
+        "prefix": "vh",
+        "screens": [
+            {
+                "id": "lists",
+                "area": "server",
+                "path": "valheim-lists",
+                "nav": {
+                    "label": "Access lists",
+                    "icon": "shield-check",
+                    "order": 11
+                },
+                "permission": [
+                    "ext.valheim-tools.lists"
+                ],
+                "when": {
+                    "runtime": true
+                }
+            },
+            {
+                "id": "worlds",
+                "area": "server",
+                "path": "valheim-worlds",
+                "nav": {
+                    "label": "Worlds",
+                    "icon": "globe",
+                    "order": 12
+                },
+                "permission": [
+                    "ext.valheim-tools.worlds"
+                ],
+                "when": {
+                    "runtime": true
+                }
+            },
+            {
+                "id": "mods",
+                "area": "server",
+                "path": "valheim-mods",
+                "nav": {
+                    "label": "Mods",
+                    "icon": "puzzle",
+                    "order": 13
+                },
+                "permission": [
+                    "ext.valheim-tools.mods"
+                ],
+                "when": {
+                    "runtime": true
+                }
+            }
+        ]
+    },
+    "icon": "axe",
+    "autoload": {
+        "ValheimTools\\": "src"
+    }
+}

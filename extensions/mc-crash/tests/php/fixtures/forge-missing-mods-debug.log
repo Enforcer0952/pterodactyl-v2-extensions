@@ -1,0 +1,14 @@
+[12Oct2026 20:11:02.481] [main/DEBUG] [net.minecraftforge.fml.loading.ModDiscoverer/CORE]: Found mod file create-1.20.1-0.5.1.f.jar of type MOD with provider {mods folder locator at /home/container/mods}
+[12Oct2026 20:11:03.912] [main/INFO] [net.minecraftforge.fml.loading.moddiscovery.ModValidator/SCAN]: Found 3 mod files
+[12Oct2026 20:11:05.220] [main/ERROR] [net.minecraftforge.fml.loading.ModSorter/LOADING]: Missing or unsupported mandatory dependencies:
+	Mod ID: 'geckolib', Requested by: 'bosses_of_mass_destruction', Expected range: '[4.2.1,)', Actual version: '[MISSING]'
+	Mod ID: 'create', Requested by: 'createaddition', Expected range: '[0.5.1.f,)', Actual version: '0.4.0'
+[12Oct2026 20:11:05.231] [main/ERROR] [net.minecraftforge.fml.loading.ModSorter/LOADING]: Failed to load mods
+net.minecraftforge.fml.LoadingFailedException: Loading errors encountered: [
+	bosses_of_mass_destruction (bosses_of_mass_destruction) has failed to load correctly
+		net.minecraftforge.fml.ModLoadingException: Mod bosses_of_mass_destruction requires geckolib 4.2.1 or above
+Currently, geckolib is not installed
+]
+	at net.minecraftforge.fml.loading.ModSorter.sort(ModSorter.java:97) ~[fmlloader-1.20.1-47.3.0.jar%23101!/:?] {}
+	at net.minecraftforge.fml.loading.ModDiscoverer.discoverMods(ModDiscoverer.java:81) ~[fmlloader-1.20.1-47.3.0.jar%23101!/:?] {}
+[12Oct2026 20:11:05.240] [main/FATAL] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: Crash report saved to ./crash-reports/crash-2026-10-12_20.11.05-fml.txt

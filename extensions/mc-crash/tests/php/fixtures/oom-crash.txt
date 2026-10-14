@@ -1,0 +1,19 @@
+---- Minecraft Crash Report ----
+// I let you down. Sorry :(
+
+Time: 2026-10-10 03:12:44 UTC
+Description: Exception in server tick loop
+
+java.lang.OutOfMemoryError: Java heap space
+	at java.base/java.util.Arrays.copyOf(Arrays.java:3537)
+	at java.base/java.util.ArrayList.grow(ArrayList.java:237)
+	at com.example.dynmaplite.render.TileRenderer.collect(TileRenderer.java:211)
+	at net.minecraft.server.MinecraftServer.tickServer(MinecraftServer.java:1587)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+-- System Details --
+Details:
+	Minecraft Version: 1.21
+	Operating System: Linux (amd64) version 5.15.0
+	Java Version: 21.0.3, Eclipse Adoptium
+	Memory: 8213312 bytes (7 MiB) / 2147483648 bytes (2048 MiB) up to 2147483648 bytes (2048 MiB)

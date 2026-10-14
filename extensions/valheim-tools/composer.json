@@ -1,0 +1,12 @@
+{
+    "description": "Players, access lists, worlds with backups, Thunderstore mods and server settings for Valheim servers.",
+    "autoload": {
+        "psr-4": {
+            "ValheimTools\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "ValheimToolsExtension"
+    },
+    "license": "GPL-3.0-or-later"
+}

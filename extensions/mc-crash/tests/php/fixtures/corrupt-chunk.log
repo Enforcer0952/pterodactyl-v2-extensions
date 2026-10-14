@@ -1,0 +1,5 @@
+[14:22:10] [Worker-Main-3/ERROR]: Couldn't load chunk [-12, 34]
+java.io.IOException: Stream is corrupt
+	at net.minecraft.world.level.chunk.storage.RegionFile.getChunkInputStream(RegionFile.java:312) ~[?:?]
+	at net.minecraft.world.level.chunk.storage.RegionFileStorage.read(RegionFileStorage.java:81) ~[?:?]
+[14:22:10] [Server thread/WARN]: Failed to read chunk [-12, 34]

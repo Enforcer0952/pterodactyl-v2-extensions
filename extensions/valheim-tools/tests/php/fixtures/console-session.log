@@ -1,0 +1,13 @@
+10/14/2026 18:02:11: Game server connected
+10/14/2026 18:02:40: Got connection SteamID 76561198051014133
+10/14/2026 18:02:40: Got handshake from client 76561198051014133
+10/14/2026 18:02:52: Got character ZDOID from Big Bob : -438505887:1
+10/14/2026 18:03:20: PlayFab socket with remote ID playfab/D3E2D552844E42EA received local Platform ID Steam_76561198000000001
+10/14/2026 18:03:20: Got handshake from client playfab/D3E2D552844E42EA
+10/14/2026 18:03:31: Got character ZDOID from Ragnar : 1305773203:1
+10/14/2026 18:04:02: PlayFab socket with remote ID playfab/AAAA1111BBBB2222 received local Platform ID Xbox_2535400000000001
+10/14/2026 18:04:02: Got handshake from client playfab/AAAA1111BBBB2222
+10/14/2026 18:04:15: Got character ZDOID from Freya : 987654321:1
+10/14/2026 18:10:00: Got character ZDOID from Ragnar : 0:0
+10/14/2026 18:12:30: Destroying abandoned non persistent zdo 1305773203:5 owner 1305773203
+10/14/2026 18:12:31: Closing socket playfab/D3E2D552844E42EA

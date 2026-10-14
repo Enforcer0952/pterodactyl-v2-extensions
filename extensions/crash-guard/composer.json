@@ -1,0 +1,12 @@
+{
+    "description": "Stops a server that keeps crashing instead of letting it restart forever. Works on every egg.",
+    "autoload": {
+        "psr-4": {
+            "CrashGuard\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "CrashGuardExtension"
+    },
+    "license": "GPL-3.0-or-later"
+}

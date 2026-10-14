@@ -1,0 +1,56 @@
+{
+    "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
+    "id": "mc-crash",
+    "name": "Minecraft Crashes",
+    "version": "1.0.0",
+    "requires": {
+        "panel": "^2.0.0-dev",
+        "sdk": "^2.0.0-beta.4",
+        "php": "^8.3"
+    },
+    "description": "Turns Minecraft crash reports and log errors into a one-line verdict: what broke, which plugin or mod did it, and how to fix it.",
+    "author": "Anton van Zanten",
+    "provider": "McCrash\\McCrashProvider",
+    "ui": {
+        "entry": "dist/client.js",
+        "mode": "native",
+        "prefix": "mccr",
+        "screens": [
+            {
+                "id": "crashes",
+                "area": "server",
+                "path": "crashes",
+                "nav": {
+                    "label": "Crashes",
+                    "icon": "bug",
+                    "order": 14
+                },
+                "permission": [
+                    "ext.mc-crash.view"
+                ],
+                "when": {
+                    "eggTags": {
+                        "any": [
+                            "minecraft",
+                            "proxy",
+                            "bungeecord",
+                            "velocity",
+                            "waterfall"
+                        ]
+                    },
+                    "eggFeatures": {
+                        "any": [
+                            "eula"
+                        ]
+                    },
+                    "match": "any",
+                    "runtime": true
+                }
+            }
+        ]
+    },
+    "icon": "bug",
+    "autoload": {
+        "McCrash\\": "src"
+    }
+}

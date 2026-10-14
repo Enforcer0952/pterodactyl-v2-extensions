@@ -1,0 +1,5 @@
+[19:40:02 INFO]: [bootstrap] Loading Paper 1.21.1-130-master@ver/1.21.1 (2024-11-03T00:00:00Z) for Minecraft 1.21.1
+[19:40:05 ERROR]: [ModernPluginLoadingStrategy] Could not load plugin 'ShopGUIPlus-1.99.jar' in folder 'plugins'
+org.bukkit.plugin.UnknownDependencyException: Unknown/missing dependency plugins: [Vault, PlaceholderAPI]. Please download and install these plugins to run 'ShopGUIPlus'.
+	at io.papermc.paper.plugin.entrypoint.strategy.modern.ModernPluginLoadingStrategy.lambda$loadProviders$1(ModernPluginLoadingStrategy.java:102) ~[paper-1.21.1.jar:1.21.1-130-ver/1.21.1@abc]
+	at java.base/java.lang.Iterable.forEach(Iterable.java:75) ~[?:?]

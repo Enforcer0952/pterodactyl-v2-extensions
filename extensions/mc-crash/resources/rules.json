@@ -1,0 +1,431 @@
+{
+    "version": 1,
+    "rules": [
+        {
+            "id": "eula",
+            "severity": "crash",
+            "title": "EULA not accepted",
+            "match": [
+                "You need to agree to the EULA in order to run the server"
+            ],
+            "verdict": "The server stopped because the Minecraft EULA is not accepted.",
+            "fix": "Open eula.txt in the Files page and change eula=false to eula=true, then start the server again. Some eggs also have an EULA switch on the Startup page.",
+            "culprit": []
+        },
+        {
+            "id": "port-in-use",
+            "severity": "crash",
+            "title": "Port already in use",
+            "match": [
+                "FAILED TO BIND TO PORT",
+                "java\\.net\\.BindException: Address already in use",
+                "Failed to bind to port",
+                "(?:Could not|Unable to) bind to (?:host )?/?[\\d.:]*:(?<port>\\d{2,5})",
+                "Perhaps a server is already running on that port"
+            ],
+            "derive": "bind",
+            "verdict": "The server could not start because its port is already in use{port_text}.",
+            "fix": "Another server or program uses the same port. Check the Network page: no other server on this node may use this server's primary allocation. Stop the duplicate, or give this server a free port. A server that just crashed can need a minute to release its port.",
+            "culprit": []
+        },
+        {
+            "id": "bind-address",
+            "severity": "crash",
+            "title": "Cannot use server-ip",
+            "match": [
+                "java\\.net\\.BindException: Cannot assign requested address"
+            ],
+            "verdict": "The server cannot use the IP address set in server.properties.",
+            "fix": "Open server.properties and make server-ip empty. The server only listens on addresses the node really has, and a hosting panel gives it the right one itself.",
+            "culprit": []
+        },
+        {
+            "id": "java-version",
+            "severity": "crash",
+            "title": "Wrong Java version",
+            "match": [
+                "UnsupportedClassVersionError: (?<class>[\\w./$]+) has been compiled by a more recent version of the Java Runtime \\(class file version (?<major>\\d+)\\.\\d+\\), this version of the Java Runtime only recognizes class file versions up to (?<have>\\d+)\\.\\d+",
+                "UnsupportedClassVersionError: (?<class>[\\w./$]+) : Unsupported major\\.minor version (?<major>\\d+)\\.\\d+",
+                "UnsupportedClassVersionError: (?<class>[\\w./$]+) \\(Unsupported major\\.minor version (?<major>\\d+)\\.\\d+\\)"
+            ],
+            "derive": "classfile",
+            "verdict": "Wrong Java version: this needs Java {java} or newer{running}.",
+            "fix": "Pick a Docker image with Java {java} or newer on the Startup page, then start the server again. If only one plugin or mod needs it, update or remove that one instead. New Minecraft versions need newer Java: 1.20.5 and up needs 21, 1.18 to 1.20.4 needs 17.",
+            "culprit": [
+                "class:class"
+            ],
+            "key": [
+                "class"
+            ]
+        },
+        {
+            "id": "class-too-new",
+            "severity": "crash",
+            "title": "Plugin built for newer Java",
+            "match": [
+                "Unsupported class file major version (?<major>\\d+)"
+            ],
+            "derive": "classfile",
+            "verdict": "A plugin or mod was built for Java {java}, which this server software cannot read yet.",
+            "fix": "Update the server software (Paper, Spigot, Purpur) to a recent build, or use an older release of the plugin that targets an older Java. The class file version in the message is {major}, which is Java {java}.",
+            "culprit": [
+                "trace"
+            ]
+        },
+        {
+            "id": "missing-dep-fabric",
+            "severity": "crash",
+            "title": "Missing mod dependency",
+            "match": [
+                "Mod '(?<name>[^']+)' \\((?<mod>[\\w\\-.]+)\\) \\S+ requires (?<req>[^\\n]+?), which is missing!",
+                "^\\s*- Install (?<dep>[\\w\\-.]+)(?:, (?<depver>[^\\n]*?))?\\.?\\s*$"
+            ],
+            "derive": "fabric-requires",
+            "verdict": "Missing dependency: {name} needs {dep}{depver}.",
+            "fix": "Download {dep} for your Minecraft version and put it in the mods folder, or remove {name}. The mod page on Modrinth or CurseForge lists which versions it works with.",
+            "culprit": [
+                "mod:mod"
+            ],
+            "key": [
+                "mod",
+                "dep"
+            ]
+        },
+        {
+            "id": "missing-dep-forge",
+            "severity": "crash",
+            "title": "Missing mod dependency",
+            "match": [
+                "Mod ID: '(?<dep>[\\w\\-.]+)', Requested by: '(?<mod>[\\w\\-.]+)', Expected range: '(?<range>[^']*)', Actual version: '(?<actual>[^']*)'",
+                "Mod (?<mod>[^\\n]+?) requires (?<dep>[\\w\\-.]+) (?<range>[^\\n]*?) or above\\s*\\n\\s*Currently, [\\w\\-.]+ is (?<current>not installed|version [^\\n]+)"
+            ],
+            "derive": "forge-actual",
+            "verdict": "Missing dependency: {mod} needs {dep}{range}, but {state}{more_text}.",
+            "fix": "Put {dep}{range} (for the same Minecraft version and loader) in the mods folder, or remove {mod}.",
+            "culprit": [
+                "mod:mod"
+            ],
+            "key": [
+                "mod",
+                "dep"
+            ]
+        },
+        {
+            "id": "missing-dep-paper",
+            "severity": "crash",
+            "title": "Missing plugin dependency",
+            "match": [
+                "Unknown/missing dependency plugins: \\[(?<dep>[^\\]]+)\\]\\. Please download and install these plugins to run '(?<plugin>[^']+)'",
+                "Unknown dependency (?<dep>[\\w\\-. ]+?)\\. Please download and install [\\w\\-. ]+ to run this plugin",
+                "UnknownDependencyException: (?<dep>[\\w\\-., ]+?)\\s*$"
+            ],
+            "derive": "api-version",
+            "verdict": "Missing dependency: {who} needs the plugin {dep}.",
+            "fix": "Install {dep} (from SpigotMC, Modrinth or Hangar) in the plugins folder and restart. {who} does not load without it.",
+            "culprit": [
+                "plugin:plugin",
+                "jar:jar"
+            ],
+            "extra": [
+                "Could not load (?:plugin )?'(?:plugins/)?(?<jar>[^']+?\\.jar)'"
+            ],
+            "key": [
+                "plugin",
+                "dep",
+                "jar"
+            ]
+        },
+        {
+            "id": "api-version",
+            "severity": "error",
+            "title": "Plugin made for newer Minecraft",
+            "match": [
+                "Unsupported API version (?<api>[\\d.]+)"
+            ],
+            "derive": "api-version",
+            "verdict": "{who} was made for a newer Minecraft version ({api}) than this server runs.",
+            "fix": "Update {who} to a release that supports this server, or update the server to Minecraft {api} or newer on the Version page.",
+            "culprit": [
+                "jar:jar",
+                "plugin:plugin"
+            ],
+            "extra": [
+                "Could not load (?:plugin )?'(?:plugins/)?(?<jar>[^']+?\\.jar)'"
+            ],
+            "key": [
+                "jar",
+                "plugin"
+            ]
+        },
+        {
+            "id": "mixin-conflict",
+            "severity": "crash",
+            "title": "Mixin conflict",
+            "match": [
+                "@(?<kind>Redirect|ModifyConstant|Overwrite|ModifyArg|ModifyVariable|WrapOperation) conflict\\. Skipping (?<config>[\\w.\\-]+\\.json):(?<mixin>\\S+) with priority \\d+, already (?:redirected|modified|overwritten) by (?<othercfg>[\\w.\\-]+\\.json):"
+            ],
+            "derive": "mixin",
+            "verdict": "Two mods change the same game code: {config_mod} clashes with another mod ({kind} conflict).",
+            "fix": "Remove or update one of the two mods. Mods that edit the same part of the game (rendering, world generation, entities) often clash. Try removing the one you added last.",
+            "culprit": [
+                "~mod:config_mod"
+            ],
+            "key": [
+                "config_mod"
+            ]
+        },
+        {
+            "id": "mixin-failure",
+            "severity": "crash",
+            "title": "Mixin failure",
+            "match": [
+                "Mixin apply for mod (?<mod>[\\w\\-.]+) failed (?<config>[\\w.\\-]+\\.json):(?<mixin>\\S+) from mod (?<from>[\\w\\-.]+) -> (?<target>[\\w.$]+):",
+                "Mixin \\[(?<config>[\\w.\\-]+\\.json):(?<mixin>[\\w$.]+)(?: from mod (?<from>[\\w\\-.]+))?\\] from phase \\[\\w+\\] in config \\[(?<cfg2>[^\\]]+)\\] FAILED during \\w+",
+                "Critical injection failure: @(?<inject>\\w+) annotation on (?<method>\\S+) could not find any targets matching (?<what>.+?) in (?<target>[\\w.$]+)",
+                "Mixin transformation of (?<target>[\\w.$]+) failed",
+                "(?:InvalidMixinException|MixinApplyError|MixinTransformerError|MixinPrepareError|InvalidInjectionException)"
+            ],
+            "derive": "mixin",
+            "verdict": "Mixin failure: {who} could not change the game code{in_target}.",
+            "fix": "{who} does not fit this version of the game or clashes with another mod. Update it (and Fabric or Forge) to versions made for your Minecraft version, or remove it.",
+            "culprit": [
+                "mod:from",
+                "mod:mod",
+                "~mod:config_mod"
+            ],
+            "key": [
+                "from",
+                "mod",
+                "config_mod",
+                "target"
+            ]
+        },
+        {
+            "id": "out-of-memory",
+            "severity": "crash",
+            "title": "Out of memory",
+            "match": [
+                "java\\.lang\\.OutOfMemoryError: (?<kind>Java heap space|GC overhead limit exceeded|Metaspace|Direct buffer memory|Compressed class space|unable to create native thread[^\\n]*|Requested array size exceeds VM limit)",
+                "java\\.lang\\.OutOfMemoryError",
+                "There is insufficient memory for the Java Runtime Environment to continue",
+                "# Out of Memory Error"
+            ],
+            "derive": "oom",
+            "verdict": "The server ran out of memory ({kind}).",
+            "fix": "{hint} The place where it ran out in the trace is not necessarily the cause.",
+            "culprit": []
+        },
+        {
+            "id": "heap-reserve",
+            "severity": "crash",
+            "title": "Java could not start",
+            "match": [
+                "Could not reserve enough space for (?<what>[^\\n]+)",
+                "Invalid maximum heap size"
+            ],
+            "verdict": "Java could not start: the memory it was asked for is not available.",
+            "fix": "Lower the memory value (Xmx or MEMORY) on the Startup page so it is below the memory limit of this server.",
+            "culprit": []
+        },
+        {
+            "id": "disk-full",
+            "severity": "crash",
+            "title": "Disk full",
+            "match": [
+                "No space left on device",
+                "There is not enough space on the disk",
+                "Disk quota exceeded"
+            ],
+            "verdict": "The server's disk is full.",
+            "fix": "Free space: delete old backups, logs, crash reports and unused worlds on the Files page, or raise the disk limit.",
+            "culprit": []
+        },
+        {
+            "id": "corrupt-chunk",
+            "severity": "error",
+            "title": "Corrupted world data",
+            "match": [
+                "Exception reading (?<region>r\\.-?\\d+\\.-?\\d+\\.mca)",
+                "Chunk file at \\[?(?<cx>-?\\d+),\\s?(?<cz>-?\\d+)\\]? is in the wrong location",
+                "Failed to read chunk \\[(?<cx>-?\\d+), (?<cz>-?\\d+)\\]",
+                "(?:Couldn't|Could not|Failed to) (?:load|read) chunk \\(?\\[?(?<cx>-?\\d+),\\s?(?<cz>-?\\d+)",
+                "Region file [^\\n]*has invalid sector",
+                "(?:Unexpected end of ZLIB input stream|Stream is corrupt|invalid stored block|invalid distance too far back)"
+            ],
+            "also": "chunk|region|\\.mca",
+            "derive": "chunk",
+            "verdict": "A world chunk or region file is corrupted{where}.",
+            "fix": "Stop the server first. Restore the world from a backup. Without one, delete {region_hint} on the Files page: the chunks in it are rebuilt by the game, and anything built there is lost. Keep a copy of the world before you change anything.",
+            "culprit": [],
+            "key": [
+                "region",
+                "cx",
+                "cz"
+            ]
+        },
+        {
+            "id": "watchdog",
+            "severity": "crash",
+            "title": "Server froze",
+            "match": [
+                "A single server tick took (?<secs>[\\d.]+) seconds",
+                "The server has stopped responding!",
+                "Considering it to be crashed, server will forcibly shutdown"
+            ],
+            "derive": "watchdog",
+            "verdict": "The server froze and was stopped by the watchdog{took}.",
+            "fix": "Something blocked the main thread. The thread dump below names the plugin or mod when there is one: update or remove it. Heavy worlds, huge farms and too little CPU or RAM can freeze a server too.",
+            "culprit": [
+                "trace"
+            ]
+        },
+        {
+            "id": "ticking",
+            "severity": "crash",
+            "title": "Broken entity or block",
+            "match": [
+                "Description: Ticking (?<what>entity|block entity|player)",
+                "Entity Type: (?<etype>[\\w:._\\-/]+)",
+                "Entity's Exact location: (?<x>-?[\\d.]+), (?<y>-?[\\d.]+), (?<z>-?[\\d.]+)",
+                "Block: Block\\{(?<btype>[^}]+)\\}",
+                "Block location: World: \\((?<bx>-?\\d+),(?<by>-?\\d+),(?<bz>-?\\d+)\\)"
+            ],
+            "also": "Description: Ticking",
+            "derive": "ticking",
+            "verdict": "The server crashed while updating {what_a}{details}.",
+            "fix": "Update or remove the mod or plugin named below, if there is one. To get rid of the broken {what}, restore a backup from before the crash, or remove it near those coordinates with a world editor on a copy of the world.",
+            "culprit": [
+                "trace"
+            ],
+            "key": [
+                "etype",
+                "btype"
+            ]
+        },
+        {
+            "id": "jvm-crash",
+            "severity": "crash",
+            "title": "Java crashed",
+            "match": [
+                "A fatal error has been detected by the Java Runtime Environment",
+                "#\\s+(?<sig>SIGSEGV|SIGBUS|SIGILL|SIGFPE|EXCEPTION_ACCESS_VIOLATION)",
+                "Problematic frame:\\s*\\n#\\s*[A-Za-z]+\\s+(?<frame>[^\\n]+)"
+            ],
+            "derive": "jvm",
+            "verdict": "The Java virtual machine crashed ({sig}) in {frame_short}.",
+            "fix": "This is a crash of Java itself or of a native library, not an ordinary plugin bug. Update to the newest Java image for your Minecraft version on the Startup page, update plugins or mods that ship native code, and ask your host to check the node's memory if it keeps coming back.",
+            "culprit": [
+                "trace"
+            ]
+        },
+        {
+            "id": "version-mismatch",
+            "severity": "error",
+            "title": "Plugin or mod for another version",
+            "match": [
+                "java\\.lang\\.(?<exc>NoSuchMethodError|NoSuchFieldError|AbstractMethodError|IncompatibleClassChangeError)(?:: (?<member>[^\\n]+))?"
+            ],
+            "verdict": "A plugin or mod was made for a different version of the game or of another plugin ({exc}).",
+            "fix": "Update the plugin or mod below so it matches your Minecraft version and the plugins it hooks into (Vault, ProtocolLib, PlaceholderAPI and similar). Old and new releases cannot be mixed.",
+            "culprit": [
+                "trace"
+            ],
+            "key": [
+                "member"
+            ]
+        },
+        {
+            "id": "missing-class",
+            "severity": "error",
+            "title": "Missing class",
+            "match": [
+                "java\\.lang\\.NoClassDefFoundError: (?<class>[\\w/$.]+)",
+                "java\\.lang\\.ClassNotFoundException: (?<class>[\\w/$.]+)"
+            ],
+            "derive": "missing-class",
+            "verdict": "A class is missing: {class_short}.",
+            "fix": "A plugin or mod needs a library or another plugin that is not installed, or one with a different version. Install what {class} belongs to, or update the plugin or mod below.",
+            "culprit": [
+                "trace"
+            ],
+            "key": [
+                "class"
+            ]
+        },
+        {
+            "id": "plugin-exception",
+            "severity": "error",
+            "title": "Plugin error",
+            "match": [
+                "Error occurred while enabling (?<plugin>[\\w\\-. ]+?) v(?<ver>\\S+)",
+                "Could not pass event (?<event>\\w+) to (?<plugin>[\\w\\-. ]+?) v\\S+",
+                "Plugin (?<plugin>[\\w\\-. ]+?) v\\S+ generated an exception while executing task",
+                "Task #\\d+ for (?<plugin>[\\w\\-. ]+?) v\\S+ generated an exception",
+                "Error occurred while disabling (?<plugin>[\\w\\-. ]+?) v\\S+"
+            ],
+            "derive": "plugin-exception",
+            "verdict": "{plugin} threw an error{event_text}: {exception}.",
+            "fix": "Update {plugin}. The cause is usually a broken config.yml, a missing dependency or a version that does not match the server. If it keeps happening, send the trace to its author (use Share).",
+            "culprit": [
+                "plugin:plugin",
+                "trace"
+            ],
+            "key": [
+                "plugin"
+            ]
+        },
+        {
+            "id": "cant-keep-up",
+            "severity": "warning",
+            "title": "Server lag",
+            "crash": false,
+            "match": [
+                "Can't keep up! Is the server overloaded\\? Running (?<ms>\\d+)ms or (?<ticks>\\d+) ticks? behind"
+            ],
+            "stat": {
+                "var": "ms",
+                "label": "Worst spike: {value} ms behind"
+            },
+            "verdict": "The server is lagging (\"Can't keep up\"). This is not a crash.",
+            "fix": "Lower view-distance and simulation-distance in server.properties, pre-generate the world, limit mob and item farms, and run a profiler such as spark (/spark profiler start) to see which plugin or mod uses the time.",
+            "culprit": []
+        }
+    ],
+    "noise": [
+        {
+            "id": "moved-too-quickly",
+            "label": "Players moving too fast (movement warnings)",
+            "pattern": "^\\S+ moved (?:too quickly|wrongly)!"
+        },
+        {
+            "id": "ambiguity",
+            "label": "Command argument ambiguity (harmless)",
+            "pattern": "Ambiguity between arguments"
+        },
+        {
+            "id": "unknown-attribute",
+            "label": "Unknown attributes in entity data (harmless)",
+            "pattern": "Ignoring unknown attribute"
+        },
+        {
+            "id": "removed-entity",
+            "label": "Packets for removed entities (harmless)",
+            "pattern": "Fetching packet for removed entity"
+        },
+        {
+            "id": "legacy-plugin",
+            "label": "Old plugins without an api-version",
+            "pattern": "Legacy plugin .+ does not specify an api-version|Initializing Legacy Material Support"
+        },
+        {
+            "id": "disconnects",
+            "label": "Players disconnecting (timeouts and resets)",
+            "pattern": "Connection reset by peer|ReadTimeoutException|Broken pipe|An existing connection was forcibly closed|Internal Exception: io\\.netty"
+        },
+        {
+            "id": "duplicate-entity",
+            "label": "Entities that already exist (harmless)",
+            "pattern": "Keeping entity .* that already exists with UUID"
+        }
+    ]
+}

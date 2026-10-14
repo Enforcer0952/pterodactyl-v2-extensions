@@ -1,0 +1,51 @@
+{
+ "namespace": "RandyKnapp",
+ "name": "EpicLoot",
+ "full_name": "RandyKnapp-EpicLoot",
+ "owner": "RandyKnapp",
+ "package_url": "https://thunderstore.io/package/RandyKnapp/EpicLoot/",
+ "date_created": "2021-03-09T23:46:36.287279Z",
+ "date_updated": "2026-09-24T03:57:00.533977Z",
+ "rating_score": -1,
+ "is_pinned": false,
+ "is_deprecated": false,
+ "total_downloads": -1,
+ "latest": {
+  "namespace": "RandyKnapp",
+  "name": "EpicLoot",
+  "version_number": "0.14.13",
+  "full_name": "RandyKnapp-EpicLoot-0.14.13",
+  "description": "Adds loot drops, magic items, and enchanting to Valheim.",
+  "icon": "https://ccdn.thunderstore.io/live/repository/icons/RandyKnapp-EpicLoot-0.14.13.png",
+  "dependencies": [
+   "denikson-BepInExPack_Valheim-5.4.2333",
+   "ValheimModding-JsonDotNET-13.0.4",
+   "ValheimModding-Jotunn-2.29.2"
+  ],
+  "download_url": "https://thunderstore.io/package/download/RandyKnapp/EpicLoot/0.14.13/",
+  "downloads": 98943,
+  "date_created": "2026-09-24T03:56:58.517000Z",
+  "website_url": "https://discord.gg/ZNhYeavv3C",
+  "is_active": true
+ },
+ "community_listings": [
+  {
+   "has_nsfw_content": false,
+   "categories": [
+    "Tweaks",
+    "Gear",
+    "Tools",
+    "Crafting",
+    "Server-side",
+    "Client-side",
+    "Utility",
+    "Hildir's Request Update",
+    "Ashlands Update",
+    "Bog Witch Update",
+    "Deep North Update"
+   ],
+   "community": "valheim",
+   "review_status": "approved"
+  }
+ ]
+}

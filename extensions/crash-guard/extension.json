@@ -1,0 +1,47 @@
+{
+    "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
+    "id": "crash-guard",
+    "name": "Crash Guard",
+    "version": "1.0.0",
+    "requires": {
+        "panel": "^2.0.0-dev",
+        "sdk": "^2.0.0-beta.4",
+        "php": "^8.3"
+    },
+    "description": "Stops a server that keeps crashing instead of letting it restart forever. Works on every egg, with a banner on the console page and a crash log.",
+    "author": "Anton van Zanten",
+    "provider": "CrashGuard\\CrashGuardProvider",
+    "ui": {
+        "entry": "dist/client.js",
+        "mode": "native",
+        "prefix": "cg",
+        "screens": [
+            {
+                "id": "guard",
+                "area": "server",
+                "path": "crash-guard",
+                "nav": {
+                    "label": "Crash Guard",
+                    "icon": "shield-alert",
+                    "order": 20
+                },
+                "permission": [
+                    "ext.crash-guard.view"
+                ]
+            },
+            {
+                "id": "overview",
+                "area": "admin",
+                "path": "crash-guard-overview",
+                "nav": {
+                    "label": "Crash Guard",
+                    "icon": "shield-alert"
+                }
+            }
+        ]
+    },
+    "icon": "shield-alert",
+    "autoload": {
+        "CrashGuard\\": "src"
+    }
+}

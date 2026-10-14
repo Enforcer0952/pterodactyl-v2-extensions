@@ -8,13 +8,17 @@ body:
       label: Extension
       options:
         - ARK Tools
+        - Crash Guard
         - Minecraft Console
         - Minecraft Content
+        - Minecraft Crashes
         - Minecraft Network
         - Minecraft Players
         - Minecraft Version
         - Minecraft World
+        - Palworld Tools
         - Terraria Tools
+        - Valheim Tools
         - Other / not sure
     validations:
       required: true
