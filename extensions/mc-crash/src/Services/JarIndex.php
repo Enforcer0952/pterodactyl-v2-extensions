@@ -46,7 +46,7 @@ class JarIndex
         foreach (['plugins' => 'plugin', 'mods' => 'mod'] as $folder => $kind) {
             foreach ($this->files->folder($server, $folder) as $entry) {
                 $name = (string) ($entry['name'] ?? '');
-                if (($entry['file'] ?? true) === false || ! str_ends_with(strtolower($name), '.jar') || $name !== basename($name) || str_contains($name, "\0")) {
+                if (! Files::isPlainFile($entry) || ! str_ends_with(strtolower($name), '.jar') || $name !== basename($name) || str_contains($name, "\0")) {
                     continue;
                 }
                 $jars[] = ['folder' => $folder, 'kind' => $kind, 'name' => $name, 'size' => (int) ($entry['size'] ?? 0), 'modified' => (string) ($entry['modified'] ?? '')];
@@ -63,35 +63,38 @@ class JarIndex
         $infos = [];
         $signature = [];
 
-        foreach ($jars as $jar) {
-            $signature[] = $jar['folder'].'/'.$jar['name'].'|'.$jar['size'].'|'.$jar['modified'];
-            $key = 'ext:mc-crash:jar:'.$server->uuid.':'.sha1($jar['folder'].'/'.$jar['name'].'|'.$jar['size'].'|'.$jar['modified']);
-            $info = Cache::get($key);
+        try {
+            foreach ($jars as $jar) {
+                $signature[] = $jar['folder'].'/'.$jar['name'].'|'.$jar['size'].'|'.$jar['modified'];
+                $key = 'ext:mc-crash:jar:'.$server->uuid.':'.sha1($jar['folder'].'/'.$jar['name'].'|'.$jar['size'].'|'.$jar['modified']);
+                $info = Cache::get($key);
 
-            if ($info === null) {
-                if ($jar['size'] > self::MAX_JAR_BYTES) {
-                    $info = $this->nameOnly($jar);
-                } elseif (! $reading || $read >= self::MAX_BATCH_FILES || $bytes + $jar['size'] > self::MAX_BATCH_BYTES || microtime(true) - $started > self::MAX_SECONDS) {
-                    $pending++;
-                    $infos[] = $this->nameOnly($jar);
+                if ($info === null) {
+                    if ($jar['size'] > self::MAX_JAR_BYTES) {
+                        $info = $this->nameOnly($jar);
+                    } elseif (! $reading || $read >= self::MAX_BATCH_FILES || $bytes + $jar['size'] > self::MAX_BATCH_BYTES || microtime(true) - $started > self::MAX_SECONDS) {
+                        $pending++;
+                        $infos[] = $this->nameOnly($jar);
 
-                    continue;
-                } else {
-                    $read++;
-                    $bytes += $jar['size'];
-                    $info = $this->readJar($server, $jar);
+                        continue;
+                    } else {
+                        $read++;
+                        $bytes += $jar['size'];
+                        $info = $this->readJar($server, $jar);
+                    }
+
+                    // A failed read (node hiccup) is retried after a few minutes, not a month.
+                    Cache::put($key, $info ?? $this->nameOnly($jar), $info === null ? now()->addMinutes(5) : now()->addDays(30));
+                    $info ??= $this->nameOnly($jar);
                 }
 
-                // A failed read (node hiccup) is retried after a few minutes, not a month.
-                Cache::put($key, $info ?? $this->nameOnly($jar), $info === null ? now()->addMinutes(5) : now()->addDays(30));
-                $info ??= $this->nameOnly($jar);
+                $infos[] = $info;
             }
-
-            $infos[] = $info;
-        }
-
-        if ($reading) {
-            $lock->release();
+        } finally {
+            // Released even when a read throws, so the next request is not held out for 90 seconds.
+            if ($reading) {
+                $lock->release();
+            }
         }
 
         sort($signature);

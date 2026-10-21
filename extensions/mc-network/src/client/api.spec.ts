@@ -90,6 +90,8 @@ describe('validateEntry', () => {
         const errors = validateEntry({ name: 'has space', address: 'localhost', motd: 'a\nb' }, []);
         expect(Object.keys(errors).sort()).toEqual(['address', 'motd', 'name']);
         expect(validateEntry({ name: 'lobby', address: 'localhost:1', motd: '' }, ['lobby']).name).toMatch(/already/);
+        expect(validateEntry({ name: '12345', address: 'localhost:1', motd: '' }, []).name).toMatch(/not a digit/);
+        expect(validateEntry({ name: '1a', address: 'localhost:1', motd: '' }, []).name).toBeUndefined();
         expect(validateEntry({ name: 'x'.repeat(33), address: 'localhost:1', motd: '' }, []).name).toBeDefined();
         expect(validateEntry({ name: 'x', address: 'localhost:1', motd: 'y'.repeat(257) }, []).motd).toBeDefined();
     });
@@ -101,6 +103,7 @@ describe('suggestName', () => {
         expect(suggestName('Anton X Senna', [])).toBe('AntonXSenna');
         expect(suggestName('E-Active', [])).toBe('E-Active');
         expect(suggestName('日本語', [])).toBe('server');
+        expect(suggestName('2024', [])).toBe('server2024');
     });
 
     it('keeps names unique and short', () => {

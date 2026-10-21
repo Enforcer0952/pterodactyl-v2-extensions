@@ -12,7 +12,7 @@ Adds a **Crashes** page to Minecraft servers in Pterodactyl 2.0. It reads crash 
 - **Culprit:** matches stack-frame packages to the jars in `plugins/` and `mods/` (`plugin.yml`, `paper-plugin.yml`, `fabric.mod.json`, `mods.toml`, `neoforge.mods.toml`, `quilt.mod.json`). **Confirmed** means exactly one jar matches. **Likely** means a best guess, and is labelled as one. Mixin errors that name a mod are recognised too.
 - **Known problems with a fix:** wrong Java version, missing dependency (Fabric, Forge, Paper), mixin conflict or failure, out of memory, port in use, corrupt chunk, "Can't keep up", EULA not accepted, plugin API too new, and more. The rules live in `resources/rules.json`.
 - **Open in Plugins or Mods:** a link to the matching jar, shown only when the Minecraft Content extension is installed.
-- **Share:** uploads a report to mclo.gs after a confirm dialog that says the link is public. The raw trace is folded, with a copy button.
+- **Share:** uploads a report or log to mclo.gs after a confirm dialog that says the link is public and shows the text that will be sent. Before that, IP addresses (IPv4 and IPv6), the arguments of `/login`, `/register`, `/l`, `/reg`, `/changepassword` and `/cp` lines (and a few similar ones) in `issued server command` log lines, and the values of `-D` options in `hs_err` logs are removed. The upload is refused if the file changed after the preview. Names and other details can still be in the text, so read it first. The raw trace is folded, with a copy button.
 - **Console notice:** a small note under the console when a crash is newer than your last visit to the page.
 - Works with proxies (BungeeCord, Waterfall, Velocity) too.
 - Big files are handled safely: logs are read from their last 4 MB, compressed logs are unpacked as a stream with a size cap, and a huge `latest.log` falls back to the last 100 console lines.
@@ -30,7 +30,7 @@ Adds a **Crashes** page to Minecraft servers in Pterodactyl 2.0. It reads crash 
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/mc-crash-1.0.0.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/mc-crash-1.0.1.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -41,7 +41,7 @@ Adds a **Crashes** page to Minecraft servers in Pterodactyl 2.0. It reads crash 
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/mc-crash-1.0.0.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/mc-crash-1.0.1.pteroext --enable --replace
 ```
 
 Settings and data are kept.

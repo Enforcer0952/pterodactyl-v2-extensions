@@ -2,7 +2,7 @@
     "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
     "id": "mc-network",
     "name": "Minecraft Network",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "requires": {
         "panel": "^2.0.0-dev",
         "sdk": "^2.0.0-beta.4",
@@ -26,7 +26,8 @@
                     "order": 13
                 },
                 "permission": [
-                    "file.read"
+                    "file.read",
+                    "file.read-content"
                 ],
                 "when": {
                     "eggTags": {

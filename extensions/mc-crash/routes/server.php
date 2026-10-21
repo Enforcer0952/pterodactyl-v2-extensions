@@ -9,4 +9,5 @@ Route::post('/viewed', [CrashController::class, 'viewed'])->middleware('throttle
 Route::get('/reports', [CrashController::class, 'reports'])->middleware('throttle:60,1,mc-crash-reports')->name('reports');
 Route::get('/logs', [CrashController::class, 'logs'])->middleware('throttle:60,1,mc-crash-logs')->name('logs');
 Route::get('/raw', [CrashController::class, 'raw'])->middleware('throttle:60,1,mc-crash-raw')->name('raw');
+Route::get('/share/preview', [CrashController::class, 'preview'])->middleware('throttle:20,1,mc-crash-share-preview')->name('share.preview');
 Route::post('/share', [CrashController::class, 'share'])->middleware('throttle:6,1,mc-crash-share')->name('share');

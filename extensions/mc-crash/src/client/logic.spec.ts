@@ -4,6 +4,7 @@ import {
     contentScreen,
     formatBytes,
     formatWhen,
+    hiddenSummary,
     indexProgress,
     isBusy,
     isJavaOrProxy,
@@ -97,6 +98,15 @@ describe('sharing', () => {
         expect(text).toContain('latest.log');
         expect(text).toContain('public');
         expect(text).toContain('IP addresses');
+        expect(text).toContain('removed first');
         expect(text).not.toContain('!');
+    });
+
+    it('summarises what was removed', () => {
+        expect(hiddenSummary({ ips: 0, commands: 0, jvm_args: 0 })).toBe('');
+        expect(hiddenSummary({ ips: 1, commands: 0, jvm_args: 0 })).toBe('1 IP address');
+        expect(hiddenSummary({ ips: 3, commands: 2, jvm_args: 1 })).toBe(
+            '3 IP addresses, 2 login or register commands, 1 JVM option value',
+        );
     });
 });

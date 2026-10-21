@@ -34,7 +34,9 @@ class PropertiesFile
      */
     public function read(Server $server): array
     {
-        $exists = ServerFiles::find($this->files->entries($server), self::NAME, true) !== null;
+        // Strict: a failed listing must not look like "no server.properties", which would make
+        // the active world read as "world".
+        $exists = ServerFiles::find($this->files->strictEntries($server), self::NAME, true) !== null;
         $raw = $exists ? $this->load($server) : '';
 
         return ['exists' => $exists, 'raw' => $raw, 'hash' => self::hash($raw)];

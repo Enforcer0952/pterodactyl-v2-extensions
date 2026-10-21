@@ -44,14 +44,14 @@ class CrashReports
 
         foreach ($this->files->root($server) as $entry) {
             $name = (string) ($entry['name'] ?? '');
-            if (($entry['file'] ?? true) !== false && preg_match('/^hs_err_pid\d{1,10}\.log$/D', $name) === 1) {
+            if (Files::isPlainFile($entry) && preg_match('/^hs_err_pid\d{1,10}\.log$/D', $name) === 1) {
                 $items[] = $this->item($name, $name, 'jvm', $entry);
             }
         }
 
         foreach ($this->files->folder($server, 'crash-reports') as $entry) {
             $name = (string) ($entry['name'] ?? '');
-            if (($entry['file'] ?? true) !== false && preg_match('/^[\w.\-+ ]{1,120}\.txt$/D', $name) === 1) {
+            if (Files::isPlainFile($entry) && preg_match('/^[\w.\-+ ]{1,120}\.txt$/D', $name) === 1) {
                 $items[] = $this->item('crash-reports/'.$name, $name, 'crash', $entry);
             }
         }
@@ -129,7 +129,8 @@ class CrashReports
         $text = Text::clean($text);
         $truncated = strlen($text) > $max;
 
-        return ['text' => $truncated ? substr($text, 0, $max) : $text, 'truncated' => $truncated];
+        // mb_strcut cuts on a character boundary, so a multi-byte character is never split.
+        return ['text' => $truncated ? mb_strcut($text, 0, $max, 'UTF-8') : $text, 'truncated' => $truncated];
     }
 
     /**

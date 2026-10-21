@@ -62,7 +62,7 @@ class VersionController extends Controller
     {
         $this->authorizeChange($request, $server);
         $data = $this->target($request);
-        $request->validate(['confirmed' => ['sometimes', 'boolean'], 'set_java' => ['sometimes', 'boolean']]);
+        $request->validate(['confirmed' => ['sometimes', 'boolean'], 'set_java' => ['sometimes', 'boolean'], 'backup_confirmed' => ['sometimes', 'boolean']]);
 
         $result = $this->node(fn (): array => $this->switcher->apply(
             $server,
@@ -72,6 +72,7 @@ class VersionController extends Controller
             $request->boolean('experimental'),
             $request->boolean('confirmed'),
             $request->boolean('set_java', true),
+            $request->boolean('backup_confirmed'),
         ));
 
         return new JsonResponse($result + ['overview' => $this->node(fn (): array => $this->overview->build($server, $request->user()))]);

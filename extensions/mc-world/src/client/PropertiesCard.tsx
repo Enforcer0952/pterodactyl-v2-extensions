@@ -23,7 +23,7 @@ const SECRET = /password|secret|token/i;
 
 export default function PropertiesCard({ identifier }: { identifier: string }) {
     const queryClient = useQueryClient();
-    const canEdit = useServerPermission('file.update');
+    const canEdit = useServerPermission(['file.update', 'file.create']);
     const properties = useQuery({
         queryKey: keys.properties(identifier),
         queryFn: () => getProperties(identifier),

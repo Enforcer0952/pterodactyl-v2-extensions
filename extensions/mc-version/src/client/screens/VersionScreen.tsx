@@ -336,10 +336,19 @@ function ReviewDialog({
         gcTime: 0,
     });
     const [understood, setUnderstood] = useState(false);
+    const [hasBackup, setHasBackup] = useState(false);
     const [withJava, setWithJava] = useState(true);
 
     const apply = useMutation({
-        mutationFn: () => applySwitch(identifier, { software, version, experimental, confirmed: understood, setJava: withJava }),
+        mutationFn: () =>
+            applySwitch(identifier, {
+                software,
+                version,
+                experimental,
+                confirmed: understood,
+                setJava: withJava,
+                backupConfirmed: hasBackup,
+            }),
         onSuccess: (change) => {
             toast.success(`Switched to ${plan.data?.target.label ?? software} ${version}.`);
             onDone(change);
@@ -349,7 +358,7 @@ function ReviewDialog({
 
     const data = plan.data;
     const stopped = state === 'offline';
-    const blocked = !data || (data.needs_confirmation && !understood) || !stopped;
+    const blocked = !data || (data.needs_confirmation && !understood) || (data.needs_backup && !hasBackup) || !stopped;
 
     return (
         <Dialog
@@ -367,6 +376,8 @@ function ReviewDialog({
                         onWithJava={setWithJava}
                         understood={understood}
                         onUnderstood={setUnderstood}
+                        hasBackup={hasBackup}
+                        onHasBackup={setHasBackup}
                         identifier={identifier}
                     />
                 )}
@@ -396,6 +407,8 @@ function PlanBody({
     onWithJava,
     understood,
     onUnderstood,
+    hasBackup,
+    onHasBackup,
     identifier,
 }: {
     plan: Plan;
@@ -403,6 +416,8 @@ function PlanBody({
     onWithJava: (value: boolean) => void;
     understood: boolean;
     onUnderstood: (value: boolean) => void;
+    hasBackup: boolean;
+    onHasBackup: (value: boolean) => void;
     identifier: string;
 }) {
     const { target } = plan;
@@ -427,12 +442,7 @@ function PlanBody({
                 {plan.java.change && withJava && plan.java.recommended && <li>Java changes to {javaName(plan.java.recommended)}.</li>}
             </ol>
 
-            {target.checksum === null && (
-                <p className={'mcver:text-xs mcver:text-muted-foreground'}>
-                    {target.label} does not publish a checksum for this file. It is checked to be a valid jar of the right size where
-                    possible.
-                </p>
-            )}
+            <p className={'mcver:text-xs mcver:text-muted-foreground'}>{plan.verification.note}</p>
 
             {plan.warnings.map((warning) => (
                 <Alert key={warning.code} type={warning.severity === 'info' ? 'info' : warning.severity}>
@@ -458,6 +468,13 @@ function PlanBody({
                     Open Backups
                 </PanelLink>
             </p>
+
+            {plan.needs_backup && (
+                <label className={'mcver:flex mcver:items-start mcver:gap-2 mcver:text-sm'}>
+                    <Checkbox checked={hasBackup} onChange={onHasBackup} aria-label={'I have a backup of my world'} />I have a backup of my
+                    world.
+                </label>
+            )}
 
             {plan.needs_confirmation && (
                 <label className={'mcver:flex mcver:items-start mcver:gap-2 mcver:text-sm'}>

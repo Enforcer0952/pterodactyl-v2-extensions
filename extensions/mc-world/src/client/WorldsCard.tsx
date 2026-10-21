@@ -35,13 +35,15 @@ type Dialogs =
     | { kind: 'delete-backup'; backup: Backup }
     | { kind: 'delete-world'; world: World };
 
+type DeleteInput = { world: string; backup: boolean };
+
 export default function WorldsCard({ identifier }: { identifier: string }) {
     const queryClient = useQueryClient();
     const [dialog, setDialog] = useState<Dialogs | null>(null);
 
     const can = {
         archive: useServerPermission(['file.archive', 'file.create', 'file.update']),
-        update: useServerPermission('file.update'),
+        update: useServerPermission(['file.update', 'file.create']),
         delete: useServerPermission('file.delete'),
         start: useServerPermission('control.start'),
         stop: useServerPermission('control.stop'),
@@ -121,7 +123,7 @@ export default function WorldsCard({ identifier }: { identifier: string }) {
     });
 
     const removeWorld = useMutation({
-        mutationFn: (world: string) => deleteWorld(identifier, world),
+        mutationFn: (input: DeleteInput) => deleteWorld(identifier, input.world, input.backup),
         onSuccess: (result) => {
             done(result);
             setDialog(null);
@@ -333,6 +335,7 @@ export default function WorldsCard({ identifier }: { identifier: string }) {
                     stopped={stopped}
                     canArchive={can.archive}
                     canStart={can.start}
+                    mustBackUp={data.hardcore}
                     pending={reset.isPending}
                     onClose={() => setDialog(null)}
                     onConfirm={(input) => reset.mutate(input)}
@@ -380,31 +383,15 @@ export default function WorldsCard({ identifier }: { identifier: string }) {
             )}
 
             {dialog?.kind === 'delete-world' && (
-                <Dialog open title={`Delete ${dialog.world.name}?`} onClose={() => (removeWorld.isPending ? undefined : setDialog(null))}>
-                    <div className={'mcw:flex mcw:flex-col mcw:gap-3 mcw:text-sm'}>
-                        <p>These folders are deleted for good:</p>
-                        <FolderList folders={dialog.world.folders} />
-                        <p className={'mcw:text-muted-foreground'}>Make a backup first if you may want it back.</p>
-                        {!stopped && stopNotice}
-                    </div>
-                    <Dialog.Footer>
-                        <Button.Text
-                            className={'mcw:w-full mcw:sm:w-auto'}
-                            disabled={removeWorld.isPending}
-                            onClick={() => setDialog(null)}
-                        >
-                            Cancel
-                        </Button.Text>
-                        <Button.Danger
-                            className={'mcw:w-full mcw:sm:w-auto'}
-                            isLoading={removeWorld.isPending}
-                            disabled={!stopped}
-                            onClick={() => removeWorld.mutate(dialog.world.name)}
-                        >
-                            Delete world
-                        </Button.Danger>
-                    </Dialog.Footer>
-                </Dialog>
+                <DeleteWorldDialog
+                    world={dialog.world}
+                    stopNotice={stopNotice}
+                    stopped={stopped}
+                    canArchive={can.archive}
+                    pending={removeWorld.isPending}
+                    onClose={() => setDialog(null)}
+                    onConfirm={(input) => removeWorld.mutate(input)}
+                />
             )}
         </div>
     );
@@ -439,6 +426,57 @@ function FolderList({ folders }: { folders: string[] }) {
     );
 }
 
+function DeleteWorldDialog({
+    world,
+    stopNotice,
+    stopped,
+    canArchive,
+    pending,
+    onClose,
+    onConfirm,
+}: {
+    world: World;
+    stopNotice: ReactNode;
+    stopped: boolean;
+    canArchive: boolean;
+    pending: boolean;
+    onClose: () => void;
+    onConfirm: (input: DeleteInput) => void;
+}) {
+    const [keepBackup, setKeepBackup] = useState(canArchive);
+    const backupOn = keepBackup && canArchive;
+
+    return (
+        <Dialog open title={`Delete ${world.name}?`} onClose={() => (pending ? undefined : onClose())}>
+            <div className={'mcw:flex mcw:flex-col mcw:gap-3 mcw:text-sm'}>
+                <p>These folders are deleted for good:</p>
+                <FolderList folders={world.folders} />
+                <label className={'mcw:flex mcw:items-center mcw:gap-2'}>
+                    <Checkbox checked={backupOn} disabled={!canArchive} onChange={setKeepBackup} />
+                    Keep a backup first
+                </label>
+                {!canArchive && (
+                    <p className={'mcw:text-muted-foreground'}>You need the archive, create and update permissions to make a backup.</p>
+                )}
+                {!stopped && stopNotice}
+            </div>
+            <Dialog.Footer>
+                <Button.Text className={'mcw:w-full mcw:sm:w-auto'} disabled={pending} onClick={onClose}>
+                    Cancel
+                </Button.Text>
+                <Button.Danger
+                    className={'mcw:w-full mcw:sm:w-auto'}
+                    isLoading={pending}
+                    disabled={!stopped}
+                    onClick={() => onConfirm({ world: world.name, backup: backupOn })}
+                >
+                    Delete world
+                </Button.Danger>
+            </Dialog.Footer>
+        </Dialog>
+    );
+}
+
 function StopNotice({ state, canStop, stopping, onStop }: { state: string; canStop: boolean; stopping: boolean; onStop: () => void }) {
     if (isStopped(state)) return null;
 
@@ -469,6 +507,7 @@ function ResetDialog({
     stopped,
     canArchive,
     canStart,
+    mustBackUp,
     pending,
     onClose,
     onConfirm,
@@ -479,6 +518,8 @@ function ResetDialog({
     stopped: boolean;
     canArchive: boolean;
     canStart: boolean;
+    /** The active world is hardcore: a reset always backs it up first. */
+    mustBackUp: boolean;
     pending: boolean;
     onClose: () => void;
     onConfirm: (input: ResetInput) => void;
@@ -487,9 +528,9 @@ function ResetDialog({
     const [keepBackup, setKeepBackup] = useState(canArchive);
     const [start, setStart] = useState(hardcore);
     const seedError = seed.includes('\n') || seed.length > 100 ? 'One line, at most 100 characters.' : null;
-    const backupOn = hardcore ? true : keepBackup && canArchive;
+    const backupOn = hardcore || mustBackUp ? true : keepBackup && canArchive;
     const startOn = hardcore ? true : start && canStart;
-    const blocked = (hardcore && (!canArchive || !canStart)) || seedError !== null;
+    const blocked = ((hardcore || mustBackUp) && !canArchive) || (hardcore && !canStart) || seedError !== null;
 
     return (
         <Dialog open title={hardcore ? 'New hardcore run?' : `Reset ${world.name}?`} onClose={() => (pending ? undefined : onClose())}>
@@ -523,8 +564,8 @@ function ResetDialog({
                 ) : (
                     <div className={'mcw:flex mcw:flex-col mcw:gap-2'}>
                         <label className={'mcw:flex mcw:items-center mcw:gap-2'}>
-                            <Checkbox checked={backupOn} disabled={!canArchive} onChange={setKeepBackup} />
-                            Keep a backup first
+                            <Checkbox checked={backupOn} disabled={!canArchive || mustBackUp} onChange={setKeepBackup} />
+                            {mustBackUp ? 'A backup is always made first on a hardcore server' : 'Keep a backup first'}
                         </label>
                         <label className={'mcw:flex mcw:items-center mcw:gap-2'}>
                             <Checkbox checked={startOn} disabled={!canStart} onChange={setStart} />

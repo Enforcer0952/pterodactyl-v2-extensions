@@ -74,6 +74,8 @@ const plan = {
         { code: 'family_switch', severity: 'danger', message: 'Mods do not run on Paper.' },
     ],
     needs_confirmation: true,
+    needs_backup: true,
+    verification: { content: false, note: 'Not verified: this jar is too large to read back, so only its size is checked.' },
     variables: [{ name: 'BUILD_NUMBER', from: 'latest', to: '232' }],
     java: { recommended: IMAGES[4], current: IMAGES[2].image, change: true, locked: false },
 };
@@ -196,7 +198,11 @@ it('reviews a switch, needs the risks acknowledged and applies it', async () => 
     const apply = within(dialog).getByRole('button', { name: 'Switch' }) as HTMLButtonElement;
     expect(apply.disabled).toBe(true);
 
+    expect(within(dialog).getByText(/Not verified/)).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('checkbox', { name: 'I understand the risks' }));
+    // A downgrade needs the backup box too.
+    expect(apply.disabled).toBe(true);
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'I have a backup of my world' }));
     await waitFor(() => expect(apply.disabled).toBe(false));
     fireEvent.click(apply);
 
@@ -207,6 +213,7 @@ it('reviews a switch, needs the risks acknowledged and applies it', async () => 
             experimental: 0,
             confirmed: 1,
             set_java: 1,
+            backup_confirmed: 1,
         }),
     );
 

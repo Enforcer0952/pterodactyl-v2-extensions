@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use McVersion\Support\Software;
 use McVersion\Support\Sources;
+use McVersion\Support\Verification;
 use McVersion\Support\Versions;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -19,7 +20,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  */
 class Upstream
 {
-    public const string USER_AGENT = 'pterodactyl-mc-version/1.0.0 (+https://github.com/Enforcer0952/pterodactyl-v2-extensions)';
+    public const string USER_AGENT = 'pterodactyl-mc-version/1.0.1 (+https://github.com/Enforcer0952/pterodactyl-v2-extensions)';
 
     private const int TTL = 600;
 
@@ -83,6 +84,39 @@ class Upstream
         }
 
         return $build;
+    }
+
+    /**
+     * The size a download announces, from a HEAD request to its (allowlisted) address, or
+     * null when the host does not say. Redirects are followed by hand and only to
+     * addresses that are allowlisted too.
+     */
+    public function contentLength(string $url): ?int
+    {
+        try {
+            for ($hop = 0; $hop < 3; $hop++) {
+                if (! Sources::isAllowedDownload($url)) {
+                    return null;
+                }
+                $response = Http::withUserAgent(self::USER_AGENT)
+                    ->connectTimeout(5)
+                    ->timeout(15)
+                    ->withOptions(['allow_redirects' => false])
+                    ->head($url);
+
+                if ($response->redirect()) {
+                    $url = (string) $response->header('Location');
+
+                    continue;
+                }
+
+                return $response->successful() ? Verification::contentLength($response->headers()) : null;
+            }
+        } catch (\Throwable) {
+            // The size is only a second opinion.
+        }
+
+        return null;
     }
 
     /**

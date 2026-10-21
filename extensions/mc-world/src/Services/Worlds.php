@@ -3,9 +3,11 @@
 namespace McWorld\Services;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use InvalidArgumentException;
 use McWorld\Support\Names;
+use McWorld\Support\NodeErrors;
 use McWorld\Support\Properties;
 use McWorld\Support\ResetPlan;
 use McWorld\Support\WorldLayout;
@@ -26,6 +28,12 @@ class Worlds
     public const string EXTENSION = 'mc-world';
 
     public const int DEFAULT_KEEP = 5;
+
+    /** Longer than a compress plus a decompress, which Wings may each take 15 minutes for. */
+    public const int LOCK_SECONDS = 2700;
+
+    /** How long a "does this folder hold a level.dat" answer is reused. */
+    private const int PROBE_SECONDS = 5;
 
     public function __construct(
         private readonly ServerFiles $files,
@@ -58,6 +66,7 @@ class Worlds
     public function serverState(Server $server): string
     {
         try {
+            \Illuminate\Support\Facades\Cache::forget('resources:'.$server->uuid); // the panel caches power state for 20 s
             return $this->state->read($server)->state;
         } catch (DaemonConnectionException) {
             throw new HttpException(502, 'Could not reach this server\'s node.');
@@ -101,7 +110,8 @@ class Worlds
 
             $world = $backup['world'];
             $stamp = Names::stamp(CarbonImmutable::now());
-            $root = WorldLayout::folders($this->files->entries($server));
+            // Strict: if the root cannot be listed, nothing is moved.
+            $root = WorldLayout::folders($this->files->strictEntries($server));
             $moves = [];
             foreach ([$world, Names::nether($world), Names::end($world)] as $folder) {
                 if (isset($root[$folder])) {
@@ -115,6 +125,9 @@ class Worlds
             $temporary = 'mcw-restore-'.$stamp.'.tar.gz';
             $moved = [];
             $parked = false;
+            $unpacked = false;
+            // The listing above may be old by now, so ask the node again just before the first rename.
+            $this->requireStopped($server);
             try {
                 foreach ($moves as $from => $to) {
                     $this->files->rename($server, '/', $from, $to);
@@ -124,14 +137,27 @@ class Worlds
                 $this->files->rename($server, '/', $dir.'/'.$file, $temporary);
                 $parked = true;
                 $this->files->decompress($server, '/', $temporary);
-                $this->files->rename($server, '/', $temporary, $dir.'/'.$file);
-                $parked = false;
+                $unpacked = true;
             } catch (Throwable $exception) {
+                if ($parked && ! $unpacked && $exception instanceof DaemonConnectionException
+                    && NodeErrors::mayStillRun($exception->getStatusCode(), $exception->getPrevious() instanceof ConnectionException)) {
+                    // Wings keeps unpacking after the panel gives up, so nothing is undone here.
+                    throw new HttpException(502, $moved === []
+                        ? 'The restore may still be running on the node. Check the files before starting the server. The backup is at '.$temporary.' until you move it back.'
+                        : 'The restore may still be running on the node. Your old world is kept as '.array_values($moved)[0].'; check the files before starting the server. The backup is at '.$temporary.' until you move it back.');
+                }
+
                 $this->undoRestore($server, $moved, $parked ? [$temporary, $dir.'/'.$file] : null);
 
                 throw $exception instanceof HttpException || $exception instanceof DaemonConnectionException
                     ? $exception
                     : new HttpException(500, 'The backup could not be restored. The old world was put back.');
+            }
+
+            try {
+                $this->files->rename($server, '/', $temporary, $dir.'/'.$file);
+            } catch (Throwable) {
+                // The world is restored; the archive can be moved back by hand.
             }
 
             Activity::event('server:world.restore')->subject($server)->property(['backup' => $file, 'kept' => array_values($moved)])->log();
@@ -174,10 +200,16 @@ class Worlds
             if (! $file['exists']) {
                 throw new HttpException(404, 'server.properties does not exist yet. Start the server once so it is created.');
             }
-            $active = Properties::parse($file['raw'])->get('level-name') ?? 'world';
+            $parsed = Properties::parse($file['raw']);
+            $active = $parsed->get('level-name') ?? 'world';
             if ($active !== $world) {
                 throw new HttpException(409, 'The active world changed. Reload the page and try again.');
             }
+            if (! $backup && $parsed->get('hardcore') === 'true') {
+                throw new HttpException(422, 'A hardcore world is always backed up before it is reset.');
+            }
+            $oldSeed = $parsed->get('level-seed');
+            $seedChanged = false;
 
             $found = $this->findWorld($server, $world);
             try {
@@ -191,14 +223,30 @@ class Worlds
                     case 'backup':
                         $this->makeBackup($server, $found);
                         break;
-                    case 'delete':
-                        $this->files->delete($server, '/', $step['folders']);
-                        break;
                     case 'seed':
+                        // Saved before anything is deleted: if this fails, the world is untouched.
                         try {
                             $this->properties->change($server, ['level-seed' => $step['value']], null);
+                            $seedChanged = true;
                         } catch (HttpException $exception) {
-                            throw new HttpException($exception->getStatusCode(), 'The world was deleted, but the seed could not be saved: '.$exception->getMessage());
+                            throw new HttpException($exception->getStatusCode(), 'The seed could not be saved, so nothing was deleted: '.$exception->getMessage());
+                        }
+                        break;
+                    case 'delete':
+                        try {
+                            // A backup can take minutes: look at the server again before deleting.
+                            $this->requireStopped($server);
+                            $this->files->delete($server, '/', $step['folders']);
+                        } catch (Throwable $exception) {
+                            if ($seedChanged) {
+                                try {
+                                    $this->properties->change($server, ['level-seed' => $oldSeed], null);
+                                } catch (Throwable) {
+                                    // The old seed can be set again on the Properties card.
+                                }
+                            }
+
+                            throw $exception;
                         }
                         break;
                     case 'start':
@@ -230,13 +278,14 @@ class Worlds
     }
 
     /**
-     * Delete a world that is not the active one, with its nether and end folders.
+     * Delete a world that is not the active one, with its nether and end folders. A backup
+     * is made first unless $backup is false.
      *
      * @return list<string>
      */
-    public function deleteWorld(Server $server, string $world): array
+    public function deleteWorld(Server $server, string $world, bool $backup = true): array
     {
-        return $this->exclusive($server, function () use ($server, $world): array {
+        return $this->exclusive($server, function () use ($server, $world, $backup): array {
             $this->requireStopped($server);
             $file = $this->properties->read($server);
             $active = $file['exists'] ? (Properties::parse($file['raw'])->get('level-name') ?? 'world') : 'world';
@@ -244,8 +293,13 @@ class Worlds
                 throw new HttpException(409, 'This is the active world. Switch to another world first, or use Reset.');
             }
             $found = $this->findWorld($server, $world);
+            if ($backup) {
+                $this->makeBackup($server, $found);
+                // The backup can take minutes: look at the server again before deleting.
+                $this->requireStopped($server);
+            }
             $this->files->delete($server, '/', $found['folders']);
-            Activity::event('server:world.delete')->subject($server)->property(['world' => $world, 'deleted' => $found['folders']])->log();
+            Activity::event('server:world.delete')->subject($server)->property(['world' => $world, 'deleted' => $found['folders'], 'backup' => $backup])->log();
 
             return $found['folders'];
         });
@@ -256,12 +310,23 @@ class Worlds
      */
     private function worlds(Server $server, string $active): array
     {
-        $root = $this->files->entries($server);
+        $root = $this->files->strictEntries($server);
         $levelDats = [];
+        // One listing per candidate folder is a node call each, so answers are reused for a few
+        // seconds. Every world action bumps the version, which drops them.
+        $version = (string) Cache::get($this->versionKey($server), '0');
         foreach (WorldLayout::candidates($root, $active) as $folder) {
-            $level = ServerFiles::find($this->files->entries($server, '/'.$folder), 'level.dat', true);
-            if ($level !== null) {
-                $levelDats[$folder] = isset($level['modified']) ? (string) $level['modified'] : null;
+            $probe = Cache::remember(
+                'ext:mc-world:level:'.$server->uuid.':'.$version.':'.md5($folder),
+                self::PROBE_SECONDS,
+                function () use ($server, $folder): array {
+                    $level = ServerFiles::find($this->files->entries($server, '/'.$folder), 'level.dat', true);
+
+                    return ['found' => $level !== null, 'modified' => isset($level['modified']) ? (string) $level['modified'] : null];
+                },
+            );
+            if ($probe['found']) {
+                $levelDats[$folder] = $probe['modified'];
             }
         }
 
@@ -276,9 +341,9 @@ class Worlds
         if (! Names::world($world)) {
             throw new HttpException(422, 'That is not a valid world name.');
         }
-        $root = $this->files->entries($server);
+        $root = $this->files->strictEntries($server);
         if (isset(WorldLayout::folders($root)[$world])) {
-            $level = ServerFiles::find($this->files->entries($server, '/'.$world), 'level.dat', true);
+            $level = ServerFiles::find($this->files->strictEntries($server, '/'.$world), 'level.dat', true);
             if ($level !== null) {
                 $found = WorldLayout::detect($root, [$world => isset($level['modified']) ? (string) $level['modified'] : null], '');
 
@@ -297,7 +362,7 @@ class Worlds
     private function makeBackup(Server $server, array $world): string
     {
         $dir = Names::BACKUP_DIR;
-        if (ServerFiles::find($this->files->entries($server), $dir, false) === null) {
+        if (ServerFiles::find($this->files->strictEntries($server), $dir, false) === null) {
             $this->files->createDirectory($server, $dir);
         }
 
@@ -378,7 +443,8 @@ class Worlds
             if ($archive !== null) {
                 $this->files->rename($server, '/', $archive[0], $archive[1]);
             }
-            $root = WorldLayout::folders($this->files->entries($server));
+            // Strict: if the root cannot be listed, nothing is deleted.
+            $root = WorldLayout::folders($this->files->strictEntries($server));
             $partial = array_values(array_filter(array_keys($moved), fn (string $name): bool => isset($root[$name])));
             if ($partial !== []) {
                 $this->files->delete($server, '/', $partial);
@@ -391,8 +457,13 @@ class Worlds
         }
     }
 
+    /**
+     * The panel reuses a server's state for 20 seconds, which is too old to delete anything
+     * on, so the cached copy is dropped and the node is asked.
+     */
     private function requireStopped(Server $server): void
     {
+        Cache::forget('resources:'.$server->uuid);
         $state = $this->serverState($server);
         if ($state !== 'offline') {
             throw new HttpException(409, 'Stop the server first. It is '.$state.'.');
@@ -409,7 +480,7 @@ class Worlds
      */
     private function exclusive(Server $server, \Closure $callback): mixed
     {
-        $lock = Cache::lock('ext:mc-world:actions:'.$server->uuid, 900);
+        $lock = Cache::lock('ext:mc-world:actions:'.$server->uuid, self::LOCK_SECONDS);
         if (! $lock->get()) {
             throw new HttpException(409, 'Another world action is running on this server. Wait for it to finish.');
         }
@@ -418,6 +489,12 @@ class Worlds
             return $callback();
         } finally {
             $lock->release();
+            Cache::forever($this->versionKey($server), bin2hex(random_bytes(4)));
         }
+    }
+
+    private function versionKey(Server $server): string
+    {
+        return 'ext:mc-world:version:'.$server->uuid;
     }
 }

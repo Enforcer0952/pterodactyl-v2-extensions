@@ -34,7 +34,7 @@ class PropertiesController extends Controller
     public function update(Request $request, Server $server): JsonResponse
     {
         $this->ensureJava($server);
-        $this->ensureCan($request, $server, ['file.read', 'file.read-content', 'file.update'], 'You do not have permission to change server.properties.');
+        $this->ensureCan($request, $server, ['file.read', 'file.read-content', 'file.update', 'file.create'], 'You do not have permission to change server.properties.');
 
         $data = $request->validate([
             'hash' => ['required', 'string', 'size:40'],

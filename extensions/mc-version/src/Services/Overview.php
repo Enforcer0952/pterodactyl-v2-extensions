@@ -6,6 +6,7 @@ use McVersion\Support\Backups;
 use McVersion\Support\JavaImages;
 use McVersion\Support\Mismatches;
 use McVersion\Support\Software;
+use Illuminate\Support\Facades\Cache;
 use Pterodactyl\Contracts\Servers\ReadsServerState;
 use Pterodactyl\Models\Server;
 use Pterodactyl\Models\User;
@@ -38,6 +39,14 @@ class Overview
         $pending = Copies::pending($copies, $detected['log_modified']);
 
         return $detected + ['pending' => $pending, 'copies' => $copies, 'root' => $root, 'jar' => $jar];
+    }
+
+    /** The panel reuses a server's state for 20 seconds; the page asks the node again. */
+    private function freshState(Server $server): string
+    {
+        Cache::forget('resources:'.$server->uuid);
+
+        return $this->state->read($server)->state;
     }
 
     /**
@@ -78,7 +87,7 @@ class Overview
         $apply = $can('file.update') && $can('file.create') && $can('startup.update');
 
         return [
-            'state' => $this->state->read($server)->state,
+            'state' => $this->freshState($server),
             'jar' => ['name' => $jar, 'exists' => $jarEntry !== null, 'size' => $jarEntry === null ? null : (int) ($jarEntry['size'] ?? 0), 'modified' => $jarEntry['modified'] ?? null],
             'detected' => [
                 'software' => $now['software'],

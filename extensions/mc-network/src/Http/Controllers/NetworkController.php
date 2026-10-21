@@ -19,6 +19,12 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  */
 class NetworkController extends Controller
 {
+    /** Reading config.yml: the listing and the contents. */
+    private const array READ = ['file.read', 'file.read-content'];
+
+    /** Saving: read it, write a backup copy and the new file. */
+    private const array WRITE = ['file.read', 'file.read-content', 'file.update', 'file.create'];
+
     public function __construct(
         private readonly Network $network,
         private readonly SendsServerPower $power,
@@ -26,7 +32,7 @@ class NetworkController extends Controller
 
     public function show(Request $request, Server $server): JsonResponse
     {
-        $this->authorizeFor($request, $server, 'file.read', 'You do not have permission to read this server\'s files.');
+        $this->authorizeFor($request, $server, self::READ, 'You do not have permission to read this server\'s files.');
 
         return new JsonResponse($this->guard(fn (): array => $this->network->load($server, $request->user())));
     }
@@ -34,7 +40,7 @@ class NetworkController extends Controller
     /** Problems of a draft that is not saved yet. Nothing is written. */
     public function check(Request $request, Server $server): JsonResponse
     {
-        $this->authorizeFor($request, $server, 'file.read', 'You do not have permission to read this server\'s files.');
+        $this->authorizeFor($request, $server, self::READ, 'You do not have permission to read this server\'s files.');
         $draft = $this->draft($request);
 
         return new JsonResponse($this->guard(fn (): array => $this->network->check($server, $request->user(), $draft)));
@@ -42,7 +48,7 @@ class NetworkController extends Controller
 
     public function update(Request $request, Server $server): JsonResponse
     {
-        $this->authorizeFor($request, $server, 'file.update', 'You do not have permission to change this server\'s files.');
+        $this->authorizeFor($request, $server, self::WRITE, 'You do not have permission to change this server\'s files.');
         $draft = $this->draft($request);
         $hash = (string) $request->validate(['hash' => ['required', 'string', 'size:40']])['hash'];
 
@@ -51,7 +57,7 @@ class NetworkController extends Controller
 
     public function restart(Request $request, Server $server): JsonResponse
     {
-        $this->authorizeFor($request, $server, 'control.restart', 'You do not have permission to restart this server.');
+        $this->authorizeFor($request, $server, ['control.restart'], 'You do not have permission to restart this server.');
 
         $this->guard(function () use ($server): void {
             $this->power->send($server, 'restart');
@@ -96,10 +102,15 @@ class NetworkController extends Controller
         ];
     }
 
-    private function authorizeFor(Request $request, Server $server, string $permission, string $message): void
+    /**
+     * @param  list<string>  $permissions  all of these are needed
+     */
+    private function authorizeFor(Request $request, Server $server, array $permissions, string $message): void
     {
         abort_unless(Eggs::isProxy($server->tagSlugs()), 404);
-        abort_unless($request->user()->can($permission, $server), 403, $message);
+        foreach ($permissions as $permission) {
+            abort_unless($request->user()->can($permission, $server), 403, $message);
+        }
     }
 
     /**

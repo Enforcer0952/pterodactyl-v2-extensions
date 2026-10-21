@@ -65,8 +65,8 @@ export const resetWorld = async (server: string, input: ResetInput) =>
 export const switchWorld = async (server: string, world: string) =>
     (await http.put<WorldsResponse>(`${base(server)}/worlds/active`, { world })).data;
 
-export const deleteWorld = async (server: string, world: string) =>
-    (await http.delete<WorldsResponse>(`${base(server)}/worlds/${encodeURIComponent(world)}`)).data;
+export const deleteWorld = async (server: string, world: string, backup = true) =>
+    (await http.delete<WorldsResponse>(`${base(server)}/worlds/${encodeURIComponent(world)}`, { params: { backup: backup ? 1 : 0 } })).data;
 
 /** The panel's own power endpoint, so the usual control.stop permission applies. */
 export const stopServer = async (server: string) => {

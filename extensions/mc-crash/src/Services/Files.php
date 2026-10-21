@@ -52,7 +52,7 @@ class Files
 
         $exists = false;
         foreach ($this->root($server) as $entry) {
-            if (($entry['name'] ?? null) === $name && ($entry['file'] ?? true) === false) {
+            if (($entry['name'] ?? null) === $name && ($entry['file'] ?? true) === false && ! self::isLink($entry)) {
                 $exists = true;
 
                 break;
@@ -102,13 +102,33 @@ class Files
     }
 
     /**
+     * A symbolic link in a listing. Links are never followed: one can point out of the server's folder.
+     *
+     * @param  array<string, mixed>  $entry
+     */
+    public static function isLink(array $entry): bool
+    {
+        return ($entry['symlink'] ?? false) === true;
+    }
+
+    /**
+     * A real file of a listing, by name: not a folder and not a link.
+     *
+     * @param  array<string, mixed>  $entry
+     */
+    public static function isPlainFile(array $entry): bool
+    {
+        return ($entry['file'] ?? true) !== false && ! self::isLink($entry);
+    }
+
+    /**
      * @param  list<array<string, mixed>>  $entries
      * @return array<string, mixed>|null
      */
     public static function file(array $entries, string $name): ?array
     {
         foreach ($entries as $entry) {
-            if (($entry['name'] ?? null) === $name && ($entry['file'] ?? true) !== false) {
+            if (($entry['name'] ?? null) === $name && self::isPlainFile($entry)) {
                 return $entry;
             }
         }

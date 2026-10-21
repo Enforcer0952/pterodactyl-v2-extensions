@@ -17,7 +17,8 @@ final class Validate
 
     public static function serverName(string $name): bool
     {
-        return preg_match('/^[A-Za-z0-9_-]{1,32}$/D', $name) === 1;
+        // A name of digits only would become a number key in the YAML and in PHP arrays.
+        return preg_match('/^[A-Za-z0-9_-]{1,32}$/D', $name) === 1 && preg_match('/\D/', $name) === 1;
     }
 
     /**
@@ -55,7 +56,7 @@ final class Validate
 
             $unchangedName = $original !== null && $was === $name && ! preg_match(self::CONTROL, $name) && strlen($name) <= 64 && $name !== '';
             if (! self::serverName($name) && ! $unchangedName) {
-                $errors[] = $label.' is not a valid name. Use letters, numbers, dashes and underscores, up to 32 characters.';
+                $errors[] = $label.' is not a valid name. Use letters, numbers, dashes and underscores, up to 32 characters, with at least one that is not a digit.';
             }
 
             $address = (string) ($server['address'] ?? '');

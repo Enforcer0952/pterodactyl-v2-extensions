@@ -74,6 +74,9 @@ export interface Plan {
     keeps_copy: boolean;
     warnings: Warning[];
     needs_confirmation: boolean;
+    /** A downgrade or a move between plugins and mods: the user must say the world is backed up. */
+    needs_backup: boolean;
+    verification: { content: boolean; note: string };
     variables: { name: string; from: string; to: string }[];
     java: { recommended: JavaImage | null; current: string; change: boolean; locked: boolean };
 }
@@ -104,7 +107,7 @@ export const getPlan = async (server: string, software: string, version: string,
 
 export const applySwitch = async (
     server: string,
-    input: { software: string; version: string; experimental: boolean; confirmed: boolean; setJava: boolean },
+    input: { software: string; version: string; experimental: boolean; confirmed: boolean; setJava: boolean; backupConfirmed: boolean },
 ) =>
     (
         await http.post<Change>(`${base(server)}/apply`, {
@@ -113,6 +116,7 @@ export const applySwitch = async (
             experimental: input.experimental ? 1 : 0,
             confirmed: input.confirmed ? 1 : 0,
             set_java: input.setJava ? 1 : 0,
+            backup_confirmed: input.backupConfirmed ? 1 : 0,
         })
     ).data;
 

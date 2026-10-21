@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Button, Dialog, PanelLink, Spinner, httpErrorToHuman, toast } from '@pterodactyl/sdk';
-import { getRaw, keys, shareFile, type Culprit, type Severity } from './api';
-import { SEVERITY_CLASS, SEVERITY_LABEL, contentScreen, jarLabel, jarNames, shareWarning, tierLabel } from './logic';
+import { Alert, Button, Dialog, PanelLink, Spinner, httpErrorToHuman, toast } from '@pterodactyl/sdk';
+import { getRaw, getSharePreview, keys, shareFile, type Culprit, type Severity } from './api';
+import { SEVERITY_CLASS, SEVERITY_LABEL, contentScreen, jarLabel, hiddenSummary, jarNames, shareWarning, tierLabel } from './logic';
 
 export function SeverityBadge({ severity }: { severity: Severity }) {
     return (
@@ -137,8 +137,18 @@ export function ShareButton({ server, path, name }: { server: string; path: stri
     const [asking, setAsking] = useState(false);
     const [url, setUrl] = useState<string | null>(null);
 
+    // The text is fetched when the dialog opens, so what is shown is what the upload will send.
+    const preview = useQuery({
+        queryKey: ['mc-crash', server, 'share-preview', path],
+        queryFn: () => getSharePreview(server, path),
+        enabled: asking,
+        retry: false,
+        staleTime: 0,
+        gcTime: 0,
+    });
+
     const share = useMutation({
-        mutationFn: () => shareFile(server, path),
+        mutationFn: (hash: string) => shareFile(server, path, hash),
         onSuccess: (result) => {
             setUrl(result.url);
             setAsking(false);
@@ -166,11 +176,34 @@ export function ShareButton({ server, path, name }: { server: string; path: stri
                     open
                     title={'Share on mclo.gs?'}
                     confirm={'Upload'}
-                    pending={share.isPending}
+                    pending={share.isPending || !preview.data}
                     onClose={() => setAsking(false)}
-                    onConfirmed={() => share.mutate()}
+                    onConfirmed={() => preview.data && share.mutate(preview.data.hash)}
                 >
-                    <p className={'mccr:text-sm'}>{shareWarning(name)}</p>
+                    <div className={'mccr:flex mccr:flex-col mccr:gap-3'}>
+                        <p className={'mccr:text-sm'}>{shareWarning(name)}</p>
+                        {preview.isLoading && <Spinner centered />}
+                        {preview.error && <Alert type={'danger'}>{httpErrorToHuman(preview.error)}</Alert>}
+                        {preview.data && (
+                            <>
+                                <p className={'mccr:text-xs mccr:text-muted-foreground'}>
+                                    {hiddenSummary(preview.data.hidden)
+                                        ? `Removed: ${hiddenSummary(preview.data.hidden)}.`
+                                        : 'Nothing was found to remove.'}{' '}
+                                    {preview.data.lines.toLocaleString('en')} lines will be uploaded
+                                    {preview.data.shown_all ? '.' : '. Only the start is shown here.'}
+                                </p>
+                                <pre
+                                    aria-label={'Text that will be uploaded'}
+                                    className={
+                                        'mccr:max-h-64 mccr:overflow-auto mccr:whitespace-pre-wrap mccr:break-all mccr:rounded-md mccr:border mccr:border-border mccr:bg-muted mccr:p-2 mccr:font-mono mccr:text-xs'
+                                    }
+                                >
+                                    {preview.data.text}
+                                </pre>
+                            </>
+                        )}
+                    </div>
                 </Dialog.Confirm>
             )}
         </>

@@ -11,6 +11,7 @@ use McCrash\Services\CrashReports;
 use McCrash\Services\JarIndex;
 use McCrash\Services\LogScans;
 use McCrash\Services\Sharing;
+use McCrash\Support\Redact;
 use Pterodactyl\Facades\Activity;
 use Pterodactyl\Facades\Extensions;
 use Pterodactyl\Models\Server;
@@ -25,6 +26,9 @@ class CrashController extends Controller
 
     /** Raw text sent to the browser. */
     private const int MAX_RAW_BYTES = 1024 * 1024;
+
+    /** The part of the redacted text shown in the confirmation; the summary covers all of it. */
+    private const int MAX_PREVIEW_BYTES = 200 * 1024;
 
     public function __construct(
         private readonly JarIndex $index,
@@ -86,14 +90,61 @@ class CrashController extends Controller
         return new JsonResponse($raw);
     }
 
+    /**
+     * What an upload would send: the file with IP addresses, login commands and JVM option values removed.
+     * The hash identifies this exact text, so the upload can refuse a file that changed after the preview.
+     */
+    public function preview(Request $request, Server $server): JsonResponse
+    {
+        $this->authorizeShare($request, $server);
+        $path = (string) $request->validate(['path' => ['required', 'string', 'max:200']])['path'];
+
+        $prepared = $this->prepared($server, $path);
+        $text = $prepared['text'];
+
+        return new JsonResponse([
+            'text' => mb_strcut($text, 0, self::MAX_PREVIEW_BYTES, 'UTF-8'),
+            'shown_all' => strlen($text) <= self::MAX_PREVIEW_BYTES,
+            'bytes' => strlen($text),
+            'lines' => substr_count($text, "\n") + 1,
+            'hash' => sha1($text),
+            'hidden' => ['ips' => $prepared['ips'], 'commands' => $prepared['commands'], 'jvm_args' => $prepared['jvm_args']],
+        ]);
+    }
+
     public function share(Request $request, Server $server): JsonResponse
+    {
+        $this->authorizeShare($request, $server);
+
+        $data = $request->validate(['path' => ['required', 'string', 'max:200'], 'hash' => ['required', 'string', 'size:40']]);
+        $path = (string) $data['path'];
+
+        $text = $this->prepared($server, $path)['text'];
+        if (! hash_equals(sha1($text), (string) $data['hash'])) {
+            throw new HttpException(409, 'The file changed after the preview. Open the preview again before uploading.');
+        }
+
+        $url = $this->sharing->upload($text);
+
+        Activity::event('server:crash.share')->subject($server)->property(['file' => $path, 'url' => $url])->log();
+
+        return new JsonResponse(['url' => $url]);
+    }
+
+    private function authorizeShare(Request $request, Server $server): void
     {
         $this->authorizeView($request, $server);
         abort_unless($this->sharingOn(), 403, 'Sharing is turned off on this panel.');
         abort_unless($request->user()->can('ext.mc-crash.share', $server), 403, 'You do not have permission to share crash reports.');
+    }
 
-        $path = (string) $request->validate(['path' => ['required', 'string', 'max:200']])['path'];
-
+    /**
+     * The text of a listed report or log, cleaned of private details.
+     *
+     * @return array{text: string, ips: int, commands: int, jvm_args: int}
+     */
+    private function prepared(Server $server, string $path): array
+    {
         $text = $this->node(function () use ($server, $path): ?string {
             $report = $this->reports->raw($server, $path, Sharing::MAX_BYTES);
             if ($report !== null) {
@@ -106,11 +157,7 @@ class CrashController extends Controller
             throw new HttpException(404, 'That file is not there any more.');
         }
 
-        $url = $this->sharing->upload($text);
-
-        Activity::event('server:crash.share')->subject($server)->property(['file' => $path, 'url' => $url])->log();
-
-        return new JsonResponse(['url' => $url]);
+        return Redact::apply($text, Redact::isJvmLog($path));
     }
 
     /**

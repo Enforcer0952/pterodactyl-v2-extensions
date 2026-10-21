@@ -51,6 +51,19 @@ class ServerFiles
     }
 
     /**
+     * A folder's entries, and any error is thrown. Used for the server root before anything
+     * is moved or deleted: an empty list from a failed call would look like "no world here".
+     *
+     * @return list<array<string, mixed>>
+     *
+     * @throws DaemonConnectionException
+     */
+    public function strictEntries(Server $server, string $directory = '/'): array
+    {
+        return array_values($this->lists->list($server, $directory));
+    }
+
+    /**
      * @param  list<array<string, mixed>>  $entries
      * @return array<string, mixed>|null
      */

@@ -21,12 +21,23 @@ final class ValidateTest extends TestCase
 
     public function test_server_names(): void
     {
-        foreach (['lobby', 'The-Kingdom_2', str_repeat('a', 32), 'A'] as $name) {
+        foreach (['lobby', 'The-Kingdom_2', str_repeat('a', 32), 'A', '1a', '1-2', '_1', '007x'] as $name) {
             $this->assertTrue(Validate::serverName($name), $name);
         }
-        foreach (['', 'has space', 'a:b', "a\nb", "lobby\n", str_repeat('a', 33), 'ünïcode', 'a.b', '../x', 'a#b', "a\0b"] as $name) {
+        foreach (['', 'has space', 'a:b', "a\nb", "lobby\n", str_repeat('a', 33), 'ünïcode', 'a.b', '../x', 'a#b', "a\0b", '123', '0', '007', str_repeat('9', 32)] as $name) {
             $this->assertFalse(Validate::serverName($name), json_encode($name));
         }
+    }
+
+    public function test_a_name_of_only_digits_is_refused_for_new_servers_but_an_old_one_stays(): void
+    {
+        $errors = Validate::draft($this->draft([$this->server('2024')]), []);
+        $this->assertCount(1, $errors);
+        $this->assertStringContainsString('not a digit', $errors[0]);
+
+        $current = [['name' => '2024', 'address' => 'localhost:25566', 'motd' => '', 'restricted' => false]];
+        $this->assertSame([], Validate::draft($this->draft([$this->server('2024', 'localhost:25566', '', '2024')]), $current));
+        $this->assertNotSame([], Validate::draft($this->draft([$this->server('2025', 'localhost:25566', '', '2024')]), $current));
     }
 
     public function test_a_good_draft_has_no_errors(): void

@@ -62,7 +62,7 @@ export default function NetworkScreen() {
     const server = useCurrentServerRequired();
     const identifier = server.attributes.identifier;
     const queryClient = useQueryClient();
-    const canEdit = useServerPermission('file.update');
+    const canEdit = useServerPermission(['file.update', 'file.create']);
     const canRestart = useServerPermission('control.restart');
 
     const [draft, setDraft] = useState<Draft | null>(null);

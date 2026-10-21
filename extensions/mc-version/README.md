@@ -10,11 +10,11 @@ Adds a **Version** page to Minecraft Java servers in Pterodactyl 2.0. It shows w
 - **Current:** the software and Minecraft version, read from the server's files (the log of the last start first, then `version_history.json`, then the newest folder under `versions/`), next to the egg's startup variables `MINECRAFT_VERSION`, `BUILD_NUMBER` and `SERVER_JARFILE`.
 - **Mismatches are flagged:** Fabric files on a Paper egg, `MINECRAFT_VERSION` saying something other than what ran, a server jar that is missing.
 - **Switch software or version:** Paper, Purpur, Fabric or Vanilla, with version lists fetched live from PaperMC (Fill API), Purpur, Fabric and Mojang. Lists are cached for 10 minutes. Releases only by default; **Show snapshots and experimental builds** adds snapshots, release candidates and non-stable builds.
-- **A plan before anything changes:** the page lists what will happen (copy of the old jar, download, variable changes, Java change) and warns about downgrades, switching between plugin and mod software (Paper and Fabric), snapshots, and Vanilla. Warnings that can cost you a world must be ticked off before the button works. A link to **Backups** is right there; take one first.
-- **Safe replace:** the running jar is renamed to `server.jar.bak-<time>` (the two newest copies are kept), the new one is downloaded with the panel's own pull, and the file is checked. If anything fails, the old jar is put back.
+- **A plan before anything changes:** the page lists what will happen (copy of the old jar, download, variable changes, Java change) and warns about downgrades, switching between plugin and mod software (Paper and Fabric), snapshots, and Vanilla. Warnings that can cost you a world must be ticked off before the button works, and a downgrade or a switch between plugins and mods also needs a tick on "I have a backup of my world" (the server refuses the change without it). A link to **Backups** is right there; take one first.
+- **Safe replace:** the running jar is renamed to `server.jar.bak-<time>` (the two newest copies are kept), the new one is downloaded with the panel's own pull, and the file is checked. The server is checked to be offline right before the rename and again right before the download. If anything fails, the old jar is put back.
 - **Startup variables:** `MINECRAFT_VERSION` and `BUILD_NUMBER` are updated when the egg lets users edit them and its rules accept the value. Paper and Purpur get the build number, Fabric and Vanilla get `latest`, so a later reinstall from the egg does not ask for a build that does not exist.
 - **Java:** shows the Docker image in use, the recommended one for the Minecraft version, and switches with one click. The mapping is: up to 1.16 Java 11 (Java 8 if the egg has no 11), 1.17 Java 16, 1.18 to 1.20.4 Java 17, 1.20.5 to 1.21.x Java 21, 26.x and newer Java 25. Only images the egg offers are used; if an exact match is missing, the oldest offered image that is still new enough is recommended.
-- **Previous version:** restores the newest `.bak` jar together with the startup variables and Java image it had. The jar being replaced is kept as a copy too, so restoring twice undoes itself.
+- **Previous version:** restores the newest `.bak` jar (not if it is under 10 KB or does not start like a jar) together with the startup variables and Java image it had. The jar being replaced is kept as a copy too, so restoring twice undoes itself.
 - **Stop the server first:** changes only run on a stopped server. The page says so, with a Stop button.
 
 ## Requirements
@@ -30,7 +30,7 @@ Adds a **Version** page to Minecraft Java servers in Pterodactyl 2.0. It shows w
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/mc-version-1.0.0.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/mc-version-1.0.1.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -41,7 +41,7 @@ Adds a **Version** page to Minecraft Java servers in Pterodactyl 2.0. It shows w
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/mc-version-1.0.0.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/mc-version-1.0.1.pteroext --enable --replace
 ```
 
 Nothing is stored in the panel's database, so there is nothing to migrate.
@@ -56,7 +56,7 @@ Things worth knowing:
 - **Downgrading** is the risky one: worlds saved by a newer version often cannot be opened by an older one. Restore a world backup from that version first.
 - The server's **egg** is not changed. A Paper egg running a Fabric jar keeps working, and the page tells you about it. Reinstalling the server from the egg puts the egg's software back.
 - A Docker image an administrator typed in by hand (one the egg does not list) is left alone.
-- **Checksums:** Wings cannot check a checksum itself. After the download the panel checks the file size against what the project published, and for jars up to 24 MB it also reads the file back and compares the checksum (SHA-256, SHA-1 or MD5, whichever the project publishes). Larger jars are checked by size only, and Fabric publishes neither. The download is always HTTPS from the project's own host.
+- **Checksums:** Wings cannot check a checksum itself. After the download the panel checks the file size against what the project published, and for jars up to 24 MB it also reads the file back and compares the checksum (SHA-256, SHA-1 or MD5, whichever the project publishes). Larger jars are checked by size only, and the plan says "Not verified" for them. Fabric publishes no size or checksum, so the panel asks the download address for its size (HEAD request) and compares it with the file. The download is always HTTPS from the project's own host.
 - The panel's activity log records the rename, download, variable and image changes, plus a **version switch** and **version rollback** entry per change.
 
 ## Permissions

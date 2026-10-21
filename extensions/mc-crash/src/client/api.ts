@@ -125,4 +125,19 @@ export const getLogs = async (server: string) => (await http.get<LogsResponse>(`
 export const getRaw = async (server: string, path: string) =>
     (await http.get<{ text: string; truncated: boolean }>(`${base(server)}/raw`, { params: { path } })).data;
 
-export const shareFile = async (server: string, path: string) => (await http.post<{ url: string }>(`${base(server)}/share`, { path })).data;
+export interface SharePreview {
+    /** The text that would be uploaded, cut to the first part when it is long. */
+    text: string;
+    shown_all: boolean;
+    bytes: number;
+    lines: number;
+    /** Identifies the exact text; the upload is refused if the file changed after the preview. */
+    hash: string;
+    hidden: { ips: number; commands: number; jvm_args: number };
+}
+
+export const getSharePreview = async (server: string, path: string) =>
+    (await http.get<SharePreview>(`${base(server)}/share/preview`, { params: { path } })).data;
+
+export const shareFile = async (server: string, path: string, hash: string) =>
+    (await http.post<{ url: string }>(`${base(server)}/share`, { path, hash })).data;

@@ -88,5 +88,16 @@ export function timesText(count: number): string {
 
 /** The text above the Share confirmation. */
 export function shareWarning(name: string): string {
-    return `This uploads ${name} to mclo.gs. Anyone who has the link can read it, and it stays public until mclo.gs removes it. Reports and logs can contain player names, IP addresses and other private details. Only continue if that is fine.`;
+    return `This uploads ${name} to mclo.gs. Anyone who has the link can read it, and it stays public until mclo.gs removes it. IP addresses, login and register commands and JVM option values are removed first, but reports and logs can still contain player names and other private details. Read the text below and only continue if that is fine.`;
+}
+
+/** What was removed from the text, in words: "3 IP addresses, 1 login command". Empty when nothing was. */
+export function hiddenSummary(hidden: { ips: number; commands: number; jvm_args: number }): string {
+    const parts: string[] = [];
+    if (hidden.ips > 0) parts.push(`${hidden.ips.toLocaleString('en')} IP address${hidden.ips === 1 ? '' : 'es'}`);
+    if (hidden.commands > 0)
+        parts.push(`${hidden.commands.toLocaleString('en')} login or register command${hidden.commands === 1 ? '' : 's'}`);
+    if (hidden.jvm_args > 0) parts.push(`${hidden.jvm_args.toLocaleString('en')} JVM option value${hidden.jvm_args === 1 ? '' : 's'}`);
+
+    return parts.join(', ');
 }

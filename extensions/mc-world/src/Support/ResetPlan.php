@@ -5,9 +5,9 @@ namespace McWorld\Support;
 use InvalidArgumentException;
 
 /**
- * The steps of a world reset, in the order they must run: back up, delete, set the
- * seed, start. Nothing is deleted before the backup step, and the server only starts
- * once the new seed is in place. Runs nothing itself.
+ * The steps of a world reset, in the order they must run: back up, set the seed,
+ * delete, start. Nothing is deleted before the backup step, the new seed is saved before
+ * anything is deleted, and the server only starts once the world is gone. Runs nothing itself.
  */
 final class ResetPlan
 {
@@ -31,8 +31,8 @@ final class ResetPlan
         if ($backup) {
             $steps[] = ['type' => 'backup', 'world' => $world, 'folders' => $folders, 'archive' => Names::BACKUP_DIR.'/'.Names::backupFile($world, $stamp)];
         }
-        $steps[] = ['type' => 'delete', 'folders' => $folders];
         $steps[] = ['type' => 'seed', 'value' => $seed ?? ''];
+        $steps[] = ['type' => 'delete', 'folders' => $folders];
         if ($start) {
             $steps[] = ['type' => 'start'];
         }

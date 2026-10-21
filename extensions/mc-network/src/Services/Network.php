@@ -5,6 +5,7 @@ namespace McNetwork\Services;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use McNetwork\Support\Analyzer;
+use McNetwork\Support\Drift;
 use McNetwork\Support\InvalidConfig;
 use McNetwork\Support\Motd;
 use McNetwork\Support\ProxyConfig;
@@ -121,6 +122,11 @@ class Network
             throw new HttpException(409, 'config.yml changed since you opened this page. Reload the page and make your changes again.');
         }
 
+        $risky = Drift::risky($read['contents']);
+        if ($risky !== []) {
+            throw new HttpException(422, 'config.yml has plain values that BungeeCord reads as yes/no or as numbers ('.implode(', ', array_slice($risky, 0, 3)).'). This page would turn them into text, so nothing was saved. Write true or false, or put quotes around them, in the file manager and try again.');
+        }
+
         try {
             $config = ProxyConfig::parse($read['contents']);
             $errors = Validate::draft($draft, $config->servers());
@@ -132,6 +138,10 @@ class Network
             $check = ProxyConfig::parse($new);
         } catch (InvalidConfig $exception) {
             throw new HttpException(422, $exception->getMessage());
+        }
+        $drift = Drift::changes($read['contents'], $new);
+        if ($drift !== []) {
+            throw new HttpException(422, 'Saving would also change other settings in config.yml ('.implode(', ', array_slice($drift, 0, 3)).'), so nothing was saved. Edit the file in the file manager instead.');
         }
         if ($check->priorities() !== $draft['priorities'] || count($check->servers()) !== count($draft['servers'])) {
             throw new HttpException(500, 'The new config.yml could not be written safely. Nothing was changed.');

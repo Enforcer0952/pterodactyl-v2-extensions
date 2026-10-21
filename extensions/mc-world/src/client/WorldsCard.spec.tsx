@@ -155,3 +155,42 @@ it('says what is moved aside when restoring a backup', async () => {
 
     host.dispose();
 });
+
+it('backs up before deleting another world unless the box is cleared', async () => {
+    const { host } = setup();
+    const del = vi.spyOn(http, 'delete').mockResolvedValue({ data: overview() });
+
+    const open = async () => {
+        // The first "Delete" in the worlds list belongs to the non-active world; backups have their own.
+        fireEvent.click((await screen.findAllByRole('button', { name: 'Delete' }))[0]);
+        return screen.findByRole('dialog');
+    };
+
+    let dialog = await open();
+    expect(within(dialog).getByRole('checkbox', { name: 'Keep a backup first' }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete world' }));
+    await waitFor(() =>
+        expect(del).toHaveBeenCalledWith('/api/client/servers/abc12345/extensions/mc-world/worlds/creative', { params: { backup: 1 } }),
+    );
+
+    dialog = await open();
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Keep a backup first' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete world' }));
+    await waitFor(() =>
+        expect(del).toHaveBeenLastCalledWith('/api/client/servers/abc12345/extensions/mc-world/worlds/creative', { params: { backup: 0 } }),
+    );
+
+    host.dispose();
+});
+
+it('always keeps the backup when resetting a hardcore world', async () => {
+    const { host } = setup(overview({ hardcore: true }));
+
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Reset' }))[0]);
+    const dialog = await screen.findByRole('dialog');
+    const box = within(dialog).getByRole('checkbox', { name: /A backup is always made first/ });
+    expect(box.getAttribute('aria-checked')).toBe('true');
+    expect(box.getAttribute('aria-disabled') ?? box.getAttribute('data-disabled') ?? box.getAttribute('disabled')).not.toBeNull();
+
+    host.dispose();
+});

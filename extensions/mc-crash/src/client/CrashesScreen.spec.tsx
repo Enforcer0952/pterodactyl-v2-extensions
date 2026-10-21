@@ -160,6 +160,17 @@ const logs = () => ({
 function setup(permissions: string[] = ['*'], reportData = reports()) {
     const get = vi.spyOn(http, 'get').mockImplementation(async (url: string) => {
         if (url.endsWith('/logs')) return { data: logs() };
+        if (url.endsWith('/share/preview'))
+            return {
+                data: {
+                    text: 'Description: Exception in server tick loop\nconnected from [ip hidden]',
+                    shown_all: true,
+                    bytes: 70,
+                    lines: 2,
+                    hash: 'a'.repeat(40),
+                    hidden: { ips: 3, commands: 1, jvm_args: 0 },
+                },
+            };
         if (url.endsWith('/raw'))
             return { data: { text: '---- Minecraft Crash Report ----\nDescription: Exception in server tick loop', truncated: false } };
         return { data: reportData };
@@ -255,12 +266,17 @@ it('uploads to mclo.gs only after the public-link warning is confirmed', async (
 
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText(/Anyone who has the link can read it/)).toBeTruthy();
+    // The user sees the redacted text and what was removed before anything is sent.
+    expect(await within(dialog).findByText(/connected from \[ip hidden\]/)).toBeTruthy();
+    expect(within(dialog).getByText(/Removed: 3 IP addresses, 1 login or register command/)).toBeTruthy();
     expect(post.mock.calls.some(([url]) => String(url).endsWith('/share'))).toBe(false);
 
+    await waitFor(() => expect((within(dialog).getByRole('button', { name: 'Upload' }) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Upload' }));
     expect(await screen.findByText('https://mclo.gs/AbC123')).toBeTruthy();
     expect(post).toHaveBeenCalledWith('/api/client/servers/abc12345/extensions/mc-crash/share', {
         path: 'crash-reports/crash-2026-10-12_21.30.14-server.txt',
+        hash: 'a'.repeat(40),
     });
 
     host.dispose();

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Cache;
 use McVersion\Support\Backups;
 use McVersion\Support\JavaImages;
 use McVersion\Support\Software;
+use McVersion\Support\Verification;
 use McVersion\Support\Warnings;
 use Pterodactyl\Contracts\Files\DeletesFiles;
 use Pterodactyl\Contracts\Files\PullsFiles;
@@ -29,12 +30,6 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  */
 class Switcher
 {
-    /** Jars up to this size are read back after the download to check their checksum. */
-    private const int VERIFY_MAX_BYTES = 24 * 1024 * 1024;
-
-    /** Anything smaller is an error page or a cut-off download, not a server jar. */
-    private const int MIN_JAR_BYTES = 10_000;
-
     private const int PULL_TIMEOUT = 300;
 
     public function __construct(
@@ -80,6 +75,8 @@ class Switcher
             'keeps_copy' => ServerFiles::file($now['root'], $now['jar']) !== null,
             'warnings' => $warnings,
             'needs_confirmation' => Warnings::needsConfirmation($warnings),
+            'needs_backup' => Verification::needsBackup($warnings),
+            'verification' => Verification::describe($build['size'], $build['hash'] !== null),
             'variables' => array_map(fn (array $change): array => ['name' => $change['variable']->env_variable, 'from' => $this->startup->value($change['variable']), 'to' => $change['to']], $changes),
             'java' => [
                 'recommended' => $recommended,
@@ -93,11 +90,11 @@ class Switcher
     /**
      * @return array{software: string, version: string, build: ?string, notes: list<string>}
      */
-    public function apply(Server $server, User $user, string $software, string $version, bool $experimental, bool $confirmed, bool $setJava): array
+    public function apply(Server $server, User $user, string $software, string $version, bool $experimental, bool $confirmed, bool $setJava, bool $backupConfirmed = false): array
     {
         $this->requireOffline($server);
 
-        return $this->locked($server, function () use ($server, $user, $software, $version, $experimental, $confirmed, $setJava): array {
+        return $this->locked($server, function () use ($server, $user, $software, $version, $experimental, $confirmed, $setJava, $backupConfirmed): array {
             $this->requireOffline($server);
 
             $build = $this->upstream->resolve($software, $version, $experimental);
@@ -106,6 +103,9 @@ class Switcher
             $warnings = $this->warnings($now, $software, $version, $build);
             if (Warnings::needsConfirmation($warnings) && ! $confirmed) {
                 throw new HttpException(409, 'This change needs your confirmation. Review the warnings and confirm.');
+            }
+            if (Verification::needsBackup($warnings) && ! $backupConfirmed) {
+                throw new HttpException(409, 'Confirm that you have a backup of your world before a downgrade or a switch between plugins and mods.');
             }
 
             $jar = $now['jar'];
@@ -173,6 +173,8 @@ class Switcher
             if ($target === null) {
                 throw new HttpException(404, 'There is no earlier jar to restore.');
             }
+
+            $this->checkCopy($server, $target);
 
             $jar = $now['jar'];
             $meta = $target['meta'] ?? Backups::readMeta(null);
@@ -257,10 +259,12 @@ class Switcher
 
         try {
             if ($copy !== null) {
+                $this->requireOffline($server); // the state may have changed since the check at the start
                 $this->rename($server, $jar, $copy);
                 $moved = true;
             }
 
+            $this->requireOffline($server); // and again, so nothing is downloaded over a jar that is in use
             // The panel's pull action records the download in the activity log.
             $started = true;
             $this->puller->pull($server, $build['url'], '/', [
@@ -291,10 +295,11 @@ class Switcher
     }
 
     /**
-     * The file is there, as large as the API says, a zip archive, and for small jars
-     * the checksum matches. Wings has no way to check a checksum itself, and reading a
-     * 50 MB jar into the panel's memory is not worth it, so large jars are checked by
-     * size only; the download is over HTTPS from the project's own host.
+     * The file is there, as large as the source says (the API, or a HEAD request to the
+     * download address when the API gives no size), a zip archive, and the checksum
+     * matches when one is published. The panel has no way to read just the first bytes
+     * of a file, and reading a 50 MB jar into its memory is not worth it, so jars over
+     * 24 MB are checked by size only; the plan tells the user so.
      *
      * @param  array<string, mixed>  $build
      */
@@ -307,27 +312,51 @@ class Switcher
         }
 
         $size = (int) ($entry['size'] ?? 0);
-        if ($size < self::MIN_JAR_BYTES) {
-            throw new HttpException(502, 'The downloaded file is only '.$size.' bytes, so it is not a server jar. The server was left as it was.');
+        $problem = Verification::sizeProblem($size, $build['size'] ?? $this->upstream->contentLength($build['url']));
+        if ($problem !== null) {
+            throw new HttpException(502, 'The download is not right. '.$problem.' The server was left as it was.');
         }
-        if ($build['size'] !== null && $size !== $build['size']) {
-            throw new HttpException(502, 'The downloaded file is '.$size.' bytes but should be '.$build['size'].'. The server was left as it was.');
-        }
-        if ($size > self::VERIFY_MAX_BYTES) {
+        if ($size > Verification::READ_MAX_BYTES) {
             return;
         }
 
         try {
-            $content = $this->reader->read($server, '/'.$jar, self::VERIFY_MAX_BYTES);
+            $content = $this->reader->read($server, '/'.$jar, Verification::READ_MAX_BYTES);
         } catch (FileSizeTooLargeException|DaemonConnectionException) {
             return;
         }
 
-        if (! str_starts_with($content, "PK\x03\x04")) {
+        if (Verification::headerProblem($content) !== null) {
             throw new HttpException(502, 'The downloaded file is not a jar. The server was left as it was.');
         }
         if ($build['hash'] !== null && ! hash_equals($build['hash']['value'], hash($build['hash']['algo'], $content))) {
             throw new HttpException(502, 'The downloaded file does not match the checksum its source published. The server was left as it was.');
+        }
+    }
+
+    /**
+     * A copy is only put back when it still looks like a jar: not tiny, and starting
+     * like a zip archive when it is small enough to read.
+     *
+     * @param  array{name: string, size: int}  $copy
+     */
+    private function checkCopy(Server $server, array $copy): void
+    {
+        if ($copy['size'] < Verification::MIN_JAR_BYTES) {
+            throw new HttpException(422, $copy['name'].' is only '.$copy['size'].' bytes, so it is not a server jar. Nothing was changed.');
+        }
+        if ($copy['size'] > Verification::READ_MAX_BYTES) {
+            return;
+        }
+
+        try {
+            $content = $this->reader->read($server, '/'.$copy['name'], Verification::READ_MAX_BYTES);
+        } catch (FileSizeTooLargeException|DaemonConnectionException) {
+            return;
+        }
+
+        if (Verification::headerProblem($content) !== null) {
+            throw new HttpException(422, $copy['name'].' is not a valid jar. Nothing was changed.');
         }
     }
 
@@ -438,6 +467,7 @@ class Switcher
     private function requireOffline(Server $server): void
     {
         try {
+            \Illuminate\Support\Facades\Cache::forget('resources:'.$server->uuid); // the panel caches power state for 20 s
             $state = $this->state->read($server)->state;
         } catch (DaemonConnectionException) {
             throw new HttpException(502, 'Could not reach this server\'s node.');

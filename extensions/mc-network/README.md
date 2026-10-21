@@ -39,7 +39,7 @@ Velocity (`velocity.toml`) is not supported yet. The page says so when the proxy
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/mc-network-1.0.0.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/mc-network-1.0.1.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -50,7 +50,7 @@ Velocity (`velocity.toml`) is not supported yet. The page says so when the proxy
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/mc-network-1.0.0.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/mc-network-1.0.1.pteroext --enable --replace
 ```
 
 ## Setup
@@ -62,6 +62,8 @@ Notes:
 - Backends must run on the same node as the proxy to be matched. Entries on other hosts are listed but not checked.
 - Saving rewrites `config.yml` with a YAML writer. Every key is kept, but comments and the original layout of the file are not.
 - Only the first listener's priorities and forced hosts are shown and changed. Other listeners are left as they are.
+- BungeeCord reads `config.yml` as YAML 1.1, where a plain `yes`, `no`, `on`, `off`, `y` or `n` is a boolean and `1:30` is a number. The writer would turn those into text, so a save is refused (with the key named) while such a plain value sits outside the parts this page edits. Write `true` or `false`, or put quotes around the value, and save again. After writing, every other key is compared with the original, and the save is refused if anything else would change.
+- Server names need at least one character that is not a digit.
 - Changes apply after the proxy restarts. Nothing is sent to the running proxy.
 
 ## Permissions
@@ -70,8 +72,8 @@ This extension adds no permissions of its own. It uses the panel's file and powe
 
 | Permission | Allows |
 |---|---|
-| `file.read` | See the Proxy page |
-| `file.update` | Add, edit, remove and reorder, and save |
+| `file.read` and `file.read-content` | See the Proxy page |
+| `file.read-content`, `file.update` and `file.create` | Add, edit, remove and reorder, and save (the old file is saved as a backup copy first) |
 | `control.restart` | The **Restart proxy** button |
 
 Server owners and admins have all of them.

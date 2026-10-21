@@ -12,11 +12,11 @@ Adds a **World** page to Minecraft Java servers in Pterodactyl 2.0. Back up, res
 - Lists the world folders on the server (any folder with a `level.dat`), marks the **active** one (`level-name`) and shows when it was last saved.
 - Works with Paper and Spigot (`world`, `world_nether`, `world_the_end`) and with vanilla and Fabric (nether and end inside `world`). The nether and end folders are treated as part of their world.
 - **Back up:** compresses the world, with its nether and end folders, into `world-backups/<name>-<date>.tar.gz`. Only the newest backups of each world are kept (5 by default, see Settings).
-- **Restore:** with the server stopped, the current folders are renamed to `<name>.old-<date>` (nothing is deleted) and the backup is unpacked. If unpacking fails, the old folders are put back.
-- **Reset:** with the server stopped, deletes the active world and its nether and end folders and sets `level-seed`, so the server generates a fresh world on the next start. Options: a new seed (empty is random), keep a backup first (on by default) and start the server afterwards. The confirm dialog lists exactly which folders are deleted. If the server is running, the dialog has a **Stop server** button.
+- **Restore:** with the server stopped, the current folders are renamed to `<name>.old-<date>` (nothing is deleted) and the backup is unpacked. If unpacking fails, the old folders are put back. If the connection to the node drops or times out, nothing is undone, because the node may still be unpacking: the old folders and the archive are kept and the page says so.
+- **Reset:** with the server stopped, deletes the active world and its nether and end folders and saves the new `level-seed` first (and puts the old one back if the delete fails), so the server generates a fresh world on the next start. Options: a new seed (empty is random), keep a backup first (on by default) and start the server afterwards. The confirm dialog lists exactly which folders are deleted. If the server is running, the dialog has a **Stop server** button.
 - **Make active:** switches `level-name` to another world.
-- **Delete:** removes a world that is not active, for example an old `.old-<date>` copy.
-- **New hardcore run:** on servers with `hardcore=true`, one button backs up the world, deletes it, creates a new one with a random seed and starts the server.
+- **Delete:** removes a world that is not active, for example an old `.old-<date>` copy. A backup is made first unless you clear the box.
+- **New hardcore run:** on servers with `hardcore=true`, one button backs up the world (a reset of a hardcore world always makes a backup), deletes it, creates a new one with a random seed and starts the server.
 
 ### Properties
 
@@ -41,7 +41,7 @@ Everything is checked on the panel too: world names, backup names, keys and valu
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/mc-world-1.0.0.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/mc-world-1.0.1.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -52,7 +52,7 @@ Everything is checked on the panel too: world names, backup names, keys and valu
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/mc-world-1.0.0.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/mc-world-1.0.1.pteroext --enable --replace
 ```
 
 Settings are kept.
@@ -77,13 +77,14 @@ This extension adds no permissions of its own. It asks for the same permissions 
 
 | Action | Needs |
 |---|---|
-| See the page | `file.read` |
+| See the page and the worlds | `file.read` and `file.read-content` |
 | See server.properties | `file.read` and `file.read-content` |
-| Edit server.properties, make another world active | `file.update` |
+| Edit server.properties, make another world active | `file.read-content`, `file.update` and `file.create` |
 | Back up a world | `file.archive`, `file.create` and `file.update` |
-| Restore a backup | `file.archive` and `file.update` |
-| Delete a backup or a world | `file.delete` |
-| Reset a world | `file.delete` and `file.update`, plus `file.archive` and `file.create` to keep a backup, plus `control.start` to start afterwards |
+| Restore a backup | `file.update`, `file.create` and `file.archive` |
+| Delete a backup | `file.delete` |
+| Delete a world | `file.delete`, plus `file.archive`, `file.create` and `file.update` to keep a backup first |
+| Reset a world | `file.read-content`, `file.delete`, `file.update` and `file.create`, plus `file.archive` for the backup, plus `control.start` to start afterwards |
 | Stop server button | `control.stop` |
 
 Server owners and admins have all of them.

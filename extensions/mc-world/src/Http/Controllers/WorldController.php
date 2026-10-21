@@ -22,7 +22,7 @@ class WorldController extends Controller
     public function show(Request $request, Server $server): JsonResponse
     {
         $this->ensureJava($server);
-        $this->ensureCan($request, $server, ['file.read'], 'You do not have permission to see this server\'s files.');
+        $this->ensureCan($request, $server, ['file.read', 'file.read-content'], 'You do not have permission to see this server\'s files.');
 
         return new JsonResponse($this->guard(fn (): array => $this->worlds->overview($server)));
     }
@@ -32,7 +32,7 @@ class WorldController extends Controller
         $this->ensureJava($server);
         $this->ensureCan($request, $server, ['file.read', 'file.archive', 'file.create', 'file.update'], 'You do not have permission to make backups.');
         $data = $request->validate(['world' => ['required', 'string', 'max:120']]);
-        set_time_limit(600);
+        set_time_limit(Worlds::LOCK_SECONDS);
 
         $file = $this->guard(fn (): string => $this->worlds->backup($server, $data['world']));
 
@@ -42,9 +42,9 @@ class WorldController extends Controller
     public function restore(Request $request, Server $server): JsonResponse
     {
         $this->ensureJava($server);
-        $this->ensureCan($request, $server, ['file.read', 'file.archive', 'file.update'], 'You do not have permission to restore backups.');
+        $this->ensureCan($request, $server, ['file.read', 'file.update', 'file.create', 'file.archive'], 'You do not have permission to restore backups.');
         $data = $request->validate(['backup' => ['required', 'string', 'max:200']]);
-        set_time_limit(600);
+        set_time_limit(Worlds::LOCK_SECONDS);
 
         $result = $this->guard(fn (): array => $this->worlds->restore($server, $data['backup']));
 
@@ -72,15 +72,15 @@ class WorldController extends Controller
             'start' => ['required', 'boolean'],
         ]);
 
-        $needs = ['file.read', 'file.delete', 'file.update'];
+        $needs = ['file.read', 'file.read-content', 'file.delete', 'file.update', 'file.create'];
         if ($data['backup']) {
-            array_push($needs, 'file.archive', 'file.create');
+            $needs[] = 'file.archive';
         }
         if ($data['start']) {
             $needs[] = 'control.start';
         }
         $this->ensureCan($request, $server, $needs, 'You do not have permission to reset the world.');
-        set_time_limit(600);
+        set_time_limit(Worlds::LOCK_SECONDS);
 
         $deleted = $this->guard(fn (): array => $this->worlds->reset($server, $data['world'], $data['seed'] ?? null, (bool) $data['backup'], (bool) $data['start']));
 
@@ -90,7 +90,7 @@ class WorldController extends Controller
     public function switch(Request $request, Server $server): JsonResponse
     {
         $this->ensureJava($server);
-        $this->ensureCan($request, $server, ['file.read', 'file.update'], 'You do not have permission to change server.properties.');
+        $this->ensureCan($request, $server, ['file.read', 'file.read-content', 'file.update', 'file.create'], 'You do not have permission to change server.properties.');
         $data = $request->validate(['world' => ['required', 'string', 'max:120']]);
 
         $this->guard(fn () => $this->worlds->switch($server, $data['world']));
@@ -101,9 +101,17 @@ class WorldController extends Controller
     public function destroy(Request $request, Server $server, string $world): JsonResponse
     {
         $this->ensureJava($server);
-        $this->ensureCan($request, $server, ['file.read', 'file.delete'], 'You do not have permission to delete files.');
+        $data = $request->validate(['backup' => ['sometimes', 'boolean']]);
+        $backup = (bool) ($data['backup'] ?? true);
 
-        $deleted = $this->guard(fn (): array => $this->worlds->deleteWorld($server, $world));
+        $needs = ['file.read', 'file.read-content', 'file.delete'];
+        if ($backup) {
+            array_push($needs, 'file.archive', 'file.create', 'file.update');
+        }
+        $this->ensureCan($request, $server, $needs, 'You do not have permission to delete worlds'.($backup ? ' with a backup' : '').'.');
+        set_time_limit(Worlds::LOCK_SECONDS);
+
+        $deleted = $this->guard(fn (): array => $this->worlds->deleteWorld($server, $world, $backup));
 
         return new JsonResponse(['result' => ['deleted' => $deleted]] + $this->worlds->overview($server));
     }

@@ -58,7 +58,7 @@ class LogScans
         $rotated = [];
         foreach ($entries as $entry) {
             $name = (string) ($entry['name'] ?? '');
-            if (($entry['file'] ?? true) !== false && preg_match('/^[\w.\-]{1,100}\.log\.gz$/D', $name) === 1) {
+            if (Files::isPlainFile($entry) && preg_match('/^[\w.\-]{1,100}\.log\.gz$/D', $name) === 1) {
                 $rotated[] = $this->source($name, false, $entry);
             }
         }

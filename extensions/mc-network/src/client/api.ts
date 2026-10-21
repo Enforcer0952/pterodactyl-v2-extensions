@@ -171,7 +171,9 @@ export function renameServer(draft: Draft, from: string, to: string): Draft {
 
 /** A BungeeCord name from a panel server name: "The Kingdom" becomes "TheKingdom", unique among the taken names. */
 export function suggestName(panelName: string, taken: string[]): string {
-    const base = panelName.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32) || 'server';
+    const cleaned = panelName.replace(/[^A-Za-z0-9_-]/g, '');
+    // A name of digits only is not accepted.
+    const base = (/^\d*$/.test(cleaned) ? `server${cleaned}` : cleaned).slice(0, 32);
     const used = new Set(taken.map((name) => name.toLowerCase()));
     if (!used.has(base.toLowerCase())) return base;
     for (let n = 2; n < 1000; n++) {
@@ -184,7 +186,7 @@ export function suggestName(panelName: string, taken: string[]): string {
 
 /* Validation: the same rules the panel applies, so mistakes show before saving. */
 
-export const NAME = /^[A-Za-z0-9_-]{1,32}$/;
+export const NAME = /^(?=.*\D)[A-Za-z0-9_-]{1,32}$/;
 const HOST = /^[A-Za-z0-9_](?:[A-Za-z0-9._-]{0,251}[A-Za-z0-9_])?$/;
 
 export function parseAddress(address: string): { host: string; port: number } | null {
@@ -222,7 +224,8 @@ export interface EntryErrors {
 /** Problems with one entry. "others" are the names of the other entries. */
 export function validateEntry(entry: Pick<Entry, 'name' | 'address' | 'motd'>, others: string[]): EntryErrors {
     const errors: EntryErrors = {};
-    if (!NAME.test(entry.name)) errors.name = 'Use letters, numbers, dashes and underscores, up to 32 characters.';
+    if (!NAME.test(entry.name))
+        errors.name = 'Use letters, numbers, dashes and underscores, up to 32 characters, with at least one that is not a digit.';
     else if (others.includes(entry.name)) errors.name = 'Another server already has this name.';
     if (parseAddress(entry.address) === null) errors.address = 'Use host:port, for example localhost:25566. The port is 1 to 65535.';
     if (/[\p{Cc}\p{Zl}\p{Zp}]/u.test(entry.motd)) errors.motd = 'No line breaks or control characters.';

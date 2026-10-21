@@ -73,12 +73,12 @@ class Badge
 
             foreach ($this->files->root($server) as $entry) {
                 $name = (string) ($entry['name'] ?? '');
-                if (($entry['file'] ?? true) !== false && preg_match('/^hs_err_pid\d{1,10}\.log$/D', $name) === 1) {
+                if (Files::isPlainFile($entry) && preg_match('/^hs_err_pid\d{1,10}\.log$/D', $name) === 1) {
                     $found[] = $this->moment($entry);
                 }
             }
             foreach ($this->files->folder($server, 'crash-reports') as $entry) {
-                if (($entry['file'] ?? true) !== false && str_ends_with((string) ($entry['name'] ?? ''), '.txt')) {
+                if (Files::isPlainFile($entry) && str_ends_with((string) ($entry['name'] ?? ''), '.txt')) {
                     $found[] = $this->moment($entry);
                 }
             }

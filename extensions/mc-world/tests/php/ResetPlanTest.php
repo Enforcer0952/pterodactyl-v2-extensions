@@ -8,21 +8,21 @@ final class ResetPlanTest extends TestCase
 {
     private const FOLDERS = ['world', 'world_nether', 'world_the_end'];
 
-    public function testFullPlanRunsBackupThenDeleteThenSeedThenStart(): void
+    public function testFullPlanRunsBackupThenSeedThenDeleteThenStart(): void
     {
         $steps = ResetPlan::build('world', self::FOLDERS, '12345', true, true, '20261013-120000');
-        $this->assertSame(['backup', 'delete', 'seed', 'start'], array_column($steps, 'type'));
+        $this->assertSame(['backup', 'seed', 'delete', 'start'], array_column($steps, 'type'));
         $this->assertSame('world-backups/world-20261013-120000.tar.gz', $steps[0]['archive']);
         $this->assertSame(self::FOLDERS, $steps[0]['folders']);
-        $this->assertSame(self::FOLDERS, $steps[1]['folders']);
-        $this->assertSame('12345', $steps[2]['value']);
+        $this->assertSame('12345', $steps[1]['value']);
+        $this->assertSame(self::FOLDERS, $steps[2]['folders']);
     }
 
     public function testNoBackupAndNoStartAreLeftOut(): void
     {
         $steps = ResetPlan::build('world', ['world'], null, false, false, '20261013-120000');
-        $this->assertSame(['delete', 'seed'], array_column($steps, 'type'));
-        $this->assertSame('', $steps[1]['value']);
+        $this->assertSame(['seed', 'delete'], array_column($steps, 'type'));
+        $this->assertSame('', $steps[0]['value']);
     }
 
     public function testBackupIsNeverAfterDelete(): void
@@ -33,7 +33,7 @@ final class ResetPlanTest extends TestCase
                 if ($backup) {
                     $this->assertLessThan(array_search('delete', $types, true), array_search('backup', $types, true));
                 }
-                $this->assertLessThan(array_search('seed', $types, true), array_search('delete', $types, true));
+                $this->assertLessThan(array_search('delete', $types, true), array_search('seed', $types, true));
                 if ($start) {
                     $this->assertSame('start', end($types));
                 } else {

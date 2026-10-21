@@ -13,7 +13,7 @@ namespace McWorld\Support;
 final class WorldLayout
 {
     /** Folders to look inside for a level.dat; more than this are ignored. */
-    public const int MAX_PROBES = 30;
+    public const int MAX_PROBES = 10;
 
     /**
      * Folders worth looking inside, the active one first.
