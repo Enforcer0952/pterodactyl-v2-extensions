@@ -16,11 +16,18 @@ class EnforcementTest extends TestCase
 
     public function test_a_stop_gets_time_before_the_kill(): void
     {
+        // Still running: the stop was ignored, killed after two minutes.
         $this->assertSame(Enforcement::NOTHING, Enforcement::decide('running', self::NOW - 10, null, self::NOW, false));
-        $this->assertSame(Enforcement::NOTHING, Enforcement::decide('running', self::NOW - 29, null, self::NOW, false));
-        $this->assertSame(Enforcement::KILL, Enforcement::decide('running', self::NOW - 30, null, self::NOW, false));
-        $this->assertSame(Enforcement::KILL, Enforcement::decide('stopping', self::NOW - 60, null, self::NOW, false));
-        $this->assertSame(Enforcement::NOTHING, Enforcement::decide('stopping', self::NOW - 5, null, self::NOW, false));
+        $this->assertSame(Enforcement::NOTHING, Enforcement::decide('running', self::NOW - 119, null, self::NOW, false));
+        $this->assertSame(Enforcement::KILL, Enforcement::decide('running', self::NOW - 120, null, self::NOW, false));
+    }
+
+    public function test_a_server_that_is_saving_is_not_killed_early(): void
+    {
+        // Big worlds take minutes to save: stopping is left alone for five minutes.
+        $this->assertSame(Enforcement::NOTHING, Enforcement::decide('stopping', self::NOW - 60, null, self::NOW, false));
+        $this->assertSame(Enforcement::NOTHING, Enforcement::decide('stopping', self::NOW - 240, null, self::NOW, false));
+        $this->assertSame(Enforcement::KILL, Enforcement::decide('stopping', self::NOW - 300, null, self::NOW, false));
     }
 
     public function test_a_server_that_comes_back_up_alone_is_watched_then_stopped(): void

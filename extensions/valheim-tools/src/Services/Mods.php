@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Pterodactyl\Models\Server;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use ValheimTools\Support\DependencyPlan;
 use ValheimTools\Support\PackageLayout;
 use ValheimTools\Support\Thunderstore;
 use ValheimTools\Support\Valheim;
@@ -145,12 +146,32 @@ class Mods
                 }
             }
 
-            $plan = [];
-            $this->resolve($parsed['namespace'], $parsed['name'], $version ?? $parsed['version'], $installed, $plan, true, 0);
+            try {
+                $resolved = DependencyPlan::build(
+                    fn (string $namespace, string $name, ?string $version): array => $this->store->package($namespace, $name, $version),
+                    $parsed['namespace'],
+                    $parsed['name'],
+                    $version ?? $parsed['version'],
+                    $installed,
+                    self::MAX_DEPTH,
+                    self::MAX_PACKAGES,
+                );
+            } catch (\RuntimeException $exception) {
+                if ($exception instanceof HttpException) {
+                    throw $exception;
+                }
+
+                throw new HttpException(422, $exception->getMessage());
+            }
+
+            // Check every download first, so a package that is too big stops the install before anything changes.
+            foreach ($resolved['plan'] as $package) {
+                $this->assertDownloadSize($package);
+            }
 
             $done = [];
-            $notes = [];
-            foreach ($plan as $package) {
+            $notes = $resolved['notes'];
+            foreach ($resolved['plan'] as $package) {
                 $folder = Thunderstore::folderName($package['namespace'], $package['name']);
                 $updated = isset($installed[strtolower($folder)]);
                 $notes = array_merge($notes, $this->installOne($server, $package, $folder));
@@ -183,48 +204,22 @@ class Mods
     }
 
     /**
-     * Work out what to install: dependencies first. Dependencies that are installed in the
-     * same or a newer version are skipped, and BepInExPack never installs.
-     *
-     * @param  array<string, string>  $installed  lowercase Owner-Name => version
-     * @param  list<array{namespace: string, name: string, version: string, dependencies: list<array{namespace: string, name: string, version: string}>}>  $plan
+     * @param  array{namespace: string, name: string, version: string, url: string, size?: ?int}  $package
      */
-    private function resolve(string $namespace, string $name, ?string $version, array $installed, array &$plan, bool $requested, int $depth): void
+    private function assertDownloadSize(array $package): void
     {
-        if ($depth > self::MAX_DEPTH) {
-            throw new HttpException(422, 'This mod needs too many layers of other mods.');
+        $label = $package['namespace'].'-'.$package['name'];
+        $size = $package['size'] ?? null;
+        if ($size === null) {
+            $size = $this->store->downloadSize(Thunderstore::downloadUrl($package['namespace'], $package['name'], $package['version']));
         }
-        foreach ($plan as $item) {
-            if (strcasecmp($item['namespace'].'-'.$item['name'], $namespace.'-'.$name) === 0) {
-                return;
-            }
-        }
-
-        $package = $this->store->package($namespace, $name, $version);
-        if ($package['deprecated'] && $requested) {
-            throw new HttpException(422, $name.' is marked as deprecated on Thunderstore.');
-        }
-
-        $current = $installed[strtolower($namespace.'-'.$name)] ?? null;
-        if (! $requested && $current !== null && Thunderstore::compareVersions($current, $package['version']) >= 0) {
-            return;
-        }
-
-        foreach ($package['dependencies'] as $dependency) {
-            if (Thunderstore::isBepInEx($dependency['namespace'], $dependency['name'])) {
-                continue;
-            }
-            $this->resolve($dependency['namespace'], $dependency['name'], $dependency['version'], $installed, $plan, false, $depth + 1);
-        }
-
-        $plan[] = $package;
-        if (count($plan) > self::MAX_PACKAGES) {
-            throw new HttpException(422, 'This mod needs more than '.self::MAX_PACKAGES.' other mods. Install them one at a time.');
+        if (Thunderstore::tooLarge($size)) {
+            throw new HttpException(422, $label.' is bigger than '.(Thunderstore::MAX_DOWNLOAD / 1024 / 1024).' MB. Install it with the file manager instead.');
         }
     }
 
     /**
-     * @param  array{namespace: string, name: string, version: string, url: string}  $package
+     * @param  array{namespace: string, name: string, version: string, url: string, size?: ?int}  $package
      * @return list<string> notes for the person
      */
     private function installOne(Server $server, array $package, string $folder): array
@@ -234,12 +229,17 @@ class Mods
         $unpacked = $work.'/files';
         $zip = $folder.'.zip';
         $notes = [];
+        $moved = [];
 
         try {
             $this->files->ensureDirectory($server, $unpacked);
             $this->files->pull($server, Thunderstore::downloadUrl($package['namespace'], $package['name'], $package['version']), $unpacked, $zip);
             if (! $this->files->exists($server, $unpacked, $zip)) {
                 throw new HttpException(502, 'The download of '.$folder.' did not arrive.');
+            }
+            $downloaded = $this->files->entry($server, $unpacked, $zip);
+            if ($downloaded !== null && Thunderstore::tooLarge($downloaded['size'])) {
+                throw new HttpException(422, $folder.' is bigger than '.(Thunderstore::MAX_DOWNLOAD / 1024 / 1024).' MB. Install it with the file manager instead.');
             }
             $this->files->decompress($server, $unpacked, $zip);
             $this->files->delete($server, $unpacked, [$zip]);
@@ -258,10 +258,16 @@ class Mods
                 }
             }
 
-            // An update replaces the old copy of the mod; its config files stay.
+            // An update replaces the old copy of the mod; its config files stay. The old copy is
+            // renamed to "<folder>.old" first and only deleted once the new one is in place.
             foreach (self::KINDS as $kind) {
-                if ($this->files->exists($server, self::ROOT.'/'.$kind, $folder)) {
-                    $this->files->delete($server, self::ROOT.'/'.$kind, [$folder]);
+                $directory = self::ROOT.'/'.$kind;
+                if ($this->files->exists($server, $directory, $folder)) {
+                    if ($this->files->exists($server, $directory, $folder.'.old')) {
+                        $this->files->delete($server, $directory, [$folder.'.old']);
+                    }
+                    $this->files->move($server, $directory, $folder, $directory, $folder.'.old');
+                    $moved[] = $kind;
                 }
             }
 
@@ -269,11 +275,19 @@ class Mods
                 $this->apply($server, $unpacked, $move, $notes, $folder);
             }
         } catch (\Throwable $exception) {
+            $this->rollback($server, $folder, $moved);
             $this->cleanup($server, $token);
 
             throw $exception;
         }
 
+        foreach ($moved as $kind) {
+            try {
+                $this->files->delete($server, self::ROOT.'/'.$kind, [$folder.'.old']);
+            } catch (\Throwable) {
+                $notes[] = 'The old copy of '.$folder.' is still in '.$kind.' as '.$folder.'.old. Delete it with the file manager.';
+            }
+        }
         $this->cleanup($server, $token);
 
         return $notes;
@@ -315,6 +329,27 @@ class Mods
 
         $this->files->ensureDirectory($server, $parent);
         $this->files->move($server, $unpacked, $move['from'], $parent, basename($target));
+    }
+
+    /**
+     * Put the old copy of a mod back after a failed update: whatever the new copy left is
+     * removed, then "<folder>.old" gets its name back.
+     *
+     * @param  list<string>  $kinds  the folders under BepInEx where an old copy was set aside
+     */
+    private function rollback(Server $server, string $folder, array $kinds): void
+    {
+        foreach ($kinds as $kind) {
+            $directory = self::ROOT.'/'.$kind;
+            try {
+                if ($this->files->exists($server, $directory, $folder)) {
+                    $this->files->delete($server, $directory, [$folder]);
+                }
+                $this->files->move($server, $directory, $folder.'.old', $directory, $folder);
+            } catch (\Throwable) {
+                // The old copy stays as "<folder>.old", so it is never lost.
+            }
+        }
     }
 
     private function cleanup(Server $server, string $token): void

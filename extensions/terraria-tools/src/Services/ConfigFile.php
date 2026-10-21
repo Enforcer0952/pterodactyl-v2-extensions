@@ -38,13 +38,17 @@ class ConfigFile
     /**
      * Change the file under a lock. $change gets the current text (null when the file
      * does not exist) and returns the new text, or null for no change. When $hash is
-     * given, the file must still match it.
+     * given, the file must still match it. An empty hash is refused (422).
      *
      * @param  callable(?string): ?string  $change
      * @return bool whether the file was written
      */
     public function update(Server $server, callable $change, ?string $hash = null): bool
     {
+        if ($hash !== null && preg_match('/^[0-9a-f]{40}$/D', $hash) !== 1) {
+            throw new HttpException(422, 'The save is missing the version of serverconfig.txt you opened. Reload the page and try again.');
+        }
+
         try {
             return Cache::lock('ext:terraria-tools:config:'.$server->uuid, 30)->block(5, function () use ($server, $change, $hash): bool {
                 $current = $this->read($server);

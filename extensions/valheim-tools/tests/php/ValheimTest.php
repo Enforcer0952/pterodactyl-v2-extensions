@@ -58,4 +58,14 @@ class ValheimTest extends TestCase
         $this->assertSame('/.config/unity3d/IronGate/Valheim', Valheim::saveDirectory('./s -savedir ../../etc'));
         $this->assertSame('/.config/unity3d/IronGate/Valheim', Valheim::saveDirectory('./s -savedir $(id)'));
     }
+
+    public function test_world_names_that_are_unsafe_in_the_start_command_are_refused(): void
+    {
+        foreach (['My World', 'Dedicated-2', 'a.b', 'Wereld_1'] as $name) {
+            $this->assertTrue(Valheim::validWorldName($name), $name);
+        }
+        foreach (['', 'a"b', "a'b", 'a$b', '$(id)', 'a;b', 'a`b`', "a\nb", '../x', 'a..b', '.hidden', ' lead', 'trail ', str_repeat('a', 21)] as $name) {
+            $this->assertFalse(Valheim::validWorldName($name), $name);
+        }
+    }
 }

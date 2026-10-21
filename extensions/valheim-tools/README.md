@@ -10,14 +10,14 @@ Adds a **Players** card and a **Server settings** card under the console, plus *
 ## Features
 
 - **Players:** who is online, read from the console, and who was seen recently. Each player with a Steam ID has **Make admin**, **Permit** and **Ban** buttons that edit the access list files. The first and last time a player was seen is kept, so the names show up next to the IDs on the Access lists page.
-- **Access lists:** `adminlist.txt`, `bannedlist.txt` and `permittedlist.txt`. Add a player by Steam ID or Steam profile link, remove a player, see the name next to each ID. IDs are checked before anything is written. Comments, blank lines and line endings in the files are kept, and every save keeps the old file as a `.bak`. The page warns that a permitted list with anyone on it means only those players can join.
+- **Access lists:** `adminlist.txt`, `bannedlist.txt` and `permittedlist.txt`. Add a player by Steam ID or Steam profile link, remove a player, see the name next to each ID. IDs are checked before anything is written. Comments, blank lines and line endings in the files are kept, and every save keeps the old file as a `.bak`. A list is never rewritten when the folder could not be read. The page warns that a permitted list with anyone on it means only those players can join.
 - **Worlds:** every world with size and date, and the one the server loads (the `WORLD` startup variable).
   - **Use:** make a world the active one, or enter a new name to let Valheim generate a world with that name on the next start.
   - **Back up:** copies the world to `valheim-backups/<name>-<date>/`. Each world keeps its newest backups (default 5, see Settings). A running server asks for confirmation first, because Valheim has no save command for dedicated servers and a copy can catch a file while it is written.
   - **Restore:** needs the server stopped. The world it replaces is backed up first. Works for the backups made here and for **Valheim's own automatic backups** (`NAME_backup_auto-...`).
   - **Delete:** needs the server stopped, asks for confirmation and makes a backup first by default. The active world cannot be deleted.
   - Worlds in the new Valheim 1.0 folder format and in the older `.db` + `.fwl` format both work.
-- **Mods:** only on servers that load BepInEx. Lists what is in `BepInEx/plugins`, `patchers` and `monomod` with the name and version from each mod's `manifest.json`. Search Thunderstore, or paste `Owner-Name` or a Thunderstore link. **Install** also installs the mods it needs (not BepInEx itself). **Update** shows when Thunderstore has a newer version. **Remove** deletes the mod's folder. Installing, updating and removing need the server stopped. BepInEx itself (`BepInEx/core`, the loader files, the `BepInExPack_Valheim` package) is never installed, changed or removed. Config files in `BepInEx/config` are kept.
+- **Mods:** only on servers that load BepInEx. Lists what is in `BepInEx/plugins`, `patchers` and `monomod` with the name and version from each mod's `manifest.json`. Search Thunderstore, or paste `Owner-Name` or a Thunderstore link. **Install** also installs the mods it needs (not BepInEx itself). **Update** shows when Thunderstore has a newer version. **Remove** deletes the mod's folder. Installing, updating and removing need the server stopped. BepInEx itself (`BepInEx/core`, the loader files, the `BepInExPack_Valheim` package) is never installed, changed or removed. Config files in `BepInEx/config` are kept. An update sets the old copy aside as `<folder>.old` and puts it back if the new one fails to install. Downloads over 200 MB are refused, and deprecated mods are flagged.
 - **Server settings:** server name, password (hidden until you press Show), show in the server list, crossplay, and a world preset if the egg has a `PRESET`, `WORLD_PRESET` or `SERVER_PRESET` variable. Values are checked against Valheim's rules (password at least 5 characters and not part of the world name) and the egg's own rules, and nothing is saved unless all of them pass. Changes apply the next time the server starts.
 - Everything that ends up in a file path or the startup command is validated, so a name, ID or world name can never reach outside the server folder or inject a command.
 
@@ -34,7 +34,7 @@ Adds a **Players** card and a **Server settings** card under the console, plus *
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/valheim-tools-1.0.0.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/valheim-tools-1.0.1.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -45,7 +45,7 @@ Adds a **Players** card and a **Server settings** card under the console, plus *
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/valheim-tools-1.0.0.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/valheim-tools-1.0.1.pteroext --enable --replace
 ```
 
 Settings and data are kept.
@@ -82,7 +82,7 @@ Under **Admin → Extensions → Valheim Tools**:
 
 | Setting | Options |
 |---|---|
-| Backups to keep per world | 1 to 50 (default 5). Older backups are deleted after a new one is made. Valheim's automatic backups are not counted. |
+| Backups to keep per world | 1 to 50 (default 5). Older backups are deleted after a new one is made, except backups of the world the server loads, which stay until you delete them. Valheim's automatic backups are not counted. |
 | How Steam players are written to the lists | `V_` + Steam ID (default, Valheim 1.0), `Steam_` + Steam ID, or the plain Steam ID (before 1.0). |
 
 ## Permissions (Subusers)

@@ -294,6 +294,24 @@ class ServerFiles
         }
     }
 
+    /** Whether the folder above lists fine and shows no folder of this name. */
+    private function absent(Server $server, string $directory): bool
+    {
+        $directory = rtrim($directory, '/');
+        if ($directory === '') {
+            return false;
+        }
+        $parent = dirname($directory) === '.' ? '/' : dirname($directory);
+
+        foreach ($this->entries($server, $parent) as $entry) {
+            if (! $entry['file'] && $entry['name'] === basename($directory)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     /**
      * @return list<array{name: string, file: bool, size: int, modified: ?string}>
      */
@@ -302,10 +320,15 @@ class ServerFiles
         try {
             $entries = $this->directories->list($server, $directory);
         } catch (DaemonConnectionException $exception) {
-            // A folder that does not exist yet: some Wings versions answer 500 instead of 404.
-            // A node that is down answers 502/504 and is reported as such.
             if (in_array($exception->getStatusCode(), [404, 500], true)) {
-                return [];
+                // Some Wings versions answer 500 for a folder that is not there. That is only
+                // believed when the folder above lists fine and does not have it: a failing
+                // node must never look like an empty folder.
+                if ($this->absent($server, $directory)) {
+                    return [];
+                }
+
+                throw new HttpException(502, 'Could not read '.$directory.' on this server. Check that its node is online and try again.', $exception);
             }
 
             throw $exception;

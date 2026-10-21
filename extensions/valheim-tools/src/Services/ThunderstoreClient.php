@@ -49,7 +49,7 @@ class ThunderstoreClient
     /**
      * One package: the latest version, or a specific one.
      *
-     * @return array{namespace: string, name: string, version: string, description: string, dependencies: list<array{namespace: string, name: string, version: string}>, deprecated: bool, url: string}
+     * @return array{namespace: string, name: string, version: string, description: string, dependencies: list<array{namespace: string, name: string, version: string}>, deprecated: bool, url: string, size: ?int}
      */
     public function package(string $namespace, string $name, ?string $version = null): array
     {
@@ -63,6 +63,21 @@ class ThunderstoreClient
         });
 
         return $package ?? throw new HttpException(502, 'Thunderstore sent an answer this extension does not understand.');
+    }
+
+    /**
+     * The size of a package's download from its Content-Length, or null when Thunderstore
+     * does not say. A failed check is not an error: the download is checked again after.
+     */
+    public function downloadSize(string $url): ?int
+    {
+        try {
+            $response = Http::withHeaders(['User-Agent' => self::AGENT])->timeout(15)->head($url);
+        } catch (ConnectionException) {
+            return null;
+        }
+
+        return $response->successful() ? Thunderstore::size($response->header('Content-Length')) : null;
     }
 
     /**

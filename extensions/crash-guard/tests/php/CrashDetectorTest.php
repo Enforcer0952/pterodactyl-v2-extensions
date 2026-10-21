@@ -226,7 +226,8 @@ class CrashDetectorTest extends TestCase
     public function test_many_servers_crashing_at_once_is_a_node_event(): void
     {
         $this->assertFalse(CrashDetector::nodeEvent(1, 1));
-        $this->assertFalse(CrashDetector::nodeEvent(2, 2));
+        $this->assertTrue(CrashDetector::nodeEvent(2, 2)); // two of two running servers: the node;
+        $this->assertFalse(CrashDetector::nodeEvent(2, 5));
         $this->assertTrue(CrashDetector::nodeEvent(3, 3));
         $this->assertTrue(CrashDetector::nodeEvent(3, 6));
         $this->assertFalse(CrashDetector::nodeEvent(3, 7));

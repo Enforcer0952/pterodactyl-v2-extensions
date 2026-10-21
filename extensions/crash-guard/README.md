@@ -34,7 +34,9 @@ Be aware of these limits:
 
 - **Once a minute.** Two crashes within the same minute count as one. A crash and restart faster than a minute is still caught by the uptime drop, but only if the server had been running for at least about 30 seconds at the previous check.
 - **Wings stops restarting a server that crashes twice within 60 seconds.** That is Wings' own protection and it happens before Crash Guard sees anything. It then shows as one crash that stays offline.
-- **A server that stops itself** (an in-game `/stop`, or the game quitting) looks like a crash, because Wings usually treats an exit it did not ask for as a crash and restarts the server.
+- **Stops that count as on purpose:** the power buttons, schedules, the API, a `stop`/`restart`/`exit` typed in the panel console, backup restores and reinstalls.
+- **Never stops a healthy server:** when the limit is reached, the guard first checks that nobody started the server since the last crash and that it is not running normally again (up for more than 2 minutes). A server that is saving gets 5 minutes before it is killed.
+- **A server that stops itself** (an in-game `/stop` typed by a player, a plugin restart, or the game quitting) looks like a crash, because Wings usually treats an exit it did not ask for as a crash and restarts the server.
 - **A schedule running at the same time** as a real crash hides that crash. A schedule that is still running (a long countdown) explains any change until it ends.
 - **An unreachable node** is skipped: no reading, so no crash. A gap longer than 15 minutes between two readings is never compared.
 - **Many servers on one node going down in the same minute** (three or more, and at least half of the guarded ones there) is taken for the node restarting, and is not counted.
@@ -61,7 +63,7 @@ Be aware of these limits:
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/crash-guard-1.0.0.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/crash-guard-1.0.1.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -72,7 +74,7 @@ Be aware of these limits:
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/crash-guard-1.0.0.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/crash-guard-1.0.1.pteroext --enable --replace
 ```
 
 Settings and data are kept.

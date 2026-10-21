@@ -74,6 +74,7 @@ export interface World {
     modified: string | null;
     active: boolean;
     has_bak: boolean;
+    has_twld?: boolean;
 }
 
 export interface WorldBackup {
@@ -82,6 +83,7 @@ export interface WorldBackup {
     stamp: string;
     size: number;
     modified: string | null;
+    has_twld?: boolean;
 }
 
 export interface WorldsResponse {

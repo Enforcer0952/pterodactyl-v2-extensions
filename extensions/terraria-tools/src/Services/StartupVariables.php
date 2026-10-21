@@ -2,17 +2,23 @@
 
 namespace TerrariaTools\Services;
 
-use Pterodactyl\Facades\Activity;
+use Illuminate\Support\Facades\Validator;
+use Pterodactyl\Contracts\Servers\UpdatesServerVariable;
 use Pterodactyl\Models\EggVariable;
 use Pterodactyl\Models\Server;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use TerrariaTools\Support\Terraria;
 
 /**
  * Reads and writes the server's startup variables the same way the Startup page
- * does: only variables the egg lets users see and edit.
+ * does: only variables the egg lets users see and edit, and only values that are
+ * safe to sit in a start command and pass the egg's own rules. The write goes through
+ * the panel's own action, which also records the activity.
  */
 class StartupVariables
 {
+    public function __construct(private readonly UpdatesServerVariable $updater) {}
+
     public function get(Server $server, string $env): ?string
     {
         $variable = $this->variable($server, $env);
@@ -35,6 +41,18 @@ class StartupVariables
         return $variable !== null && $variable->user_viewable && $variable->user_editable;
     }
 
+    /** Whether the variable can be changed to this value: editable, shell-safe and within the egg's rules. */
+    public function canSet(Server $server, string $env, string $value): bool
+    {
+        $variable = $this->variable($server, $env);
+
+        return $variable !== null
+            && $variable->user_viewable
+            && $variable->user_editable
+            && Terraria::shellSafe($value)
+            && $this->passesRules($variable, $value);
+    }
+
     public function set(Server $server, string $env, string $value): void
     {
         $variable = $this->variable($server, $env);
@@ -44,18 +62,23 @@ class StartupVariables
         if (! $variable->user_editable) {
             throw new HttpException(403, 'The '.$env.' startup variable is read-only on this server.');
         }
-
-        $original = (string) ($variable->server_value ?? '');
-        if ($original === $value) {
-            return;
+        if (! Terraria::shellSafe($value)) {
+            throw new HttpException(422, 'The '.$env.' value has characters that are not allowed in a startup variable.');
+        }
+        if (! $this->passesRules($variable, $value)) {
+            throw new HttpException(422, 'The '.$env.' value is not accepted by this server\'s startup rules.');
         }
 
-        $server->serverVariables()->updateOrCreate(['variable_id' => $variable->id], ['variable_value' => $value]);
+        if ((string) ($variable->server_value ?? '') !== $value) {
+            $this->updater->update($server, $variable->id, $value);
+        }
+    }
 
-        Activity::event('server:startup.edit')
-            ->subject($variable)
-            ->property(['variable' => $env, 'old' => $original, 'new' => $value])
-            ->log();
+    private function passesRules(EggVariable $variable, string $value): bool
+    {
+        $rules = trim((string) ($variable->rules ?? ''));
+
+        return $rules === '' || ! Validator::make(['value' => $value], ['value' => $rules])->fails();
     }
 
     private function variable(Server $server, string $env): ?EggVariable

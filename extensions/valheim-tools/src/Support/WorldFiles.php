@@ -138,16 +138,18 @@ final class WorldFiles
 
     /**
      * Backup folders to delete so each world keeps its newest $keep of each kind.
+     * Backups of the worlds in $protected are never listed.
      *
      * @param  list<string>  $folders
+     * @param  list<string>  $protected  world names (the one the server loads)
      * @return list<string>
      */
-    public static function expired(array $folders, int $keep): array
+    public static function expired(array $folders, int $keep, array $protected = []): array
     {
         $groups = [];
         foreach ($folders as $folder) {
             $parsed = self::parseBackupFolder($folder);
-            if ($parsed !== null) {
+            if ($parsed !== null && ! in_array($parsed['world'], $protected, true)) {
                 $groups[$parsed['world']."\0".($parsed['kind'] === '' ? 'manual' : 'safety')][$parsed['stamp']] = $folder;
             }
         }

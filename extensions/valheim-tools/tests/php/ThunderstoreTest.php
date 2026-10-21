@@ -138,4 +138,35 @@ class ThunderstoreTest extends TestCase
             $this->assertNull(Thunderstore::parseFolder($bad));
         }
     }
+
+    public function test_download_size_limit(): void
+    {
+        $this->assertFalse(Thunderstore::tooLarge(null));
+        $this->assertFalse(Thunderstore::tooLarge(0));
+        $this->assertFalse(Thunderstore::tooLarge(Thunderstore::MAX_DOWNLOAD));
+        $this->assertTrue(Thunderstore::tooLarge(Thunderstore::MAX_DOWNLOAD + 1));
+        $this->assertSame(200 * 1024 * 1024, Thunderstore::MAX_DOWNLOAD);
+    }
+
+    public function test_sizes_from_answers_and_headers(): void
+    {
+        $this->assertSame(1234, Thunderstore::size(1234));
+        $this->assertSame(1234, Thunderstore::size('1234'));
+        $this->assertSame(0, Thunderstore::size(0));
+        $this->assertNull(Thunderstore::size(-1));
+        $this->assertNull(Thunderstore::size('12a'));
+        $this->assertNull(Thunderstore::size('-5'));
+        $this->assertNull(Thunderstore::size(null));
+        $this->assertNull(Thunderstore::size(1.5));
+        $this->assertNull(Thunderstore::size(['x']));
+    }
+
+    public function test_package_carries_a_declared_size_when_there_is_one(): void
+    {
+        $json = $this->fixture('thunderstore-package.json');
+        $this->assertNull(Thunderstore::package($json)['size']);
+
+        $json['latest']['file_size'] = 5242880;
+        $this->assertSame(5242880, Thunderstore::package($json)['size']);
+    }
 }

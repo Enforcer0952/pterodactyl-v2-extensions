@@ -49,7 +49,9 @@ class Worlds
         $config = $this->config->parsed($server);
         $worlds = $this->worldsDirectory($config);
         $backups = Terraria::backupsDirectory($worlds);
-        $active = $this->activeName($config, $this->variables->get($server, 'WORLD_NAME'));
+        $variable = $this->variables->get($server, 'WORLD_NAME');
+        $active = $this->activeName($config, $variable);
+        $activeNames = $this->activeNames($config, $variable);
 
         $files = $this->files->files($server, $worlds);
         $names = array_column($files, 'name');
@@ -64,14 +66,17 @@ class Worlds
                 'name' => $name,
                 'size' => $file['size'],
                 'modified' => $file['modified'],
-                'active' => $active !== null && $active === $name,
+                'active' => in_array($name, $activeNames, true),
                 'has_bak' => in_array($file['name'].'.bak', $names, true),
+                'has_twld' => in_array(WorldFiles::twld($file['name']), $names, true),
             ];
         }
         usort($list, fn (array $a, array $b): int => strcasecmp($a['name'], $b['name']));
 
         $saved = [];
-        foreach ($this->files->files($server, $backups) as $file) {
+        $backupFiles = $this->files->files($server, $backups);
+        $backupNames = array_column($backupFiles, 'name');
+        foreach ($backupFiles as $file) {
             $parsed = WorldFiles::parseBackup($file['name']);
             if ($parsed !== null) {
                 $saved[] = [
@@ -80,6 +85,7 @@ class Worlds
                     'stamp' => $parsed['stamp'],
                     'size' => $file['size'],
                     'modified' => $file['modified'],
+                    'has_twld' => in_array(WorldFiles::twld($file['name']), $backupNames, true),
                 ];
             }
         }
@@ -171,14 +177,18 @@ class Worlds
             $safety = null;
             if ($this->files->exists($server, $worlds, $world.'.wld')) {
                 $safety = $this->makeBackup($server, $worlds, $world);
-                // The game's own .bak belongs to the world being replaced.
-                $this->files->delete($server, $worlds, array_values(array_filter(
-                    [$world.'.wld', $world.'.wld.bak'],
-                    fn (string $name): bool => $this->files->exists($server, $worlds, $name),
-                )));
             }
+            // The game's own .bak and the modded-content file belong to the world being replaced.
+            $this->files->delete($server, $worlds, array_values(array_filter(
+                WorldFiles::companions($world),
+                fn (string $name): bool => $this->files->exists($server, $worlds, $name),
+            )));
 
             $this->files->copyTo($server, $backups, $file, $worlds, $world.'.wld');
+            $twld = WorldFiles::twld($file);
+            if ($this->files->exists($server, $backups, $twld)) {
+                $this->files->copyTo($server, $backups, $twld, $worlds, $world.'.twld');
+            }
 
             return ['world' => $world, 'safety' => $safety];
         });
@@ -195,7 +205,7 @@ class Worlds
                 throw new HttpException(404, 'That backup does not exist (any more).');
             }
 
-            $this->files->delete($server, $backups, [$file]);
+            $this->files->delete($server, $backups, $this->withTwld($server, $backups, [$file]));
         });
     }
 
@@ -211,7 +221,7 @@ class Worlds
             $worlds = $this->worldsDirectory($config);
             $this->requireWorld($server, $worlds, $name);
 
-            if ($this->activeName($config, $this->variables->get($server, 'WORLD_NAME')) === $name) {
+            if (in_array($name, $this->activeNames($config, $this->variables->get($server, 'WORLD_NAME')), true)) {
                 throw new HttpException(409, 'This is the world the server loads. Switch to another world or create a new one first.');
             }
 
@@ -267,23 +277,20 @@ class Worlds
         });
     }
 
-    /** Whether the server is set up to load this world right now. */
+    /** The world the server loads: the "world" path first, then "worldname", then the WORLD_NAME variable. */
     public function activeName(ServerConfig $config, ?string $variableName): ?string
     {
-        $world = trim((string) $config->get('world'));
-        if ($world !== '') {
-            $base = basename(str_replace('\\', '/', $world));
+        return $this->activeNames($config, $variableName)[0] ?? null;
+    }
 
-            return str_ends_with($base, '.wld') ? substr($base, 0, -4) : $base;
-        }
-
-        foreach ([$config->get('worldname'), $variableName] as $name) {
-            if ($name !== null && trim($name) !== '') {
-                return trim($name);
-            }
-        }
-
-        return null;
+    /**
+     * Every world the server may load.
+     *
+     * @return list<string>
+     */
+    public function activeNames(ServerConfig $config, ?string $variableName): array
+    {
+        return WorldFiles::activeNames($config->get('world'), $config->get('worldname'), $variableName);
     }
 
     private function worldsDirectory(ServerConfig $config): string
@@ -296,6 +303,25 @@ class Worlds
         if (WorldFiles::worldName($name.'.wld') !== $name || ! $this->files->exists($server, $worlds, $name.'.wld')) {
             throw new HttpException(404, 'There is no world called '.$name.' on this server.');
         }
+    }
+
+    /**
+     * The backup files plus the .twld that belongs to each, where there is one.
+     *
+     * @param  list<string>  $files
+     * @return list<string>
+     */
+    private function withTwld(Server $server, string $backups, array $files): array
+    {
+        $all = $files;
+        foreach ($files as $file) {
+            $twld = WorldFiles::twld($file);
+            if ($this->files->exists($server, $backups, $twld)) {
+                $all[] = $twld;
+            }
+        }
+
+        return $all;
     }
 
     /** Copy the world into the Backups folder without any pruning. */
@@ -311,13 +337,28 @@ class Worlds
 
         $this->files->copyTo($server, $worlds, $name.'.wld', $backups, $file);
 
+        // tModLoader keeps the modded content of a world in NAME.twld: it goes in the backup too.
+        if ($this->files->exists($server, $worlds, $name.'.twld')) {
+            try {
+                $this->files->copyTo($server, $worlds, $name.'.twld', $backups, WorldFiles::twld($file));
+            } catch (\Throwable $exception) {
+                // Never leave a backup that is missing half of the world.
+                try {
+                    $this->files->delete($server, $backups, [$file]);
+                } catch (\Throwable) {
+                }
+
+                throw $exception;
+            }
+        }
+
         return $file;
     }
 
     private function prune(Server $server, string $backups): void
     {
         try {
-            $this->files->delete($server, $backups, WorldFiles::expired(array_column($this->files->files($server, $backups), 'name'), $this->keep()));
+            $this->files->delete($server, $backups, $this->withTwld($server, $backups, WorldFiles::expired(array_column($this->files->files($server, $backups), 'name'), $this->keep())));
         } catch (\Throwable) {
             // An extra backup is harmless.
         }
@@ -334,7 +375,7 @@ class Worlds
     {
         $result = ['updated' => [], 'skipped' => []];
         foreach ($values as $env => $value) {
-            if ($allowed && $this->variables->editable($server, $env)) {
+            if ($allowed && $this->variables->canSet($server, $env, $value)) {
                 $this->variables->set($server, $env, $value);
                 $result['updated'][] = $env;
             } else {

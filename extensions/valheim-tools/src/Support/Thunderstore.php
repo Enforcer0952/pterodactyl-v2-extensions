@@ -23,6 +23,9 @@ final class Thunderstore
 
     public const string BEPINEX_NAME = 'BepInExPack_Valheim';
 
+    /** The biggest package this extension downloads (200 MB). */
+    public const int MAX_DOWNLOAD = 200 * 1024 * 1024;
+
     /** The only host download links and icons may point to. */
     public const array ICON_HOSTS = ['ccdn.thunderstore.io', 'gcdn.thunderstore.io'];
 
@@ -34,6 +37,22 @@ final class Thunderstore
     public static function validVersion(string $value): bool
     {
         return preg_match(self::VERSION, $value) === 1;
+    }
+
+    /** Whether a download of this many bytes is over the limit. An unknown size (null) is not. */
+    public static function tooLarge(?int $bytes): bool
+    {
+        return $bytes !== null && $bytes > self::MAX_DOWNLOAD;
+    }
+
+    /** A size in bytes from an API answer or a Content-Length header: a whole number, else null. */
+    public static function size(mixed $value): ?int
+    {
+        if (is_string($value) && preg_match('/^\d{1,15}$/D', $value) === 1) {
+            return (int) $value;
+        }
+
+        return is_int($value) && $value >= 0 ? $value : null;
     }
 
     public static function isBepInEx(string $namespace, string $name): bool
@@ -120,7 +139,7 @@ final class Thunderstore
      * One package from the experimental API: the latest version, or the version asked for.
      *
      * @param  array<string, mixed>  $json
-     * @return array{namespace: string, name: string, version: string, description: string, dependencies: list<array{namespace: string, name: string, version: string}>, deprecated: bool, url: string}|null
+     * @return array{namespace: string, name: string, version: string, description: string, dependencies: list<array{namespace: string, name: string, version: string}>, deprecated: bool, url: string, size: ?int}|null
      */
     public static function package(array $json): ?array
     {
@@ -148,6 +167,8 @@ final class Thunderstore
             'dependencies' => $dependencies,
             'deprecated' => (bool) ($json['is_deprecated'] ?? false),
             'url' => self::downloadUrl($namespace, $name, $number),
+            // Only given by some answers; the real size is checked again before the download.
+            'size' => self::size($version['file_size'] ?? $json['file_size'] ?? null),
         ];
     }
 

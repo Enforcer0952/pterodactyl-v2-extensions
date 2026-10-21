@@ -1,7 +1,11 @@
 name: CI
 on:
   push:
+    branches: [main]
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   list:
@@ -10,12 +14,16 @@ jobs:
       extensions: ${{ steps.list.outputs.extensions }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - id: list
         run: echo "extensions=$(ls extensions | jq -R . | jq -cs .)" >> "$GITHUB_OUTPUT"
 
   extension:
     needs: list
     runs-on: ubuntu-latest
+    env:
+      EXT: ${{ matrix.extension }}
     strategy:
       fail-fast: false
       matrix:
@@ -24,11 +32,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: repo
+          persist-credentials: false
       - uses: actions/checkout@v4
         with:
           repository: pterodactyl/panel
           ref: 2.0-develop
           path: panel
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -42,8 +52,8 @@ jobs:
       - name: Install
         run: |
           mkdir -p panel/extensions-src
-          cp -r repo/extensions/${{ matrix.extension }} panel/extensions-src/
-          cd panel/extensions-src/${{ matrix.extension }}
+          cp -r "repo/extensions/$EXT" panel/extensions-src/
+          cd "panel/extensions-src/$EXT"
           npm install --legacy-peer-deps
       - name: Typecheck, test, build
         working-directory: panel/extensions-src/${{ matrix.extension }}
@@ -55,6 +65,6 @@ jobs:
         working-directory: repo
         run: |
           composer install --no-interaction --no-progress
-          if [ -f extensions/${{ matrix.extension }}/phpunit.xml ]; then
-            cd extensions/${{ matrix.extension }} && ../../vendor/bin/phpunit
+          if [ -f "extensions/$EXT/phpunit.xml" ]; then
+            cd "extensions/$EXT" && ../../vendor/bin/phpunit
           fi

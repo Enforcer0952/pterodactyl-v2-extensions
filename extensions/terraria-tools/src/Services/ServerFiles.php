@@ -14,6 +14,7 @@ use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
 use Pterodactyl\Exceptions\Http\Server\FileSizeTooLargeException;
 use Pterodactyl\Models\Server;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use TerrariaTools\Support\FileCopy;
 use Throwable;
 
 /**
@@ -136,7 +137,7 @@ class ServerFiles
     /**
      * Copy a file into another folder under a new name. Wings copies next to the
      * original with " copy" added, so the copy is found by comparing the listing
-     * before and after, then moved.
+     * before and after (see FileCopy), then moved.
      */
     public function copyTo(Server $server, string $directory, string $name, string $targetDirectory, string $targetName): void
     {
@@ -146,19 +147,9 @@ class ServerFiles
         $this->copier->copy($server, $this->path($directory, $name));
 
         $this->forget($server, $directory);
-        $created = array_values(array_diff(array_column($this->files($server, $directory), 'name'), $before));
-        if ($created === []) {
-            throw new HttpException(502, 'The copy of '.$name.' could not be found. Check the file manager.');
-        }
-        // Wings names it "<name> copy.<ext>" (with a number if that exists).
-        $stem = pathinfo($name, PATHINFO_FILENAME);
-        $copy = $created[0];
-        foreach ($created as $file) {
-            if (str_starts_with($file, $stem.' copy')) {
-                $copy = $file;
-
-                break;
-            }
+        $copy = FileCopy::find($name, $before, array_column($this->files($server, $directory), 'name'));
+        if ($copy === null) {
+            throw new HttpException(502, 'The copy of '.$name.' could not be found. Check the file manager for a "'.pathinfo($name, PATHINFO_FILENAME).' copy" file.');
         }
 
         try {
@@ -231,6 +222,11 @@ class ServerFiles
         try {
             $entries = $this->directories->list($server, $directory);
         } catch (DaemonConnectionException $exception) {
+            // The server folder itself always exists: a failure there is a real error, never
+            // "no files", or serverconfig.txt would look missing and be written from defaults.
+            if ($directory === '/') {
+                throw new HttpException(502, 'Could not list this server\'s files. Check that the server is installed and its node is online, then try again.', $exception);
+            }
             // A folder that does not exist yet: some Wings versions answer 500 instead of 404.
             // A node that is down answers 502/504 and is reported as such.
             if (in_array($exception->getStatusCode(), [404, 500], true)) {

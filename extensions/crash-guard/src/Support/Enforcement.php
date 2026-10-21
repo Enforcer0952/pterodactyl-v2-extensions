@@ -21,8 +21,15 @@ final class Enforcement
     /** A user started the server after the trip: they know, so the trip is over. */
     public const string RELEASE = 'release';
 
-    /** Seconds a stop gets before the server is killed. */
-    public const int KILL_AFTER = 30;
+    /**
+     * Seconds a stop gets before the server is killed. Big worlds (modded Minecraft,
+     * ARK, Palworld) can take minutes to save, so a server that is still stopping is
+     * left alone for a long time; only one that ignores the stop is killed sooner.
+     */
+    public const int KILL_AFTER = 300;
+
+    /** A server still "running" this long after the stop ignored it. */
+    public const int KILL_IF_IGNORED_AFTER = 120;
 
     /** Seconds a server may stay up unexplained, so the activity log can show a user start. */
     public const int WATCH_SECONDS = 90;
@@ -43,8 +50,14 @@ final class Enforcement
         }
 
         if ($stopSentAt !== null) {
-            // A stop is on its way. Give it time, then kill.
-            return $now - $stopSentAt >= self::KILL_AFTER ? self::KILL : self::NOTHING;
+            // A stop is on its way. A server that is saving (stopping) gets five minutes;
+            // one that still reports running ignored the stop and is killed sooner.
+            $waited = $now - $stopSentAt;
+            if ($state === 'stopping') {
+                return $waited >= self::KILL_AFTER ? self::KILL : self::NOTHING;
+            }
+
+            return $waited >= self::KILL_IF_IGNORED_AFTER ? self::KILL : self::NOTHING;
         }
 
         if ($state === 'stopping') {

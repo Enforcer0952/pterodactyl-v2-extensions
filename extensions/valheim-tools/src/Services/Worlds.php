@@ -116,14 +116,12 @@ class Worlds
     public function switch(Server $server, string $name, bool $create): void
     {
         $this->locked($server, function () use ($server, $name, $create): void {
-            $exists = $this->find($server, $name) !== null;
-            if (! $exists) {
-                if (! $create) {
-                    throw new HttpException(404, 'There is no world called '.$name.' on this server.');
-                }
-                if (! Valheim::validWorldName($name)) {
-                    throw new HttpException(422, 'Use letters, numbers, spaces, dashes, underscores and dots in a world name, 20 characters at most.');
-                }
+            // The name ends up in the start command, so it must be valid whether the world exists or not.
+            if (! Valheim::validWorldName($name)) {
+                throw new HttpException(422, 'Use letters, numbers, spaces, dashes, underscores and dots in a world name, 20 characters at most.');
+            }
+            if ($this->find($server, $name) === null && ! $create) {
+                throw new HttpException(404, 'There is no world called '.$name.' on this server.');
             }
 
             if (! $this->variables->exists($server, 'WORLD')) {
@@ -354,7 +352,9 @@ class Worlds
     {
         try {
             $folders = array_column($this->files->folders($server, Valheim::BACKUPS_DIR), 'name');
-            $this->files->delete($server, Valheim::BACKUPS_DIR, WorldFiles::expired($folders, $this->preferences->keep()));
+            // Backups of the world the server loads are never pruned automatically.
+            $active = $this->activeName($server);
+            $this->files->delete($server, Valheim::BACKUPS_DIR, WorldFiles::expired($folders, $this->preferences->keep(), $active === null ? [] : [$active]));
         } catch (\Throwable) {
             // An extra backup is harmless.
         }

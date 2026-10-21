@@ -35,7 +35,7 @@ final class CrashDetector
     public const int SETTLE_SECONDS = 120;
 
     /** Minimum guarded servers on one node that look crashed at once before it is called a node event. */
-    public const int NODE_EVENT_MIN = 3;
+    public const int NODE_EVENT_MIN = 2;
 
     public static function observe(?Sample $previous, Sample $current): ?Candidate
     {
@@ -97,6 +97,10 @@ final class CrashDetector
     /**
      * Many servers on one node looking crashed in the same minute is the node restarting
      * (or Wings being updated), not the games. Those are not counted.
+     */
+    /**
+     * @param  int  $crashed  servers that looked crashed this tick
+     * @param  int  $sampled  servers that were running or starting at the previous tick
      */
     public static function nodeEvent(int $crashed, int $sampled): bool
     {

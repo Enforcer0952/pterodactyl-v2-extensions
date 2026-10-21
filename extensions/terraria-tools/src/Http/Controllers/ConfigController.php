@@ -51,7 +51,8 @@ class ConfigController extends Controller
             'raw' => ['sometimes', 'nullable', 'string', 'max:400000'],
             'edits' => ['sometimes', 'array', 'max:20'],
             'edits.*' => ['present', 'nullable', 'string', 'max:500'],
-            'hash' => ['required', 'string', 'size:40'],
+            // The hash of the file as it was loaded: a save without it is refused.
+            'hash' => ['required', 'string', 'regex:/^[0-9a-f]{40}$/D'],
         ]);
 
         $raw = null;
@@ -116,7 +117,7 @@ class ConfigController extends Controller
             if ($env === null || $new === null || $new === $before->get($key)) {
                 continue;
             }
-            if ($allowed && $this->variables->editable($server, $env)) {
+            if ($allowed && $this->variables->canSet($server, $env, $new)) {
                 $this->variables->set($server, $env, $new);
                 $result['updated'][] = $env;
             } else {

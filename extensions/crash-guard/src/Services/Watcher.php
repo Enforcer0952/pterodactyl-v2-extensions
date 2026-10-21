@@ -29,6 +29,12 @@ class Watcher
     /** Seconds after which a tick stops starting new servers, so it never runs into the next minute. */
     private const int BUDGET_SECONDS = 45;
 
+    /** A server running this long (ms) when the limit is reached is not crash looping. */
+    private const int HEALTHY_UPTIME_MS = 120_000;
+
+    /** Seconds after a node was last unreachable during which its servers' restarts are not counted. */
+    private const int NODE_QUIET_SECONDS = 240;
+
     public function __construct(
         private readonly Guard $guard,
         private readonly ReadsServerState $state,
@@ -54,9 +60,13 @@ class Watcher
     {
         $started = microtime(true);
 
-        $this->prune();
-        $this->settle();
-        $this->releaseUnguarded();
+        foreach (['prune', 'settle', 'releaseUnguarded'] as $phase) {
+            try {
+                $this->{$phase}();
+            } catch (Throwable $throwable) {
+                report($throwable); // one failing phase must not stop crash detection
+            }
+        }
 
         $defaults = $this->guard->defaults();
         $down = [];
@@ -116,11 +126,17 @@ class Watcher
         }
 
         try {
+            Cache::forget('resources:'.$server->uuid); // the panel caches state for 20 s
             $reading = $this->state->read($server);
-        } catch (DaemonConnectionException) {
-            // The node cannot be reached: no reading, so no crash. Skip its other servers too.
-            $down[$node] = true;
+        } catch (DaemonConnectionException $exception) {
+            if (self::unreachable($exception)) {
+                // The node cannot be reached: no reading, so no crash. Skip its other servers too,
+                // and do not count crashes on it until it has been back for a few minutes.
+                $down[$node] = true;
+                Cache::put('ext-crash-guard:node-down:'.$node, time(), 900);
+            }
 
+            // Any other Wings error is about this one server: skip it, keep checking the rest.
             return;
         }
 
@@ -145,9 +161,14 @@ class Watcher
             $previous = new Sample((string) $row->last_state, (int) $row->last_uptime, CarbonImmutable::parse($row->last_sampled_at)->getTimestamp());
         }
 
-        $sampled[$node] = ($sampled[$node] ?? 0) + 1;
+        // Only servers that were up can look crashed, so only they count towards a node restart.
+        if ($previous !== null && in_array($previous->state, ['running', 'starting'], true)) {
+            $sampled[$node] = ($sampled[$node] ?? 0) + 1;
+        }
         $candidate = CrashDetector::observe($previous, $sample);
-        if ($candidate instanceof Candidate) {
+        $nodeBackAt = Cache::get('ext-crash-guard:node-down:'.$node);
+        $recentlyDown = is_int($nodeBackAt) && time() - $nodeBackAt < self::NODE_QUIET_SECONDS;
+        if ($candidate instanceof Candidate && ! $recentlyDown) {
             $fresh[$node][] = $this->guard->event(
                 $server->id, 'crash', $candidate->via, $candidate->uptimeBeforeMs, null,
                 PowerHistory::at($candidate->since), PowerHistory::at($candidate->at), 'pending',
@@ -252,6 +273,29 @@ class Watcher
             return;
         }
 
+        // Crashes are only confirmed a couple of minutes after they happen. If someone
+        // started the server since, or it has been running fine for a while, it is not
+        // looping any more: never stop a healthy server.
+        $lastCrash = max($times);
+        $healthy = $this->history->userStarted($server, $lastCrash);
+        if (! $healthy) {
+            try {
+                Cache::forget('resources:'.$server->uuid);
+                $reading = $this->state->read($server);
+                $healthy = $reading->state === 'running' && $reading->uptime > self::HEALTHY_UPTIME_MS;
+            } catch (DaemonConnectionException) {
+                $healthy = true; // Cannot tell: do nothing now, the next crash re-checks.
+            }
+        }
+        if ($healthy) {
+            DB::table(Guard::EVENTS)
+                ->where('server_id', $server->id)->where('kind', 'crash')->where('status', 'confirmed')
+                ->where('occurred_at', '>=', $now->subMinutes($config['window_minutes']))
+                ->update(['status' => 'dismissed', 'note' => 'It was running normally again when the limit was reached.', 'updated_at' => $now]);
+
+            return;
+        }
+
         $this->trip($server, CrashWindow::count($times, $now->getTimestamp(), $config['window_minutes'], $clearedAt), $config['window_minutes'], $now);
     }
 
@@ -344,11 +388,35 @@ class Watcher
 
     private function prune(): void
     {
+        // Once an hour is plenty.
+        if (! Cache::add('ext-crash-guard:pruned', true, 3600)) {
+            return;
+        }
+
         $days = max(1, min(365, (int) app('ext.crash-guard.settings')->get('keep_days', 30)));
         $now = CarbonImmutable::now();
 
         DB::table(Guard::EVENTS)->where('occurred_at', '<', $now->subDays($days))->delete();
         DB::table(Guard::EVENTS)->whereIn('status', ['dismissed', 'pending'])->where('occurred_at', '<', $now->subDay())->delete();
+    }
+
+    /** Whether Wings itself could not be reached (as opposed to an error about one server). */
+    private static function unreachable(DaemonConnectionException $exception): bool
+    {
+        for ($previous = $exception->getPrevious(); $previous !== null; $previous = $previous->getPrevious()) {
+            if ($previous instanceof \Illuminate\Http\Client\ConnectionException || $previous instanceof \GuzzleHttp\Exception\ConnectException) {
+                return true;
+            }
+            if ($previous instanceof \Illuminate\Http\Client\RequestException) {
+                return false; // Wings answered with an error about this server.
+            }
+            if ($previous instanceof \GuzzleHttp\Exception\RequestException) {
+                return $previous->getResponse() === null;
+            }
+        }
+
+        // No cause attached: assume the node is unreachable (safe: nothing is counted).
+        return true;
     }
 
     /** @param  array<string, mixed>  $properties */

@@ -93,4 +93,18 @@ class WorldFilesTest extends TestCase
         // Keeping zero still keeps one.
         $this->assertCount(3, WorldFiles::expired($folders, 0));
     }
+
+    public function test_expired_never_lists_backups_of_a_protected_world(): void
+    {
+        $folders = [
+            'A-20260101-000001', 'A-20260102-000001', 'A-20260103-000001',
+            'A-before-delete-20260101-000001', 'A-before-delete-20260102-000001',
+            'B-20260101-000001', 'B-20260102-000001', 'B-20260103-000001',
+        ];
+
+        $this->assertSame(['B-20260101-000001'], WorldFiles::expired($folders, 2, ['A']));
+        $this->assertSame([], WorldFiles::expired($folders, 1, ['A', 'B']));
+        // A similar name is not the protected world.
+        $this->assertSame(['A-20260101-000001'], WorldFiles::expired(['A-20260101-000001', 'A-20260102-000001', 'AB-20260101-000001'], 1, ['AB']));
+    }
 }

@@ -89,4 +89,24 @@ final class WorldFilesTest extends TestCase
             WorldFiles::configPath('', null, '/saves/Worlds', 'Second'),
         );
     }
+
+    public function test_twld_follows_the_wld_name(): void
+    {
+        $this->assertSame('W.twld', WorldFiles::twld('W.wld'));
+        $this->assertSame('W-20261013-143005.twld', WorldFiles::twld('W-20261013-143005.wld'));
+    }
+
+    public function test_a_twld_file_is_not_a_backup_or_a_world(): void
+    {
+        $this->assertNull(WorldFiles::parseBackup('W-20261013-143005.twld'));
+        $this->assertNull(WorldFiles::worldName('W.twld'));
+    }
+
+    public function test_active_names_cover_the_path_the_name_and_the_variable(): void
+    {
+        $this->assertSame(['A', 'B', 'C'], WorldFiles::activeNames('/home/container/saves/Worlds/A.wld', 'B', 'C'));
+        $this->assertSame(['A'], WorldFiles::activeNames('saves\\Worlds\\A.wld', 'A', ' A '));
+        $this->assertSame(['Var'], WorldFiles::activeNames(null, '', 'Var'));
+        $this->assertSame([], WorldFiles::activeNames('', null, null));
+    }
 }

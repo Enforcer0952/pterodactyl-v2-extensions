@@ -16,7 +16,12 @@ if ($source === null || $out === null) {
     exit(2);
 }
 
-$repo = 'Enforcer0952/pterodactyl-v2-extensions';
+if ($tag !== 'unreleased' && preg_match('/^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/D', $tag) !== 1) {
+    fwrite(STDERR, "invalid tag $tag, expected something like v1.2.0\n");
+    exit(2);
+}
+$repo = getenv('GITHUB_REPOSITORY') ?: 'Enforcer0952/pterodactyl-v2-extensions';
+$urlTag = rawurlencode($tag);
 @mkdir($out, 0755, true);
 $rows = [];
 $sums = [];
@@ -46,7 +51,7 @@ file_put_contents("$out/SHA256SUMS.txt", implode("\n", $sums)."\n");
 
 $notes = "## Downloads\n\n| Extension | Version | File |\n|---|---|---|\n";
 foreach ($rows as [$name, $id, $version, $file]) {
-    $notes .= "| [$name](https://github.com/$repo/tree/$tag/extensions/$id) | $version | [`$file`](https://github.com/$repo/releases/download/$tag/$file) |\n";
+    $notes .= "| [$name](https://github.com/$repo/tree/$urlTag/extensions/$id) | $version | [`$file`](https://github.com/$repo/releases/download/$urlTag/$file) |\n";
 }
 $notes .= "\n## Install\n\n```bash\ncd /var/www/pterodactyl\nsudo -u www-data php artisan p:extension:install /path/to/<file>.pteroext --enable\n```\n\nUpdating: add `--replace`. Then hard-refresh the panel (Ctrl+Shift+R).\n";
 $notes .= "\n## Verify your download\n\nGitHub shows a SHA-256 digest next to each file. `SHA256SUMS.txt` lists them too:\n\n```bash\nsha256sum --check --ignore-missing SHA256SUMS.txt\n```\n\n<details><summary>SHA-256</summary>\n\n```\n".implode("\n", $sums)."\n```\n\n</details>\n";

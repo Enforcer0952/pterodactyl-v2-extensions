@@ -17,6 +17,12 @@ class PowerHistory
 {
     private const array EVENTS = ['server:power.start', 'server:power.stop', 'server:power.restart', 'server:power.kill'];
 
+    /** Other actions that stop or restart a server on purpose. */
+    private const array OTHER_EVENTS = ['server:backup.restore', 'server:backup.restore-complete', 'server:backup.restore-failed', 'server:reinstall'];
+
+    /** Console commands that stop or restart a game (with or without a leading slash). */
+    private const string STOP_COMMANDS = '/^\/?(stop|restart|end|exit|quit|shutdown|save-and-stop|doexit)\b/i';
+
     /**
      * Times (unix seconds) of power actions that may explain a change between $from and $to.
      *
@@ -27,11 +33,22 @@ class PowerHistory
         $times = [];
 
         $stamps = $this->logs($server)
-            ->whereIn('a.event', self::EVENTS)
+            ->whereIn('a.event', [...self::EVENTS, ...self::OTHER_EVENTS])
             ->whereBetween('a.timestamp', [self::at($from), self::at($to)])
             ->pluck('a.timestamp');
         foreach ($stamps as $stamp) {
             $times[] = CarbonImmutable::parse($stamp)->getTimestamp();
+        }
+
+        // A stop typed in the console (by a user or the API) is on purpose too.
+        $commands = $this->logs($server)
+            ->where('a.event', 'server:console.command')
+            ->whereBetween('a.timestamp', [self::at($from), self::at($to)])
+            ->get(['a.timestamp', 'a.properties']);
+        foreach ($commands as $entry) {
+            if (self::isStopCommand($entry->properties)) {
+                $times[] = CarbonImmutable::parse($entry->timestamp)->getTimestamp();
+            }
         }
 
         $rows = DB::table('tasks as t')
@@ -78,6 +95,15 @@ class PowerHistory
             ->whereNotNull('a.actor_id')
             ->where('a.timestamp', '>=', self::at($since))
             ->exists();
+    }
+
+    /** Whether an activity entry's properties hold a console command that stops the game. */
+    public static function isStopCommand(mixed $properties): bool
+    {
+        $data = is_string($properties) ? json_decode($properties, true) : (array) $properties;
+        $command = is_array($data) ? ($data['command'] ?? null) : null;
+
+        return is_string($command) && preg_match(self::STOP_COMMANDS, trim($command)) === 1;
     }
 
     private function logs(Server $server): \Illuminate\Database\Query\Builder

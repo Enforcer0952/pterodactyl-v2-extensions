@@ -32,6 +32,36 @@ final class WorldFiles
         return [$name.'.wld', $name.'.wld.bak', $name.'.twld'];
     }
 
+    /** The modded-content file that goes with a world file or a world backup file (NAME.wld -> NAME.twld). */
+    public static function twld(string $wldFile): string
+    {
+        return substr($wldFile, 0, -4).'.twld';
+    }
+
+    /**
+     * Every world name the server may load: the one in the "world" path, "worldname",
+     * and the WORLD_NAME startup variable. An egg can fill serverconfig.txt from the
+     * variable at start, so a world named by either one counts as in use.
+     *
+     * @return list<string>
+     */
+    public static function activeNames(?string $world, ?string $worldName, ?string $variable): array
+    {
+        $names = [];
+        $path = trim((string) $world);
+        if ($path !== '') {
+            $base = basename(str_replace('\\', '/', $path));
+            $names[] = str_ends_with($base, '.wld') ? substr($base, 0, -4) : $base;
+        }
+        foreach ([$worldName, $variable] as $name) {
+            if ($name !== null && trim($name) !== '') {
+                $names[] = trim($name);
+            }
+        }
+
+        return array_values(array_unique(array_filter($names, fn (string $name): bool => $name !== '')));
+    }
+
     public static function backupFile(string $world, \DateTimeInterface $at): string
     {
         return $world.'-'.$at->format('Ymd-His').'.wld';

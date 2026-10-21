@@ -14,10 +14,10 @@ Adds a **Players** card, a **Server admin** card and console autocomplete under 
 - **Server admin:** Save world, Settle liquids, the time buttons (Dawn, Noon, Dusk, Midnight) and a Say box that sends a message to everyone. Messages are one line, up to 200 characters.
 - **Worlds:** every `.wld` file with size and date, and which one the server loads.
   - **Use:** make a world the active one (updates `world=` and `worldname=` in `serverconfig.txt`, and the `WORLD_NAME` startup variable when you may change it).
-  - **Back up:** copies the world into `saves/Backups/<name>-<date>.wld`. A running server saves first. Each world keeps its newest backups (default 5, see Settings).
+  - **Back up:** copies the world into `saves/Backups/<name>-<date>.wld`. A running server saves first. A tModLoader `.twld` file is backed up and restored with its world. Each world keeps its newest backups (default 5, see Settings).
   - **Restore and delete backups:** restoring backs up the world it replaces first, and needs the server stopped.
-  - **Delete world:** needs the server stopped, asks for confirmation and makes a backup first by default. Removes the `.wld`, `.wld.bak` and `.twld` files. The active world cannot be deleted.
-  - **New world:** name, size, difficulty and seed. Sets `serverconfig.txt` (and the startup variables) so the server generates it on its next start.
+  - **Delete world:** needs the server stopped, asks for confirmation and makes a backup first by default. Removes the `.wld`, `.wld.bak` and `.twld` files. A world named by `world=`, `worldname=` or the `WORLD_NAME` variable cannot be deleted.
+  - **New world:** name, size, difficulty and seed. Sets `serverconfig.txt` (and the startup variables, when the value has no quotes, `$`, `;`, `&`, `|` or similar characters) so the server generates it on its next start.
 - **Server settings:** a form for `maxplayers`, `motd`, `password`, `difficulty`, `autocreate` and `npcstream`, and a raw editor for the whole `serverconfig.txt`. Comments, unknown keys, repeated keys and line endings are kept. Every save keeps the old file as `serverconfig.txt.<date>.bak` (newest five stay). If the file changed since you opened it, the save is refused. The password is hidden from people who may not edit the file or the startup variables.
 - **Console autocomplete:** command names and syntax hints for the vanilla console commands, and online player names after `kick` and `ban` (names with spaces work, no quotes needed). Tab completes, arrow keys choose.
 - Input is validated, so a player name, message, world name or setting can never inject a second console command or reach outside the server folder.
@@ -35,7 +35,7 @@ Adds a **Players** card, a **Server admin** card and console autocomplete under 
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/terraria-tools-1.0.1.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/terraria-tools-1.0.2.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -46,7 +46,7 @@ Adds a **Players** card, a **Server admin** card and console autocomplete under 
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/terraria-tools-1.0.1.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/terraria-tools-1.0.2.pteroext --enable --replace
 ```
 
 Settings and data are kept.

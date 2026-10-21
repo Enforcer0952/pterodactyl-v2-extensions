@@ -165,4 +165,37 @@ final class TerrariaTest extends TestCase
         $this->assertSame('/banlist.txt', Terraria::banlistPath('../../etc/passwd'));
         $this->assertSame('/banlist.txt', Terraria::banlistPath('/etc/passwd'));
     }
+
+    /** @return iterable<string, array{string}> */
+    public static function unsafeVariableValues(): iterable
+    {
+        yield 'single quote' => ["it's"];
+        yield 'double quote' => ['say "hi"'];
+        yield 'backtick' => ['`id`'];
+        yield 'dollar' => ['$(id)'];
+        yield 'semicolon' => ['a;rm -rf /'];
+        yield 'ampersand' => ['a && b'];
+        yield 'pipe' => ['a | b'];
+        yield 'redirect' => ['a > b'];
+        yield 'backslash' => ['a\\b'];
+        yield 'newline' => ["a\nb"];
+        yield 'carriage return' => ["a\rb"];
+        yield 'nul byte' => ["a\0b"];
+        yield 'escape' => ["a\x1bb"];
+        yield 'line separator' => ["a\u{2028}b"];
+        yield 'invalid utf-8' => ["a\xffb"];
+    }
+
+    #[DataProvider('unsafeVariableValues')]
+    public function test_shell_unsafe_variable_values_are_refused(string $value): void
+    {
+        $this->assertFalse(Terraria::shellSafe($value));
+    }
+
+    public function test_plain_variable_values_are_accepted(): void
+    {
+        foreach (['', 'My World', 'World-2_final.1', 'Wereld één', '12345', 'p@ss-w0rd!'] as $value) {
+            $this->assertTrue(Terraria::shellSafe($value), $value);
+        }
+    }
 }

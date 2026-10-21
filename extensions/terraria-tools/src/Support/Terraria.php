@@ -69,6 +69,16 @@ final class Terraria
     }
 
     /**
+     * Whether a value can sit in a startup variable without changing the start command:
+     * no quotes, backticks, $, ;, &, |, <, >, backslashes, line breaks or control characters.
+     */
+    public static function shellSafe(string $value): bool
+    {
+        return mb_check_encoding($value, 'UTF-8')
+            && preg_match('/[\'"`$;&|<>\\\\\p{Cc}\p{Zl}\p{Zp}]/u', $value) !== 1;
+    }
+
+    /**
      * Whether a file name from a directory listing is safe to act on: one plain
      * name, no folder separators, no control characters, not hidden.
      */
