@@ -6,6 +6,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use PalworldTools\Support\Palworld;
 use PalworldTools\Support\SaveFiles;
+use PalworldTools\Support\SaveWait;
 use Pterodactyl\Contracts\Servers\ReadsServerState;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
 use Pterodactyl\Facades\Activity;
@@ -18,21 +19,30 @@ use Throwable;
  * restore a backup or one of the game's own snapshots, delete backups.
  *
  * A world being replaced is never deleted: it is moved to palworld-backups/replaced/
- * first (the newest two are kept) and put back if the restore fails.
+ * first and put back if the restore fails. Those parked worlds are never removed
+ * automatically; they can be deleted in the file manager.
  */
 class Saves
 {
     private const int DEFAULT_KEEP = 5;
 
-    private const int KEEP_REPLACED = 2;
-
     private const string REPLACED = 'replaced';
+
+    /** How long a running server gets to finish a save before the backup is made anyway. */
+    private const int SAVE_WAIT_SECONDS = 20;
 
     public function __construct(
         private readonly ServerFiles $files,
         private readonly SettingsFiles $settings,
         private readonly ReadsServerState $state,
+        private readonly RestClient $rest,
     ) {}
+
+    /** The lock that keeps backups, restores and the start after a settings change from overlapping. */
+    public static function lockKey(Server $server): string
+    {
+        return 'ext:palworld-tools:saves:'.$server->uuid;
+    }
 
     public function keep(): int
     {
@@ -92,18 +102,53 @@ class Saves
         ];
     }
 
-    /** @return string the backup's file name */
-    public function backup(Server $server, string $world): string
+    /**
+     * @return array{file: string, saved: ?bool} saved: whether a running server finished a fresh save first, null for a stopped one
+     */
+    public function backup(Server $server, string $world): array
     {
         $this->requireWorldId($world);
 
-        return $this->exclusive($server, function () use ($server, $world): string {
+        return $this->exclusive($server, function () use ($server, $world): array {
+            $running = $this->serverState($server) !== 'offline';
+            $saved = $running ? $this->saveWorld($server, $world) : null;
             $file = $this->makeBackup($server, $world);
-            $this->prune($server);
+            // Old backups are only removed after a backup of a stopped server: one
+            // made under a running server may be stale, and must not push out a good one.
+            if (! $running) {
+                $this->prune($server);
+            }
             Activity::event('server:palworld.backup')->subject($server)->property(['world' => $world, 'file' => $file])->log();
 
-            return $file;
+            return ['file' => $file, 'saved' => $saved];
         });
+    }
+
+    /**
+     * Ask the game to write the world and wait until Level.sav is newer. Without the
+     * REST API, or when the game is slow, the copy may be a few minutes old.
+     */
+    private function saveWorld(Server $server, string $world): bool
+    {
+        $dir = '/'.Palworld::SAVE_ROOT.'/'.$world;
+        $modified = function () use ($server, $dir): ?string {
+            $this->files->forget();
+            $modified = $this->files->find($server, $dir, 'Level.sav', true)['modified'] ?? null;
+
+            return is_string($modified) ? $modified : null;
+        };
+        $before = $modified();
+
+        try {
+            $this->rest->post($server, '/save');
+        } catch (Throwable) {
+            return false;
+        }
+
+        $changed = SaveWait::changed($before, $modified, fn () => sleep(1), self::SAVE_WAIT_SECONDS);
+        $this->files->forget();
+
+        return $changed;
     }
 
     /**
@@ -158,7 +203,6 @@ class Saves
                     : new HttpException(500, 'The backup could not be restored. The old world was put back.');
             }
 
-            $this->pruneReplaced($server);
             Activity::event('server:palworld.restore')->subject($server)->property(['world' => $world, 'backup' => $file, 'kept' => $aside])->log();
 
             return ['world' => $world, 'kept' => $aside === null ? null : ltrim($aside, '/')];
@@ -222,7 +266,6 @@ class Saves
                 // The snapshot itself is restored; the leftovers stay in the parked folder.
             }
 
-            $this->pruneReplaced($server);
             Activity::event('server:palworld.restore')->subject($server)->property(['world' => $world, 'snapshot' => $snapshot, 'kept' => $aside])->log();
 
             return ['world' => $world, 'kept' => ltrim($aside, '/')];
@@ -285,17 +328,6 @@ class Saves
         }
     }
 
-    private function pruneReplaced(Server $server): void
-    {
-        try {
-            $dir = '/'.Palworld::BACKUP_DIR.'/'.self::REPLACED;
-            $names = array_map(fn (array $entry): string => (string) ($entry['name'] ?? ''), $this->files->entries($server, $dir));
-            $this->files->delete($server, $dir, SaveFiles::expiredReplaced($names, self::KEEP_REPLACED));
-        } catch (Throwable) {
-            // Parked worlds can be removed in the file manager.
-        }
-    }
-
     /** Where the world being replaced is parked, with its folder ready. */
     private function asidePath(Server $server, string $world, CarbonImmutable $at): string
     {
@@ -350,13 +382,19 @@ class Saves
         }
     }
 
-    private function requireStopped(Server $server): void
+    private function serverState(Server $server): string
     {
         try {
-            $state = $this->state->read($server)->state;
+            Cache::forget('resources:'.$server->uuid); // the panel caches power state for 20 s
+            return $this->state->read($server)->state;
         } catch (DaemonConnectionException) {
             throw new HttpException(502, 'Could not reach this server\'s node.');
         }
+    }
+
+    private function requireStopped(Server $server): void
+    {
+        $state = $this->serverState($server);
         if ($state !== 'offline') {
             throw new HttpException(409, 'Stop the server first. It is '.$state.'.');
         }
@@ -372,7 +410,7 @@ class Saves
      */
     private function exclusive(Server $server, \Closure $callback): mixed
     {
-        $lock = Cache::lock('ext:palworld-tools:saves:'.$server->uuid, 900);
+        $lock = Cache::lock(self::lockKey($server), 900);
         if (! $lock->get()) {
             throw new HttpException(409, 'Another save action is running on this server. Wait for it to finish.');
         }

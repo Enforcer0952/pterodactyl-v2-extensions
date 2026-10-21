@@ -72,7 +72,19 @@ export default function SavesScreen() {
         },
     });
 
-    const backup = useMutation({ mutationFn: (world: string) => backupWorld(identifier, world), ...done(() => 'Backup made.') });
+    const backup = useMutation({
+        mutationFn: (world: string) => backupWorld(identifier, world),
+        onSuccess: (result) => {
+            queryClient.setQueryData<SavesResponse>(keys.saves(identifier), result);
+            if (result.result?.saved === false) toast.warning('The game did not confirm the save; the backup may be a few minutes old.');
+            else toast.success('Backup made.');
+            setPending(null);
+        },
+        onError: (error: unknown) => {
+            toast.error(httpErrorToHuman(error));
+            setPending(null);
+        },
+    });
     const restore = useMutation({
         mutationFn: (file: string) => restoreBackup(identifier, file),
         ...done((r) => `Restored. The old world was moved to ${r.result?.kept ?? 'palworld-backups/replaced'}.`),

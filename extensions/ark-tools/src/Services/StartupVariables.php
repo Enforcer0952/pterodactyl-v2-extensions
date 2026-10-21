@@ -2,7 +2,7 @@
 
 namespace ArkTools\Services;
 
-use Pterodactyl\Facades\Activity;
+use Pterodactyl\Contracts\Servers\UpdatesServerVariable;
 use Pterodactyl\Models\EggVariable;
 use Pterodactyl\Models\Server;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -13,6 +13,8 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  */
 class StartupVariables
 {
+    public function __construct(private readonly UpdatesServerVariable $updater) {}
+
     public function get(Server $server, string $env): ?string
     {
         $variable = $this->variable($server, $env);
@@ -42,12 +44,8 @@ class StartupVariables
             return;
         }
 
-        $server->serverVariables()->updateOrCreate(['variable_id' => $variable->id], ['variable_value' => $value]);
-
-        Activity::event('server:startup.edit')
-            ->subject($variable)
-            ->property(['variable' => $env, 'old' => $original, 'new' => $value])
-            ->log();
+        // The panel's action stores the value and records the change in the activity log.
+        $this->updater->update($server, $variable->id, $value);
     }
 
     private function variable(Server $server, string $env): ?EggVariable

@@ -25,6 +25,7 @@ trait ArkServer
     protected function serverState(ReadsServerState $state, Server $server): string
     {
         try {
+            \Illuminate\Support\Facades\Cache::forget('resources:'.$server->uuid); // the panel caches power state for 20 s
             return $state->read($server)->state;
         } catch (DaemonConnectionException) {
             throw new HttpException(502, 'Could not reach this server\'s node.');

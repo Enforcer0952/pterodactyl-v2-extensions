@@ -100,7 +100,11 @@ export default function ModsScreen() {
     return (
         <ServerContentBlock title={'Mods'}>
             <div className={'ark:flex ark:flex-col ark:gap-4'}>
-                {!data.editable && <Alert type={'warning'}>The MOD_ID startup variable is read-only on this server, so the list cannot be changed here.</Alert>}
+                {!data.editable && (
+                    <Alert type={'warning'}>
+                        The MOD_ID startup variable is read-only on this server, so the list cannot be changed here.
+                    </Alert>
+                )}
 
                 {(updates > 0 || missing > 0) && !dirty && (
                     <Alert type={'info'}>
@@ -129,7 +133,8 @@ export default function ModsScreen() {
                 <div className={'ark:flex ark:flex-col ark:gap-2'}>
                     <div className={'ark:flex ark:items-center ark:justify-between ark:gap-2'}>
                         <p className={'ark:text-sm ark:text-muted-foreground'}>
-                            {current.length} mod{current.length === 1 ? '' : 's'} · loaded top to bottom; when two mods change the same thing, the higher one wins.
+                            {current.length} mod{current.length === 1 ? '' : 's'} · loaded top to bottom; when two mods change the same
+                            thing, the higher one wins.
                         </p>
                         {dirty && (
                             <div className={'ark:flex ark:gap-2'}>
@@ -154,16 +159,15 @@ export default function ModsScreen() {
                     ) : (
                         <ol className={'ark:flex ark:flex-col ark:divide-y ark:divide-border ark:rounded-md ark:border ark:border-border'}>
                             {current.map((id, index) => (
-                                <ModRow
-                                    key={id}
-                                    position={index + 1}
-                                    item={byId.get(id) ?? null}
-                                    id={id}
-                                    pendingSave={!saved.includes(id)}
-                                >
+                                <ModRow key={id} position={index + 1} item={byId.get(id) ?? null} id={id} pendingSave={!saved.includes(id)}>
                                     {data.editable && (
                                         <>
-                                            <Button.Text size={'xsmall'} aria-label={`Move ${id} up`} disabled={index === 0} onClick={() => move(index, -1)}>
+                                            <Button.Text
+                                                size={'xsmall'}
+                                                aria-label={`Move ${id} up`}
+                                                disabled={index === 0}
+                                                onClick={() => move(index, -1)}
+                                            >
                                                 ↑
                                             </Button.Text>
                                             <Button.Text
@@ -174,7 +178,11 @@ export default function ModsScreen() {
                                             >
                                                 ↓
                                             </Button.Text>
-                                            <Button.Danger size={'xsmall'} isSecondary onClick={() => edit((ids) => ids.filter((other) => other !== id))}>
+                                            <Button.Danger
+                                                size={'xsmall'}
+                                                isSecondary
+                                                onClick={() => edit((ids) => ids.filter((other) => other !== id))}
+                                            >
                                                 Remove
                                             </Button.Danger>
                                         </>
@@ -189,7 +197,8 @@ export default function ModsScreen() {
                     <div className={'ark:flex ark:flex-col ark:gap-2'}>
                         <p className={'ark:text-sm ark:font-medium ark:text-foreground'}>Downloaded but not loaded</p>
                         <p className={'ark:text-xs ark:text-muted-foreground'}>
-                            These are in ShooterGame/Content/Mods but not in the mod list. Add them back, or delete the files to free up space.
+                            These are in ShooterGame/Content/Mods but not in the mod list. Add them back, or delete the files to free up
+                            space.
                         </p>
                         <ul className={'ark:flex ark:flex-col ark:divide-y ark:divide-border ark:rounded-md ark:border ark:border-border'}>
                             {unlisted.map((mod) => (
@@ -221,8 +230,8 @@ export default function ModsScreen() {
                     onConfirmed={() => remove.mutate(confirmDelete.id)}
                 >
                     <p className={'ark:text-sm'}>
-                        Deletes {confirmDelete.id}.mod and the {confirmDelete.id} folder from ShooterGame/Content/Mods. Anything this mod added to the
-                        world is lost if it is loaded again later without them.
+                        Deletes {confirmDelete.id}.mod and the {confirmDelete.id} folder from ShooterGame/Content/Mods. Anything this mod
+                        added to the world is lost if it is loaded again later without them.
                     </p>
                 </Dialog.Confirm>
             )}
@@ -328,9 +337,16 @@ function ModRow({
 
     return (
         <li className={'ark:flex ark:items-center ark:gap-3 ark:px-3 ark:py-2'}>
-            {position !== undefined && <span className={'ark:w-6 ark:shrink-0 ark:text-right ark:text-xs ark:text-muted-foreground'}>{position}</span>}
+            {position !== undefined && (
+                <span className={'ark:w-6 ark:shrink-0 ark:text-right ark:text-xs ark:text-muted-foreground'}>{position}</span>
+            )}
             {item?.preview_url ? (
-                <img src={item.preview_url} alt={''} loading={'lazy'} className={'ark:size-10 ark:shrink-0 ark:rounded-md ark:bg-muted ark:object-cover'} />
+                <img
+                    src={item.preview_url}
+                    alt={''}
+                    loading={'lazy'}
+                    className={'ark:size-10 ark:shrink-0 ark:rounded-md ark:bg-muted ark:object-cover'}
+                />
             ) : (
                 <div aria-hidden className={'ark:size-10 ark:shrink-0 ark:rounded-md ark:bg-muted'} />
             )}

@@ -7,7 +7,6 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
 use PalworldTools\Support\OptionSettings;
-use PalworldTools\Support\Palworld;
 use PalworldTools\Support\RestResponses;
 use Pterodactyl\Contracts\Servers\ReadsServerState;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
@@ -162,9 +161,8 @@ class RestClient
             throw new RestException(RestException::AUTH, 'The REST API refused the admin password.', $response->status());
         }
         if (! $response->successful()) {
-            $detail = Palworld::text(mb_substr($response->body(), 0, 300), 200);
-
-            throw new RestException(RestException::FAILED, 'The REST API answered '.$response->status().($detail ? ': '.$detail : '.'), $response->status());
+            // Only the status: the body comes from whatever listens on that port.
+            throw new RestException(RestException::FAILED, 'The REST API answered with error '.$response->status().'.', $response->status());
         }
 
         $json = $response->json();

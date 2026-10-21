@@ -125,22 +125,30 @@ final class SettingsModel
         return $fields;
     }
 
-    /** The file text with every password replaced by asterisks. */
+    /**
+     * The file text with every password replaced by asterisks. Works on the text itself,
+     * so a file that does not parse, or one with more than one OptionSettings line, never
+     * shows a password either.
+     */
     public function mask(string $text): string
     {
-        try {
-            $options = OptionSettings::parse($text);
-        } catch (InvalidArgumentException) {
+        $keys = implode('|', array_map(fn (string $key): string => preg_quote($key, '/'), $this->schema['secrets']));
+        if ($keys === '') {
             return $text;
         }
-        foreach ($this->schema['secrets'] as $secret) {
-            $value = $options->get($secret);
-            if ($value !== null && $value !== '') {
-                $options->set($secret, OptionSettings::quote(self::MASK));
-            }
-        }
 
-        return $options->render();
+        return (string) preg_replace_callback(
+            '/(?<![A-Za-z0-9_])('.$keys.')(\s*=\s*)("(?:[^"\\\\]|\\\\.)*"?|[^,)\r\n]*)/i',
+            function (array $m): string {
+                $value = trim($m[3]);
+                if ($value === '' || $value === '""') {
+                    return $m[0];
+                }
+
+                return $m[1].$m[2].OptionSettings::quote(self::MASK);
+            },
+            $text,
+        );
     }
 
     /**

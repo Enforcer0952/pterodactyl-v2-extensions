@@ -78,10 +78,20 @@ export function AdminCard({ server, canAdmin, canRestart }: { server: SdkServer;
                 {canAdmin && (
                     <div className={'ark:flex ark:flex-col ark:gap-3'}>
                         <div className={'ark:flex ark:flex-wrap ark:gap-2'}>
-                            <Button size={'small'} isSecondary disabled={command.isPending || offline} onClick={() => command.mutate({ action: 'save' })}>
+                            <Button
+                                size={'small'}
+                                isSecondary
+                                disabled={command.isPending || offline}
+                                onClick={() => command.mutate({ action: 'save' })}
+                            >
                                 Save world
                             </Button>
-                            <Button.Danger size={'small'} isSecondary disabled={command.isPending || offline} onClick={() => setConfirmDinos(true)}>
+                            <Button.Danger
+                                size={'small'}
+                                isSecondary
+                                disabled={command.isPending || offline}
+                                onClick={() => setConfirmDinos(true)}
+                            >
                                 Wipe wild dinos
                             </Button.Danger>
                         </div>
@@ -98,7 +108,12 @@ export function AdminCard({ server, canAdmin, canRestart }: { server: SdkServer;
                             <Button size={'small'} type={'submit'} disabled={command.isPending || offline || message.trim() === ''}>
                                 Broadcast
                             </Button>
-                            <Button size={'small'} isSecondary disabled={command.isPending || offline || message.trim() === ''} onClick={() => send('chat')()}>
+                            <Button
+                                size={'small'}
+                                isSecondary
+                                disabled={command.isPending || offline || message.trim() === ''}
+                                onClick={() => send('chat')()}
+                            >
                                 Chat
                             </Button>
                         </form>
@@ -121,8 +136,8 @@ export function AdminCard({ server, canAdmin, canRestart }: { server: SdkServer;
                     onConfirmed={() => command.mutate({ action: 'wild-dinos' })}
                 >
                     <p className={'ark:text-sm'}>
-                        Every untamed creature on the map is removed and respawns fresh. Tamed dinos are not touched. This can lag the server for a
-                        moment.
+                        Every untamed creature on the map is removed and respawns fresh. Tamed dinos are not touched. This can lag the
+                        server for a moment.
                     </p>
                 </Dialog.Confirm>
             )}
@@ -146,7 +161,11 @@ function RestartSection({ identifier, offline }: { identifier: string; offline: 
         mutationFn: () => startRestart(identifier, minutes),
         onSuccess: (result) => {
             update(result);
-            toast.success(minutes === 0 ? 'Saving and restarting now.' : `Restart in ${minutes} minute${minutes === 1 ? '' : 's'}. Players are warned in game.`);
+            toast.success(
+                minutes === 0
+                    ? 'Saving and restarting now.'
+                    : `Restart in ${minutes} minute${minutes === 1 ? '' : 's'}. Players are warned in game.`,
+            );
         },
         onError,
     });
@@ -183,7 +202,12 @@ function RestartSection({ identifier, offline }: { identifier: string; offline: 
                     <div className={'ark:w-56'}>
                         <Select options={options} value={minutes} onChange={(value) => setMinutes(Number(value))} />
                     </div>
-                    <Button size={'small'} isLoading={start.isPending} disabled={offline || status.isLoading} onClick={() => start.mutate()}>
+                    <Button
+                        size={'small'}
+                        isLoading={start.isPending}
+                        disabled={offline || status.isLoading}
+                        onClick={() => start.mutate()}
+                    >
                         Restart
                     </Button>
                 </div>

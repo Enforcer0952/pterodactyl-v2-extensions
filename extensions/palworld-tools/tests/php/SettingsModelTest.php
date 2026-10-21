@@ -95,6 +95,20 @@ final class SettingsModelTest extends TestCase
         $this->assertStringContainsString('ServerPassword=""', $this->model->mask($text));
     }
 
+    public function test_mask_hides_passwords_in_broken_files_and_every_line(): void
+    {
+        $broken = "[/Script/Pal.PalGameWorldSettings]\nOptionSettings=(AdminPassword=\"hunter2\",ServerPassword=\"secret\"\n";
+        $masked = $this->model->mask($broken);
+        $this->assertStringNotContainsString('hunter2', $masked);
+        $this->assertStringNotContainsString('secret"', $masked);
+
+        $twice = "OptionSettings=(AdminPassword=\"first\")\nOptionSettings=(AdminPassword=\"second\",ServerPassword=plain)\n";
+        $masked = $this->model->mask($twice);
+        foreach (['first', 'second', 'plain'] as $secret) {
+            $this->assertStringNotContainsString($secret, $masked);
+        }
+    }
+
     public function testApplyEdits(): void
     {
         $new = $this->model->apply($this->fixture(), null, [
@@ -140,6 +154,24 @@ final class SettingsModelTest extends TestCase
 
         $new = $this->model->apply($this->fixture(), null, [['key' => 'AdminPassword', 'value' => 'a"b,c']], true);
         $this->assertSame('a"b,c', OptionSettings::parse($new)->get('AdminPassword'));
+    }
+
+    public function testEmptyTextClearsAStringInsteadOfRemovingIt(): void
+    {
+        $this->assertSame('""', $this->model->format('ServerDescription', ''));
+
+        $new = $this->model->apply($this->fixture(), null, [['key' => 'ServerName', 'value' => '']], true);
+        $this->assertSame('', OptionSettings::parse($new)->get('ServerName'));
+        $this->assertStringContainsString('ServerName=""', $new);
+
+        $removed = $this->model->apply($this->fixture(), null, [['key' => 'ServerName', 'value' => null]], true);
+        $this->assertNull(OptionSettings::parse($removed)->get('ServerName'));
+    }
+
+    public function testEmptyTextIsRejectedForNumbers(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->model->format('ExpRate', '');
     }
 
     public function testRawSaveKeepsMaskedPasswords(): void

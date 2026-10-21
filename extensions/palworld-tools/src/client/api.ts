@@ -155,7 +155,8 @@ export const saveSettings = async (server: string, input: SettingsSave) =>
     (
         await http.put<SettingsResponse>(`${base(server)}/settings`, {
             hash: input.hash,
-            edits: input.edits ?? [],
+            // The panel turns an empty string into null, so clearing a text is sent as a flag.
+            edits: (input.edits ?? []).map((edit) => (edit.value === '' ? { key: edit.key, value: null, clear: true } : edit)),
             restart: input.restart ?? false,
             start: input.start ?? false,
             ...(input.raw !== undefined ? { raw: toBase64(input.raw) } : {}),
@@ -256,7 +257,7 @@ export interface SavesResponse {
     keep: number;
     directory: string;
     saves_directory: string;
-    result?: { file?: string; world?: string; kept?: string | null };
+    result?: { file?: string; saved?: boolean | null; world?: string; kept?: string | null };
 }
 
 export const getSaves = async (server: string) => (await http.get<SavesResponse>(`${base(server)}/saves`)).data;

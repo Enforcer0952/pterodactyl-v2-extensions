@@ -55,7 +55,7 @@ class ConfigController extends Controller
             'edits.*.section' => ['required', 'string', 'max:200'],
             'edits.*.key' => ['required', 'string', 'max:128'],
             'edits.*.value' => ['present', 'nullable', 'string', 'max:2000'],
-            'hashes' => ['required', 'array'],
+            'hashes' => ['required', 'array', 'min:1'],
             'hashes.*' => ['string', 'size:40'],
             'minutes' => ['sometimes', 'integer', 'in:'.implode(',', Restarts::MINUTES)],
             'start' => ['sometimes', 'boolean'],
@@ -76,6 +76,15 @@ class ConfigController extends Controller
             'value' => $edit['value'],
         ], array_values($data['edits'] ?? []));
 
+        // Settings are files, and a running server is stopped and started again to apply them.
+        $this->ensureCan($request, $server, 'file.update', 'You need permission to edit files on this server for this.');
+        if ($this->serverState($this->state, $server) !== 'offline') {
+            $this->ensureCan($request, $server, 'control.stop', 'You need permission to stop this server to apply settings.');
+            $this->ensureCan($request, $server, 'control.start', 'You need permission to start this server to apply settings.');
+        } elseif ($data['start'] ?? false) {
+            $this->ensureCan($request, $server, 'control.start', 'You need permission to start this server for this.');
+        }
+
         $result = $this->apply->save(
             $server,
             $request->user()?->id,
@@ -92,6 +101,9 @@ class ConfigController extends Controller
     public function cancel(Request $request, Server $server): JsonResponse
     {
         $this->authorizeConfig($request, $server);
+        if ($this->apply->startsAfter($server)) {
+            $this->ensureCan($request, $server, 'control.start', 'You need permission to start this server to cancel this.');
+        }
         $this->apply->cancel($server);
 
         return new JsonResponse($this->payload($server));

@@ -239,7 +239,7 @@ export function PlayersCard({ server }: { server: SdkServer }) {
                         {running
                             ? 'This sets RESTAPIEnabled=True in PalWorldSettings.ini. The server is stopped, the file is written and the server starts again.'
                             : 'This sets RESTAPIEnabled=True in PalWorldSettings.ini. It applies the next time the server starts.'}{' '}
-                        Keep the REST API port closed to the internet.
+                        Keep the REST API port closed to the internet: it uses plain HTTP and only the admin password protects it.
                     </p>
                 </Dialog.Confirm>
             )}

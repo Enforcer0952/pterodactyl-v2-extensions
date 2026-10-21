@@ -50,7 +50,7 @@ Adds **Mods** and **Config** pages and two console cards to ARK: Survival Evolve
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/ark-tools-1.1.2.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/ark-tools-1.1.3.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -61,7 +61,7 @@ Adds **Mods** and **Config** pages and two console cards to ARK: Survival Evolve
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/ark-tools-1.1.2.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/ark-tools-1.1.3.pteroext --enable --replace
 ```
 
 Settings and data are kept.
@@ -84,6 +84,8 @@ Settings and data are kept.
 | `ext.ark-tools.config` | View and change the Config page (saving restarts a running server) |
 
 The Mods page uses the core **startup.read** and **startup.update** permissions.
+
+Actions also need the matching core permission: **control.console** for console commands and kicks, **control.start**, **control.stop** and **control.restart** for restarts and applying settings, and **file.update** for changes to settings and player lists.
 
 ## Support
 

@@ -104,7 +104,9 @@ export interface PlayerRef {
 
 export function findCommand(commands: CommandDef[], name: string): CommandDef | undefined {
     const lower = name.toLowerCase();
-    return commands.find((command) => command.name.toLowerCase() === lower || command.aliases.some((alias) => alias.toLowerCase() === lower));
+    return commands.find(
+        (command) => command.name.toLowerCase() === lower || command.aliases.some((alias) => alias.toLowerCase() === lower),
+    );
 }
 
 /**

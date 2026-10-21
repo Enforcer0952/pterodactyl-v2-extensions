@@ -33,7 +33,7 @@ Adds a settings editor, a **Players** card, world backups and the ban list to Pa
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/palworld-tools-1.0.0.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/palworld-tools-1.0.1.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -44,7 +44,7 @@ Adds a settings editor, a **Players** card, world backups and the ban list to Pa
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/palworld-tools-1.0.0.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/palworld-tools-1.0.1.pteroext --enable --replace
 ```
 
 Settings and data are kept.
@@ -52,9 +52,9 @@ Settings and data are kept.
 ## Setup
 
 - The pages and the card show on servers whose egg has the `palworld` tag, or whose startup contains `PalServer`.
-- **REST API:** the Players card talks to the game's REST API. Turn it on with the button on the card, or set `RESTAPIEnabled=True` in the settings. The REST port must be one of the server's allocations (add it under the server's network settings). Only the server's own ports are used. Do not expose the port to the internet: it is protected by the admin password only.
+- **REST API:** the Players card talks to the game's REST API. Turn it on with the button on the card, or set `RESTAPIEnabled=True` in the settings. The REST port must be one of the server's allocations (add it under the server's network settings). Only the server's own ports are used. Do not expose the port to the internet: it is protected by the admin password only, and Palworld serves it over plain HTTP, so the password travels unencrypted between the panel and the node. Use a private IP allocation for the REST port, or block the port in the node's firewall for everything except the panel host.
 - **Egg startup variables:** some eggs rewrite `PalWorldSettings.ini` from startup variables on every start. Those settings are marked on the page, and saving them changes the variable. Values with commas, brackets or quotes can break such eggs, so the page warns before you save them.
-- Backups go to `palworld-backups/`. Restored-over worlds are kept in `palworld-backups/replaced/` and cleaned up with the same limit.
+- Backups go to `palworld-backups/`. Restored-over worlds are kept in `palworld-backups/replaced/` and are never removed automatically, so delete old ones in the file manager. A backup of a running server waits for the game to save first and does not remove old backups.
 
 ## Settings
 

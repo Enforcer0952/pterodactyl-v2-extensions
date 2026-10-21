@@ -11,6 +11,7 @@ use PalworldTools\Services\RestClient;
 use PalworldTools\Services\SettingsApply;
 use PalworldTools\Services\SettingsFiles;
 use PalworldTools\Services\StartupVariables;
+use PalworldTools\Support\ApplyPlan;
 use PalworldTools\Support\OptionSettings;
 use PalworldTools\Support\SettingsModel;
 use PalworldTools\Support\StartupOverrides;
@@ -56,6 +57,8 @@ class SettingsController extends Controller
             'edits' => ['sometimes', 'array', 'max:150'],
             'edits.*.key' => ['required', 'string', 'max:64'],
             'edits.*.value' => ['present', 'nullable', 'string', 'max:2000'],
+            // The panel turns an empty string into null, so clearing a text sends this flag.
+            'edits.*.clear' => ['sometimes', 'boolean'],
             'hash' => ['required', 'string', 'size:40'],
             'restart' => ['sometimes', 'boolean'],
             'start' => ['sometimes', 'boolean'],
@@ -69,7 +72,7 @@ class SettingsController extends Controller
             }
         }
 
-        $result = $this->submit($request, $server, $raw, array_values($data['edits'] ?? []), $data['hash'], (bool) ($data['restart'] ?? false), (bool) ($data['start'] ?? false));
+        $result = $this->submit($request, $server, $raw, array_map(ApplyPlan::normalizeEdit(...), array_values($data['edits'] ?? [])), $data['hash'], (bool) ($data['restart'] ?? false), (bool) ($data['start'] ?? false));
 
         return new JsonResponse(['result' => $result] + $this->payload($request, $server));
     }

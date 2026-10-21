@@ -69,7 +69,9 @@ export function PlayersCard({ server }: { server: SdkServer }) {
             queryClient.setQueryData(keys.lists(identifier), result);
             if (input.action === 'kick' || input.action === 'ban') {
                 queryClient.setQueryData<OnlineResponse>(keys.online(identifier), (current) =>
-                    current?.online ? { ...current, online: current.online.filter((player) => player.steam_id !== input.steamId) } : current,
+                    current?.online
+                        ? { ...current, online: current.online.filter((player) => player.steam_id !== input.steamId) }
+                        : current,
                 );
             }
             toast.success(successMessage(input.action, nameFor(input.steamId), result.state));
@@ -188,7 +190,12 @@ export function PlayersCard({ server }: { server: SdkServer }) {
                     ) : (
                         <Rows>
                             {online.data.online.map((player) => (
-                                <Row key={player.steam_id} name={player.name || player.steam_id} detail={player.steam_id} badge={badges(player.steam_id, sets)}>
+                                <Row
+                                    key={player.steam_id}
+                                    name={player.name || player.steam_id}
+                                    detail={player.steam_id}
+                                    badge={badges(player.steam_id, sets)}
+                                >
                                     {actions(player.steam_id, player.name, { kick: true })}
                                 </Row>
                             ))}
@@ -216,7 +223,9 @@ export function PlayersCard({ server }: { server: SdkServer }) {
                                     disabled={!can.whitelist || !can.startup || !lists.data.whitelist_editable || whitelistMode.isPending}
                                     onChange={(checked) => whitelistMode.mutate(checked)}
                                     label={'Whitelist enabled'}
-                                    description={'Only listed players can join. Adds -exclusivejoin to the launch options; applies after a restart.'}
+                                    description={
+                                        'Only listed players can join. Adds -exclusivejoin to the launch options; applies after a restart.'
+                                    }
                                 />
                             ) : null
                         }
@@ -279,7 +288,11 @@ function PlayerActions({ steamId, can, pending, whitelisted, banned, admin, show
                 </Button.Text>
             )}
             {can.admin && (
-                <Button.Text size={'xsmall'} disabled={pending} onClick={() => run({ action: admin ? 'admin-remove' : 'admin-add', steamId })}>
+                <Button.Text
+                    size={'xsmall'}
+                    disabled={pending}
+                    onClick={() => run({ action: admin ? 'admin-remove' : 'admin-add', steamId })}
+                >
                     {admin ? 'Remove admin' : 'Make admin'}
                 </Button.Text>
             )}
@@ -326,7 +339,12 @@ function KnownTab({
     return (
         <div className={'ark:flex ark:flex-col ark:gap-3'}>
             {lists.known.length > 8 && (
-                <Input value={filter} placeholder={'Search players'} aria-label={'Search players'} onChange={(event) => setFilter(event.target.value)} />
+                <Input
+                    value={filter}
+                    placeholder={'Search players'}
+                    aria-label={'Search players'}
+                    onChange={(event) => setFilter(event.target.value)}
+                />
             )}
             {shown.length === 0 ? (
                 <Empty>No player matches “{filter}”.</Empty>
@@ -336,7 +354,10 @@ function KnownTab({
                         <Row
                             key={player.steam_id}
                             name={player.name}
-                            badge={[onlineIds.has(player.steam_id) && 'Online', badges(player.steam_id, sets)].filter(Boolean).join(' · ') || undefined}
+                            badge={
+                                [onlineIds.has(player.steam_id) && 'Online', badges(player.steam_id, sets)].filter(Boolean).join(' · ') ||
+                                undefined
+                            }
                             detail={`${player.steam_id} · last seen ${new Date(player.last_seen).toLocaleDateString()}`}
                         >
                             {actions(player.steam_id, player.name)}
@@ -431,7 +452,9 @@ function AddForm({
         event.preventDefault();
         const steamId = resolveSteamId(value, known);
         if (!steamId) {
-            setError('Enter a SteamID64 (17 digits, starts with 7656119), a profile link with one, or the name of a player seen on this server.');
+            setError(
+                'Enter a SteamID64 (17 digits, starts with 7656119), a profile link with one, or the name of a player seen on this server.',
+            );
             return;
         }
         setError(null);
@@ -478,7 +501,9 @@ function Row({ name, badge, detail, children }: { name: string; badge?: string; 
                 <div className={'ark:flex ark:items-center ark:gap-2'}>
                     <span className={'ark:truncate ark:text-sm ark:font-medium ark:text-foreground'}>{name}</span>
                     {badge && (
-                        <span className={'ark:rounded ark:bg-muted ark:px-1.5 ark:py-0.5 ark:text-[11px] ark:text-muted-foreground'}>{badge}</span>
+                        <span className={'ark:rounded ark:bg-muted ark:px-1.5 ark:py-0.5 ark:text-[11px] ark:text-muted-foreground'}>
+                            {badge}
+                        </span>
                     )}
                 </div>
                 {detail && <p className={'ark:truncate ark:font-mono ark:text-xs ark:text-muted-foreground'}>{detail}</p>}

@@ -33,8 +33,18 @@ export function ConsoleAssist({ server, withPlayers = true }: { server: SdkServe
     const [selected, setSelected] = useState(0);
 
     // Shares its data with the players card, so this adds no requests of its own.
-    const online = useQuery({ queryKey: keys.online(identifier), queryFn: () => getOnline(identifier), staleTime: 30_000, enabled: withPlayers });
-    const lists = useQuery({ queryKey: keys.lists(identifier), queryFn: () => getLists(identifier), staleTime: 30_000, enabled: withPlayers });
+    const online = useQuery({
+        queryKey: keys.online(identifier),
+        queryFn: () => getOnline(identifier),
+        staleTime: 30_000,
+        enabled: withPlayers,
+    });
+    const lists = useQuery({
+        queryKey: keys.lists(identifier),
+        queryFn: () => getLists(identifier),
+        staleTime: 30_000,
+        enabled: withPlayers,
+    });
 
     const commands = useMemo<CommandDef[]>(() => commandData.map((command) => ({ ...command, source: 'ARK' })), []);
 
@@ -176,7 +186,9 @@ export function ConsoleAssist({ server, withPlayers = true }: { server: SdkServe
                         >
                             <span className={'ark:shrink-0'}>{suggestion.value}</span>
                             {suggestion.detail && (
-                                <span className={`ark:truncate ${position === index ? 'ark:opacity-80' : 'ark:text-muted-foreground'}`}>{suggestion.detail}</span>
+                                <span className={`ark:truncate ${position === index ? 'ark:opacity-80' : 'ark:text-muted-foreground'}`}>
+                                    {suggestion.detail}
+                                </span>
                             )}
                         </li>
                     ))}
@@ -194,15 +206,15 @@ export function ConsoleAssist({ server, withPlayers = true }: { server: SdkServe
                             {line.parts.map((part, partIndex) => (
                                 <Fragment key={partIndex}>
                                     {partIndex > 0 ? ' ' : ''}
-                                    <span className={part.current ? 'ark:font-semibold ark:text-foreground ark:underline' : undefined}>{part.text}</span>
+                                    <span className={part.current ? 'ark:font-semibold ark:text-foreground ark:underline' : undefined}>
+                                        {part.text}
+                                    </span>
                                 </Fragment>
                             ))}
                         </div>
                     ))}
                     {result.description && <div className={'ark:mt-1 ark:font-sans ark:text-foreground/80'}>{result.description}</div>}
-                    <div className={'ark:mt-1 ark:font-sans ark:text-[11px]'}>
-                        Tab to complete · ↑↓ to choose · Esc to hide
-                    </div>
+                    <div className={'ark:mt-1 ark:font-sans ark:text-[11px]'}>Tab to complete · ↑↓ to choose · Esc to hide</div>
                 </div>
             )}
         </div>,

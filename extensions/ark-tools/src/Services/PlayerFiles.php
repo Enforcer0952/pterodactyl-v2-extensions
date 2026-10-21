@@ -3,11 +3,14 @@
 namespace ArkTools\Services;
 
 use ArkTools\Support\Ark;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Pterodactyl\Contracts\Files\ListsDirectories;
 use Pterodactyl\Contracts\Files\ReadsFileContents;
 use Pterodactyl\Contracts\Files\WritesFileContents;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
 use Pterodactyl\Models\Server;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * The plain-text Steam id lists ARK keeps: the whitelist ("join without check"),
@@ -59,30 +62,51 @@ class PlayerFiles
 
     public function add(Server $server, string $list, string $steamId): void
     {
-        [$path, $ids] = $this->primary($server, $list);
-        if (! in_array($steamId, $ids, true)) {
-            $ids[] = $steamId;
-        }
-        $this->write($server, $path, $ids);
+        $this->locked($server, function () use ($server, $list, $steamId): void {
+            [$path, $ids] = $this->primary($server, $list);
+            if (! in_array($steamId, $ids, true)) {
+                $ids[] = $steamId;
+            }
+            $this->write($server, $path, $ids);
+        });
     }
 
     /** Remove from every copy of the list, so a stale second file cannot keep the id in. */
     public function remove(Server $server, string $list, string $steamId): bool
     {
-        $removed = false;
-        foreach (self::FILES[$list] as $path) {
-            $contents = $this->read($server, $path);
-            if ($contents === null) {
-                continue;
+        return $this->locked($server, function () use ($server, $list, $steamId): bool {
+            $removed = false;
+            foreach (self::FILES[$list] as $path) {
+                $contents = $this->read($server, $path);
+                if ($contents === null) {
+                    continue;
+                }
+                $ids = Ark::steamIds($contents);
+                if (in_array($steamId, $ids, true)) {
+                    $this->write($server, $path, array_values(array_diff($ids, [$steamId])));
+                    $removed = true;
+                }
             }
-            $ids = Ark::steamIds($contents);
-            if (in_array($steamId, $ids, true)) {
-                $this->write($server, $path, array_values(array_diff($ids, [$steamId])));
-                $removed = true;
-            }
-        }
 
-        return $removed;
+            return $removed;
+        });
+    }
+
+    /**
+     * Read-modify-write of the list files, one editor at a time per server.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    private function locked(Server $server, callable $callback): mixed
+    {
+        try {
+            return Cache::lock('ext:ark-tools:player-files:'.$server->uuid, 30)->block(10, $callback);
+        } catch (LockTimeoutException) {
+            throw new HttpException(409, 'The lists are being changed right now. Try again in a moment.');
+        }
     }
 
     /**

@@ -201,10 +201,15 @@ export default function ConfigScreen() {
                 {tab === 'settings' ? (
                     <SettingsForm data={data} edits={edits} values={values} onChange={setValue} />
                 ) : (
-                    <RawEditor data={data} raw={raw} onChange={(file, text) => {
+                    <RawEditor
+                        data={data}
+                        raw={raw}
+                        onChange={(file, text) => {
                             startEditing();
                             setRaw((current) => ({ ...current, [file]: text }));
-                        }} hasEdits={editList.length > 0} />
+                        }}
+                        hasEdits={editList.length > 0}
+                    />
                 )}
             </div>
 
@@ -350,9 +355,14 @@ function Problems({
                 {open ? (
                     <ul className={'ark:flex ark:flex-col ark:divide-y ark:divide-border ark:rounded-md ark:border ark:border-border'}>
                         {issues.map((issue) => (
-                            <li key={`${issue.file}:${issue.line}:${issue.kind}`} className={'ark:flex ark:flex-col ark:gap-2 ark:px-3 ark:py-2'}>
+                            <li
+                                key={`${issue.file}:${issue.line}:${issue.kind}`}
+                                className={'ark:flex ark:flex-col ark:gap-2 ark:px-3 ark:py-2'}
+                            >
                                 <div className={'ark:flex ark:items-start ark:justify-between ark:gap-2'}>
-                                    <p className={`ark:text-sm ${fixed(issue) ? 'ark:text-muted-foreground ark:line-through' : 'ark:text-foreground'}`}>
+                                    <p
+                                        className={`ark:text-sm ${fixed(issue) ? 'ark:text-muted-foreground ark:line-through' : 'ark:text-foreground'}`}
+                                    >
                                         {issue.message}
                                     </p>
                                     <button
@@ -386,7 +396,13 @@ function Problems({
                     <div>
                         <Button
                             size={'small'}
-                            onClick={() => onFix(issues.filter((issue) => !fixed(issue) && issue.fixes.length > 0).flatMap((issue) => issue.fixes[0].edits))}
+                            onClick={() =>
+                                onFix(
+                                    issues
+                                        .filter((issue) => !fixed(issue) && issue.fixes.length > 0)
+                                        .flatMap((issue) => issue.fixes[0].edits),
+                                )
+                            }
                         >
                             Apply the first fix for all
                         </Button>
@@ -411,7 +427,9 @@ function SettingsForm({
     return (
         <div className={'ark:flex ark:flex-col ark:gap-4'}>
             {!data.files['GameUserSettings.ini'].exists && (
-                <Alert type={'info'}>GameUserSettings.ini does not exist yet. Start the server once so ARK creates it, or save here to create it.</Alert>
+                <Alert type={'info'}>
+                    GameUserSettings.ini does not exist yet. Start the server once so ARK creates it, or save here to create it.
+                </Alert>
             )}
             {data.schema.groups.map((group) => {
                 const items = data.schema.settings.filter((setting) => setting.group === group.id);
@@ -497,19 +515,27 @@ function SettingRow({
                     inputMode={setting.type === 'string' ? 'text' : 'decimal'}
                     disabled={overridden}
                     $hasError={error !== null}
-                    onChange={(event: React.ChangeEvent<HTMLInputElement>) => onChange(event.target.value === '' ? null : event.target.value)}
+                    onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                        onChange(event.target.value === '' ? null : event.target.value)
+                    }
                 />
             )}
 
             {error ? (
                 <p className={'ark:text-xs ark:text-destructive'}>{error}</p>
             ) : overridden ? (
-                <p className={'ark:text-xs ark:text-warning'}>Set by the startup command, which wins over this file. Change it on the Startup page.</p>
+                <p className={'ark:text-xs ark:text-warning'}>
+                    Set by the startup command, which wins over this file. Change it on the Startup page.
+                </p>
             ) : (
                 <p className={'ark:text-xs ark:text-muted-foreground'}>
                     {setting.help}
                     {setting.help && ' '}
-                    {saved === null && !changed && setting.type !== 'bool' && setting.default !== '' && `Not set, so ARK uses ${setting.default}.`}
+                    {saved === null &&
+                        !changed &&
+                        setting.type !== 'bool' &&
+                        setting.default !== '' &&
+                        `Not set, so ARK uses ${setting.default}.`}
                 </p>
             )}
         </div>
@@ -598,7 +624,14 @@ function PresetDialog({
             onConfirmed={() =>
                 changes.length === 0
                     ? onClose()
-                    : onApply(changes.map((row) => ({ file: row.setting.file, section: row.setting.section, key: row.setting.key, value: row.value })))
+                    : onApply(
+                          changes.map((row) => ({
+                              file: row.setting.file,
+                              section: row.setting.section,
+                              key: row.setting.key,
+                              value: row.value,
+                          })),
+                      )
             }
         >
             <p className={'ark:mb-3 ark:text-sm'}>{preset.description} Nothing is saved until you press Save.</p>
@@ -617,7 +650,9 @@ function PresetDialog({
                         {changes.map((row) => (
                             <tr key={row.setting.key} className={'ark:border-t ark:border-border'}>
                                 <td className={'ark:py-1'}>{row.setting.label}</td>
-                                <td className={'ark:py-1 ark:font-mono ark:text-muted-foreground'}>{row.current ?? `${row.setting.default} (default)`}</td>
+                                <td className={'ark:py-1 ark:font-mono ark:text-muted-foreground'}>
+                                    {row.current ?? `${row.setting.default} (default)`}
+                                </td>
                                 <td className={'ark:py-1 ark:font-mono'}>{row.value}</td>
                             </tr>
                         ))}

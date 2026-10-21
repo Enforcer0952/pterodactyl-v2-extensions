@@ -65,6 +65,11 @@ class PlayersController extends Controller
             return new JsonResponse(['state' => $state, 'online' => null]);
         }
 
+        // Asking the game who is online sends a console command.
+        if (! $request->user()->can('control.console', $server)) {
+            return new JsonResponse(['state' => $state, 'online' => null]);
+        }
+
         $online = Cache::remember('ext:ark-tools:online:'.$server->uuid, 8, function () use ($server) {
             $this->commands->send($server, 'ListPlayers');
             usleep(self::ANSWER_DELAY_MS * 1000);
@@ -102,6 +107,7 @@ class PlayersController extends Controller
         $state = $this->serverState($this->state, $server);
 
         if ($command !== null && $state === 'running') {
+            $this->ensureCan($request, $server, 'control.console', 'You need permission to send console commands for this.');
             $this->commands->send($server, $command.' '.$id);
             // Give ARK a moment to write its list file before it is read back.
             usleep(self::ANSWER_DELAY_MS * 1000);
@@ -112,6 +118,7 @@ class PlayersController extends Controller
             throw new HttpException(409, 'The server is '.$state.'. Wait until it is running or stopped.');
         } else {
             // Stopped server, or the admin list, which has no RCON command: edit the file.
+            $this->ensureCan($request, $server, 'file.update', 'You need permission to edit files on this server for this.');
             [$list, $add] = match ($data['action']) {
                 'ban' => ['bans', true],
                 'unban' => ['bans', false],

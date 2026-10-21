@@ -2,8 +2,11 @@
 
 namespace ArkTools\Services;
 
+use ArkTools\Support\ApplyPlan;
 use ArkTools\Support\ConfigModel;
 use Carbon\CarbonImmutable;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use Pterodactyl\Contracts\Servers\ReadsServerState;
@@ -27,6 +30,9 @@ class ConfigApply
     /** A change still waiting after this long is given up on. */
     private const int GIVE_UP_MINUTES = 90;
 
+    /** ARK rewrites this file itself when it stops, so a changed hash there is expected. */
+    private const array REWRITTEN_ON_SHUTDOWN = ['GameUserSettings.ini'];
+
     /** A write that was claimed but never finished (worker died) is retried after this long. */
     private const int STALE_WRITE_MINUTES = 10;
 
@@ -46,11 +52,14 @@ class ConfigApply
      */
     public function save(Server $server, ?int $userId, array $raw, array $edits, array $hashes, int $minutes, bool $start): string
     {
+        if (! ApplyPlan::validHashes($hashes)) {
+            throw new HttpException(422, 'The page is out of date. Reload it and try again.');
+        }
+
         $current = $this->files->read($server);
-        foreach ($hashes as $file => $hash) {
-            if (array_key_exists($file, $current) && ConfigFiles::hash($current[$file]) !== $hash) {
-                throw new HttpException(409, $file.' was changed since you opened this page. Reload to see the latest version.');
-            }
+        $changedNow = ApplyPlan::changedFiles($hashes, array_map(fn (?string $contents): string => ConfigFiles::hash($contents), $current));
+        if ($changedNow !== []) {
+            throw new HttpException(409, $changedNow[0].' was changed since you opened this page. Reload to see the latest version.');
         }
 
         try {
@@ -86,11 +95,12 @@ class ConfigApply
         }
 
         // A running server is started again after the write. One that is already
-        // stopping was stopped on purpose, so it stays off.
+        // stopping stays off, unless settings that wait already asked for a start.
+        $pending = DB::table(self::TABLE)->where('server_id', $server->id)->first();
         DB::table(self::TABLE)->updateOrInsert(['server_id' => $server->id], [
             'user_id' => $userId,
-            'payload' => json_encode(['raw' => $raw, 'edits' => $edits], JSON_THROW_ON_ERROR),
-            'start_after' => $state === 'running',
+            'payload' => $this->seal(['raw' => $raw, 'edits' => $edits, 'hashes' => $hashes]),
+            'start_after' => ApplyPlan::startAfter($pending === null ? null : (bool) $pending->start_after, $state),
             'status' => 'waiting',
             'error' => null,
             'created_at' => CarbonImmutable::now(),
@@ -99,10 +109,23 @@ class ConfigApply
 
         // A server that is already stopping just needs to finish; otherwise count down.
         if ($state === 'running' && ! $this->restarts->applying($server)) {
-            $this->restarts->stopToApply($server, $minutes);
+            try {
+                $this->restarts->stopToApply($server, $minutes);
+            } catch (Throwable $throwable) {
+                // Without a countdown nothing would ever write these settings.
+                DB::table(self::TABLE)->where('server_id', $server->id)->delete();
+
+                throw $throwable;
+            }
         }
 
         return 'waiting';
+    }
+
+    /** Whether settings that wait will start the server again. */
+    public function startsAfter(Server $server): bool
+    {
+        return (bool) DB::table(self::TABLE)->where('server_id', $server->id)->where('status', 'waiting')->value('start_after');
     }
 
     /**
@@ -135,14 +158,32 @@ class ConfigApply
             $this->restarts->cancel($server);
         }
 
-        if ($row !== null && $row->status === 'waiting' && $row->start_after) {
-            try {
-                if ($this->state->read($server)->state === 'offline') {
-                    $this->power->send($server, 'start');
-                }
-            } catch (DaemonConnectionException) {
-                // The node is unreachable; the server cannot be started from here anyway.
-            }
+        if ($row === null || $row->status !== 'waiting' || ! $row->start_after) {
+            return;
+        }
+
+        try {
+            \Illuminate\Support\Facades\Cache::forget('resources:'.$server->uuid); // the panel caches power state for 20 s
+            $state = $this->state->read($server)->state;
+        } catch (DaemonConnectionException) {
+            return; // The node is unreachable; the server cannot be started from here anyway.
+        }
+
+        if ($state === 'offline') {
+            $this->power->send($server, 'start');
+        } elseif ($state === 'stopping') {
+            // A server cannot be started while it shuts down. Keep a row with nothing
+            // to write, so the minute check starts it once it is off.
+            DB::table(self::TABLE)->insert([
+                'server_id' => $server->id,
+                'user_id' => $row->user_id,
+                'payload' => $this->seal(['raw' => [], 'edits' => [], 'hashes' => []]),
+                'start_after' => true,
+                'status' => 'waiting',
+                'error' => null,
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
+            ]);
         }
     }
 
@@ -174,6 +215,7 @@ class ConfigApply
     private function applyWaiting(Server $server, object $row): void
     {
         try {
+            \Illuminate\Support\Facades\Cache::forget('resources:'.$server->uuid); // the panel caches power state for 20 s
             $state = $this->state->read($server)->state;
         } catch (DaemonConnectionException) {
             return; // Node unreachable: try again next minute.
@@ -198,8 +240,22 @@ class ConfigApply
         $this->restarts->dropApplySchedule($server);
 
         try {
-            $payload = json_decode($row->payload, true, flags: JSON_THROW_ON_ERROR);
+            $payload = $this->open($row->payload);
             $current = $this->files->read($server);
+            $changedFiles = ApplyPlan::changedFiles(ApplyPlan::guarded($payload['hashes'] ?? [], array_keys($payload['raw'] ?? []), self::REWRITTEN_ON_SHUTDOWN), array_map(fn (?string $contents): string => ConfigFiles::hash($contents), $current));
+            if ($changedFiles !== []) {
+                // Somebody edited the file while the server was stopping: do not overwrite that.
+                $this->fail($row->id, $changedFiles[0].' was changed while the server was stopping, so the settings were not written. Save them again.'.($row->start_after ? ' The server was started again.' : ''));
+                if ($row->start_after) {
+                    try {
+                        $this->power->send($server, 'start');
+                    } catch (Throwable) {
+                        // Nothing was written; the failure notice stays on the page.
+                    }
+                }
+
+                return;
+            }
             $changed = $this->model->apply($current, $payload['raw'] ?? [], $payload['edits'] ?? []);
             if ($changed !== []) {
                 $this->files->write($server, $changed, $current);
@@ -221,7 +277,7 @@ class ConfigApply
                 DB::table(self::TABLE)->insert([
                     'server_id' => $server->id,
                     'user_id' => $row->user_id,
-                    'payload' => json_encode(['raw' => [], 'edits' => []]),
+                    'payload' => $this->seal(['raw' => [], 'edits' => []]),
                     'start_after' => false,
                     'status' => 'failed',
                     'error' => 'The settings were written, but the server could not be started: '.mb_substr($throwable->getMessage(), 0, 500).' Start it with the power buttons.',
@@ -230,6 +286,30 @@ class ConfigApply
                 ]);
             }
         }
+    }
+
+    /**
+     * The payload can hold passwords from the ini files, so it is stored encrypted.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function seal(array $payload): string
+    {
+        return Crypt::encryptString(json_encode($payload, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function open(string $payload): array
+    {
+        try {
+            $payload = Crypt::decryptString($payload);
+        } catch (DecryptException) {
+            // A row written before payloads were encrypted.
+        }
+
+        return json_decode($payload, true, flags: JSON_THROW_ON_ERROR);
     }
 
     private function fail(int $id, string $error): void
@@ -244,6 +324,7 @@ class ConfigApply
     private function serverState(Server $server): string
     {
         try {
+            \Illuminate\Support\Facades\Cache::forget('resources:'.$server->uuid); // the panel caches power state for 20 s
             return $this->state->read($server)->state;
         } catch (DaemonConnectionException) {
             throw new HttpException(502, 'Could not reach this server\'s node.');

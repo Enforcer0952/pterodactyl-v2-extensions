@@ -31,6 +31,7 @@ class AdminController extends Controller
     {
         $this->ensureArk($server);
         $this->ensureCan($request, $server, 'ext.ark-tools.admin', 'You do not have permission to run admin commands on this server.');
+        $this->ensureCan($request, $server, 'control.console', 'You need permission to send console commands for this.');
 
         $data = $request->validate([
             'action' => ['required', 'string', 'in:save,wild-dinos,broadcast,chat'],
@@ -71,6 +72,7 @@ class AdminController extends Controller
     {
         $this->ensureArk($server);
         $this->ensureCan($request, $server, 'ext.ark-tools.restart', 'You do not have permission to restart this server.');
+        $this->ensureCan($request, $server, 'control.restart', 'You need permission to restart this server for this.');
 
         $minutes = (int) $request->validate(['minutes' => ['required', 'integer', 'in:'.implode(',', Restarts::MINUTES)]])['minutes'];
 
@@ -88,6 +90,7 @@ class AdminController extends Controller
     {
         $this->ensureArk($server);
         $this->ensureCan($request, $server, 'ext.ark-tools.restart', 'You do not have permission to restart this server.');
+        $this->ensureCan($request, $server, 'control.restart', 'You need permission to restart this server for this.');
 
         if (! $this->restarts->cancel($server)) {
             throw new HttpException(404, 'No restart is counting down.');
@@ -104,6 +107,7 @@ class AdminController extends Controller
     {
         $this->ensureArk($server);
         $this->ensureCan($request, $server, 'ext.ark-tools.restart', 'You do not have permission to restart this server.');
+        $this->ensureCan($request, $server, 'control.restart', 'You need permission to restart this server for this.');
         $this->ensureCan($request, $server, 'schedule.create', 'You need permission to create schedules for this.');
 
         $data = $request->validate([

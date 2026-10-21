@@ -541,7 +541,7 @@ function SettingRow({
                     disabled={locked}
                     $hasError={error !== null}
                     onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                        onChange(event.target.value === '' ? null : event.target.value)
+                        onChange(event.target.value === '' && setting.type !== 'string' ? null : event.target.value)
                     }
                 />
             )}

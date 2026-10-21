@@ -6,7 +6,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use PalworldTools\Http\Controllers\Concerns\PalworldServer;
-use PalworldTools\Services\RestClient;
 use PalworldTools\Services\Saves;
 use PalworldTools\Support\Palworld;
 use Pterodactyl\Contracts\Servers\ReadsServerState;
@@ -23,7 +22,6 @@ class SavesController extends Controller
 
     public function __construct(
         private readonly Saves $saves,
-        private readonly RestClient $rest,
         private readonly ReadsServerState $state,
     ) {}
 
@@ -39,18 +37,9 @@ class SavesController extends Controller
         $this->authorizeSaves($request, $server, ['file.read', 'file.create', 'file.update', 'file.archive']);
         $data = $request->validate(['world' => ['required', 'string', 'regex:'.Palworld::WORLD_ID]]);
 
-        // A running server writes the world first. Best effort: without the REST API the copy may be a few minutes old.
-        if ($this->serverState($this->state, $server) === 'running') {
-            try {
-                $this->rest->post($server, '/save');
-                sleep(2);
-            } catch (\Throwable) {
-            }
-        }
+        $result = $this->saves->backup($server, $data['world']);
 
-        $file = $this->saves->backup($server, $data['world']);
-
-        return new JsonResponse(['result' => ['file' => $file]] + $this->payload($server));
+        return new JsonResponse(['result' => $result] + $this->payload($server));
     }
 
     public function restore(Request $request, Server $server): JsonResponse

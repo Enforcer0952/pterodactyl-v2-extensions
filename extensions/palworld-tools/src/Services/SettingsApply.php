@@ -4,9 +4,12 @@ namespace PalworldTools\Services;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use PalworldTools\Support\ApplyPlan;
 use PalworldTools\Support\SettingsModel;
 use Pterodactyl\Contracts\Servers\ReadsServerState;
 use Pterodactyl\Contracts\Servers\SendsServerPower;
@@ -29,6 +32,8 @@ class SettingsApply
     /** A change still waiting after this long is given up on. */
     private const int GIVE_UP_MINUTES = 30;
 
+    private const array EMPTY_PLAN = ['raw' => null, 'edits' => [], 'vars' => [], 'secrets' => false];
+
     /** A write that was claimed but never finished (worker died) is retried after this long. */
     private const int STALE_WRITE_MINUTES = 10;
 
@@ -47,6 +52,10 @@ class SettingsApply
     public function save(Server $server, ?int $userId, array $plan, string $hash, bool $restart, bool $start): string
     {
         return $this->locked($server, function () use ($server, $userId, $plan, $hash, $restart, $start): string {
+            if (! ApplyPlan::validHash($hash)) {
+                throw new HttpException(422, 'The page is out of date. Reload it and try again.');
+            }
+
             $current = $this->files->read($server);
             if (SettingsFiles::hash($this->model, $current) !== $hash) {
                 throw new HttpException(409, 'PalWorldSettings.ini was changed since you opened this page. Reload to see the latest version.');
@@ -82,11 +91,14 @@ class SettingsApply
                 throw new HttpException(409, 'Earlier settings are being written right now. Save again in a minute.');
             }
 
+            // The plan can hold passwords, so it is stored encrypted.
+            $pending = DB::table(self::TABLE)->where('server_id', $server->id)->first();
             DB::table(self::TABLE)->updateOrInsert(['server_id' => $server->id], [
                 'user_id' => $userId,
-                'payload' => json_encode($plan, JSON_THROW_ON_ERROR),
-                // One that is already stopping was stopped on purpose, so it stays off.
-                'start_after' => $state === 'running',
+                'payload' => $this->seal($plan + ['hash' => $hash]),
+                // One that is already stopping was stopped on purpose, so it stays off,
+                // unless settings that wait already asked for a start.
+                'start_after' => ApplyPlan::startAfter($pending === null ? null : (bool) $pending->start_after, $state),
                 'status' => 'waiting',
                 'error' => null,
                 'created_at' => CarbonImmutable::now(),
@@ -94,7 +106,14 @@ class SettingsApply
             ]);
 
             if ($state === 'running') {
-                $this->power->send($server, 'stop');
+                try {
+                    $this->power->send($server, 'stop');
+                } catch (Throwable $throwable) {
+                    // Without a stop nothing would ever write these settings.
+                    DB::table(self::TABLE)->where('server_id', $server->id)->delete();
+
+                    throw $throwable;
+                }
             }
 
             return 'waiting';
@@ -125,14 +144,23 @@ class SettingsApply
 
         DB::table(self::TABLE)->where('server_id', $server->id)->delete();
 
-        if ($row !== null && $row->status === 'waiting' && $row->start_after) {
-            try {
-                if ($this->state->read($server)->state === 'offline') {
-                    $this->power->send($server, 'start');
-                }
-            } catch (DaemonConnectionException) {
-                // The node is unreachable; the server cannot be started from here anyway.
-            }
+        if ($row === null || $row->status !== 'waiting' || ! $row->start_after) {
+            return;
+        }
+
+        try {
+            Cache::forget('resources:'.$server->uuid); // the panel caches power state for 20 s
+            $state = $this->state->read($server)->state;
+        } catch (DaemonConnectionException) {
+            return; // The node is unreachable; the server cannot be started from here anyway.
+        }
+
+        if ($state === 'offline') {
+            $this->power->send($server, 'start');
+        } elseif ($state === 'stopping') {
+            // A server cannot be started while it shuts down. Keep a row with nothing to
+            // write, so the next check starts it once it is off.
+            $this->queueStart($server, $row->user_id);
         }
     }
 
@@ -172,6 +200,7 @@ class SettingsApply
     private function applyWaiting(Server $server, object $row): void
     {
         try {
+            \Illuminate\Support\Facades\Cache::forget('resources:'.$server->uuid); // the panel caches power state for 20 s
             $state = $this->state->read($server)->state;
         } catch (DaemonConnectionException) {
             return; // Node unreachable: try again next time.
@@ -193,9 +222,16 @@ class SettingsApply
         }
 
         try {
-            $plan = json_decode($row->payload, true, flags: JSON_THROW_ON_ERROR);
-            $this->locked($server, function () use ($server, $plan): void {
+            $plan = $this->open($row->payload);
+            $changedBy = false;
+            $this->locked($server, function () use ($server, $plan, &$changedBy): void {
                 $current = $this->files->read($server);
+                if (ApplyPlan::changedWhileWaiting($plan['raw'] ?? null, $plan['hash'] ?? null, SettingsFiles::hash($this->model, $current))) {
+                    // Somebody edited the file while the server was stopping: do not overwrite that.
+                    $changedBy = true;
+
+                    return;
+                }
                 $new = $this->model->apply($this->files->base($server, $current), $plan['raw'] ?? null, $plan['edits'] ?? [], (bool) ($plan['secrets'] ?? false));
                 $this->write($server, $new, $current, $plan['vars'] ?? []);
             });
@@ -210,17 +246,41 @@ class SettingsApply
             return;
         }
 
+        if ($changedBy) {
+            $this->fail($row->id, 'PalWorldSettings.ini was changed while the server was stopping, so the settings were not written. Save them again.'.($row->start_after ? ' The server was started again.' : ''));
+            if ($row->start_after) {
+                $this->startWithSavesLock($server, null, false);
+            }
+
+            return;
+        }
+
         DB::table(self::TABLE)->where('id', $row->id)->delete();
 
         if ($row->start_after) {
-            try {
+            $this->startWithSavesLock($server, $row->user_id);
+        }
+    }
+
+    /**
+     * Start the server, but never while a backup or restore holds the saves lock: the
+     * world would be started halfway through being replaced. When the lock stays taken,
+     * a row with nothing to write is kept so the next check tries again.
+     */
+    private function startWithSavesLock(Server $server, ?int $userId, bool $report = true): void
+    {
+        try {
+            Cache::lock(Saves::lockKey($server), 120)->block(10, function () use ($server): void {
                 $this->power->send($server, 'start');
-            } catch (Throwable $throwable) {
+            });
+        } catch (LockTimeoutException) {
+            $this->queueStart($server, $userId);
+        } catch (Throwable $throwable) {
+            if ($report) {
                 // The settings are written; only the start failed. Say so on the page.
-                DB::table(self::TABLE)->insert([
-                    'server_id' => $server->id,
-                    'user_id' => $row->user_id,
-                    'payload' => json_encode(['raw' => null, 'edits' => [], 'vars' => [], 'secrets' => false]),
+                DB::table(self::TABLE)->updateOrInsert(['server_id' => $server->id], [
+                    'user_id' => $userId,
+                    'payload' => $this->seal(self::EMPTY_PLAN),
                     'start_after' => false,
                     'status' => 'failed',
                     'error' => 'The settings were written, but the server could not be started: '.mb_substr($throwable->getMessage(), 0, 500).' Start it with the power buttons.',
@@ -229,6 +289,42 @@ class SettingsApply
                 ]);
             }
         }
+    }
+
+    /** A row with nothing to write that only makes the next check start the server. */
+    private function queueStart(Server $server, ?int $userId): void
+    {
+        DB::table(self::TABLE)->updateOrInsert(['server_id' => $server->id], [
+            'user_id' => $userId,
+            'payload' => $this->seal(self::EMPTY_PLAN),
+            'start_after' => true,
+            'status' => 'waiting',
+            'error' => null,
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     */
+    private function seal(array $plan): string
+    {
+        return Crypt::encryptString(json_encode($plan, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function open(string $payload): array
+    {
+        try {
+            $payload = Crypt::decryptString($payload);
+        } catch (DecryptException) {
+            // A row written by version 1.0.0, before payloads were encrypted.
+        }
+
+        return json_decode($payload, true, flags: JSON_THROW_ON_ERROR);
     }
 
     /**
@@ -264,6 +360,7 @@ class SettingsApply
     private function serverState(Server $server): string
     {
         try {
+            \Illuminate\Support\Facades\Cache::forget('resources:'.$server->uuid); // the panel caches power state for 20 s
             return $this->state->read($server)->state;
         } catch (DaemonConnectionException) {
             throw new HttpException(502, 'Could not reach this server\'s node.');
