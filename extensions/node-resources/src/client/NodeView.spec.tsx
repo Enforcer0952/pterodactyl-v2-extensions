@@ -12,7 +12,7 @@ afterEach(() => {
 
 function setup(node = report()) {
     vi.spyOn(http, 'get').mockImplementation(async (url: string) => ({ data: url.endsWith('/history') ? history : node }));
-    const post = vi.spyOn(http, 'post').mockResolvedValue({ data: { applied: { memory: 4096 } } });
+    const post = vi.spyOn(http, 'post').mockResolvedValue({ data: { applied: { memory: 4096 }, warning: null } });
     const host = createExtensionTestHost({ extensionId: 'node-resources', prefix: 'nr' });
     render(<NodeView nodeId={3} />, { wrapper: host.Wrapper });
     return { host, post };
@@ -56,7 +56,29 @@ it('applies a suggested limit after confirming', async () => {
     expect(post).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Apply' }).at(-1) as HTMLElement);
-    await waitFor(() => expect(post).toHaveBeenCalledWith('/api/admin/extensions/node-resources/servers/7/limits', { fields: ['memory'] }));
+    await waitFor(() =>
+        expect(post).toHaveBeenCalledWith('/api/admin/extensions/node-resources/servers/7/limits', { limits: { memory: 4 * 1024 ** 3 } }),
+    );
+
+    host.dispose();
+});
+
+it('offers a forced removal only when the node cannot be reached', async () => {
+    const del = vi.spyOn(http, 'delete').mockResolvedValue({ data: report() });
+    const { host } = setup(report({ reachable: false }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Force remove' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Force remove' }).at(-1) as HTMLElement);
+    await waitFor(() => expect(del).toHaveBeenCalledWith('/api/admin/extensions/node-resources/nodes/3/probe', { params: { force: 1 } }));
+
+    host.dispose();
+});
+
+it('does not offer a forced removal while the node answers', async () => {
+    const { host } = setup();
+
+    expect(await screen.findByRole('button', { name: 'Remove probe' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Force remove' })).toBeNull();
 
     host.dispose();
 });

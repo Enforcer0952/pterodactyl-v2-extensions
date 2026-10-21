@@ -95,4 +95,21 @@ final class Probe
 
         return trim((string) preg_replace('/[\p{Cc}\p{Zl}\p{Zp}]/u', '', $line));
     }
+
+    /**
+     * Whether an egg that is already in the panel is the one this extension ships: same
+     * startup command and same first Docker image. The probe runs whatever that egg says,
+     * so an egg with the same name from somewhere else must not be used.
+     *
+     * @param  array<string, mixed>  $shipped  the decoded egg file
+     * @param  array<string, string>|mixed  $images  the existing egg's Docker images
+     */
+    public static function eggMatches(array $shipped, string $startup, mixed $images): bool
+    {
+        $wanted = is_array($shipped['docker_images'] ?? null) ? array_values($shipped['docker_images'])[0] ?? null : null;
+        $have = is_array($images) ? array_values($images)[0] ?? null : null;
+
+        return is_string($wanted) && is_string($have) && $wanted === $have
+            && is_string($shipped['startup'] ?? null) && trim($shipped['startup']) === trim($startup);
+    }
 }

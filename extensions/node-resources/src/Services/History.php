@@ -2,7 +2,6 @@
 
 namespace NodeResources\Services;
 
-use Illuminate\Support\Facades\DB;
 use NodeResources\Support\Retention;
 use NodeResources\Support\Rollup;
 use NodeResources\Support\Tables;
@@ -15,6 +14,8 @@ class History
 
     /** About this many points per graph, whatever the range. */
     private const int POINTS = 300;
+
+    public function __construct(private readonly Series $series) {}
 
     /** @return list<string> the ranges the retention setting can fill */
     public function ranges(Retention $retention): array
@@ -33,9 +34,8 @@ class History
         [$range, $seconds, $resolution] = $this->plan($range, $retention);
         $now ??= time();
 
-        $rows = $this->rows(Tables::NODE_ROLLUPS, 'node_id', $nodeId, $resolution, $now - $seconds);
         $width = Rollup::width($seconds, self::POINTS, $resolution);
-        $merged = Rollup::regroup($rows, $width, Rollup::NODE_METRICS, Rollup::NODE_LAST);
+        $merged = $this->series->merged(Tables::NODE_ROLLUPS, 'node_id', $nodeId, $resolution, $now - $seconds, $width, Rollup::NODE_METRICS, Rollup::NODE_LAST);
 
         $points = [];
         foreach ($merged as $row) {
@@ -73,9 +73,8 @@ class History
         [$range, $seconds, $resolution] = $this->plan($range, $retention);
         $now ??= time();
 
-        $rows = $this->rows(Tables::SERVER_ROLLUPS, 'server_id', $serverId, $resolution, $now - $seconds);
         $width = Rollup::width($seconds, self::POINTS, $resolution);
-        $merged = Rollup::regroup($rows, $width, Rollup::SERVER_METRICS, Rollup::SERVER_LAST);
+        $merged = $this->series->merged(Tables::SERVER_ROLLUPS, 'server_id', $serverId, $resolution, $now - $seconds, $width, Rollup::SERVER_METRICS);
 
         $points = [];
         $peaks = ['cpu' => null, 'mem' => null, 'disk' => null];
@@ -112,17 +111,6 @@ class History
         $resolution = $seconds > $retention->fiveMinuteDays * 86400 && $retention->keepsHourly() ? Rollup::HOUR : Rollup::FIVE_MINUTES;
 
         return [$range, $seconds, $resolution];
-    }
-
-    /** @return list<array<string, mixed>> */
-    private function rows(string $table, string $key, int $id, int $resolution, int $since): array
-    {
-        return DB::table($table)
-            ->where($key, $id)->where('resolution', $resolution)->where('bucket', '>=', $since)
-            ->orderBy('bucket')
-            ->get()
-            ->map(fn (object $row): array => (array) $row)
-            ->all();
     }
 
     private static function round(mixed $value, int $digits = 0): int|float|null

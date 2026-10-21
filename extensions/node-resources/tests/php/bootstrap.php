@@ -10,3 +10,5 @@ spl_autoload_register(function (string $class): void {
         }
     }
 });
+
+require_once __DIR__.'/stubs/http.php';

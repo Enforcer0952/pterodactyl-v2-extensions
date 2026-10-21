@@ -86,10 +86,11 @@ class AdminController extends Controller
         return new JsonResponse([...$this->reports->node($model), 'collector' => $this->reports->collector(), 'settings' => $this->reports->settings()]);
     }
 
-    public function removeProbe(int $node): JsonResponse
+    /** `?force=1` removes the panel's record of a probe whose node cannot be reached. */
+    public function removeProbe(Request $request, int $node): JsonResponse
     {
         $model = Node::query()->findOrFail($node);
-        $this->probes->remove($model);
+        $this->probes->remove($model, $request->boolean('force'));
         Cache::forget('node-resources:alerts');
 
         return new JsonResponse([...$this->reports->node($model), 'collector' => $this->reports->collector(), 'settings' => $this->reports->settings()]);
@@ -106,15 +107,15 @@ class AdminController extends Controller
         return new JsonResponse([...$this->reports->node($model), 'collector' => $this->reports->collector(), 'settings' => $this->reports->settings()]);
     }
 
+    /** The limits are the exact numbers (bytes) the admin saw and confirmed. */
     public function applyLimits(Request $request, int $server): JsonResponse
     {
         $data = $request->validate([
-            'fields' => ['required', 'array', 'min:1', 'max:2'],
-            'fields.*' => ['string', 'in:memory,disk'],
+            'limits' => ['required', 'array:memory,disk', 'min:1'],
+            'limits.memory' => ['sometimes', 'integer', 'min:1'],
+            'limits.disk' => ['sometimes', 'integer', 'min:1'],
         ]);
 
-        $applied = $this->limits->apply(Server::query()->findOrFail($server), array_values($data['fields']));
-
-        return new JsonResponse(['applied' => $applied]);
+        return new JsonResponse($this->limits->apply(Server::query()->findOrFail($server), array_map('intval', $data['limits'])));
     }
 }

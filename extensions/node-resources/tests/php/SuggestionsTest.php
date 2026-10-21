@@ -16,8 +16,9 @@ final class SuggestionsTest extends TestCase
     public static function memory(): iterable
     {
         // [peak in MB, expected limit in MB]: peak + 25 %, rounded up to the step.
-        yield 'tiny' => [10, 64];
-        yield 'small' => [100, 128];
+        yield 'tiny (floor)' => [10, 512];
+        yield 'small (floor)' => [100, 512];
+        yield 'just over the floor' => [420, 576];
         yield 'exactly on a step' => [800, 1024];
         yield 'two gigabytes' => [2000, 2560];
         yield 'four gigabytes' => [4000, 5120];
@@ -47,21 +48,21 @@ final class SuggestionsTest extends TestCase
     /** @return iterable<string, array{int, int}> */
     public static function disk(): iterable
     {
-        yield 'tiny' => [10, 128];
-        yield 'half a gigabyte' => [500, 640];
+        yield 'tiny (floor)' => [10, 1024];
+        yield 'half a gigabyte (floor)' => [500, 1024];
         yield 'one gigabyte' => [1024, 1536];
-        yield 'five gigabytes' => [5000, 6656];
-        yield 'fifty gigabytes' => [50000, 63488];
-        yield 'two hundred gigabytes' => [200000, 250880];
+        yield 'five gigabytes' => [5000, 7680];
+        yield 'fifty gigabytes' => [50000, 75776];
+        yield 'two hundred gigabytes' => [200000, 302080];
     }
 
     #[DataProvider('disk')]
-    public function testDiskAddsAQuarterAndRoundsUp(int $usedMb, int $expected): void
+    public function testDiskAddsHalfAndRoundsUp(int $usedMb, int $expected): void
     {
         $this->assertSame($expected, Suggestions::disk($usedMb * self::MIB));
     }
 
-    public function testNeverBelowUsageNorLessThanAQuarterMore(): void
+    public function testNeverBelowUsageNorLessThanTheHeadroom(): void
     {
         for ($mb = 1; $mb < 300_000; $mb = (int) ($mb * 1.07) + 1) {
             $bytes = $mb * self::MIB + 12345;
@@ -69,10 +70,10 @@ final class SuggestionsTest extends TestCase
             $memory = Suggestions::memory($bytes, 0);
             $disk = Suggestions::disk($bytes);
 
-            foreach ([$memory, $disk] as $limit) {
-                $this->assertGreaterThanOrEqual($bytes, $limit * self::MIB, "usage {$mb} MB");
-                $this->assertGreaterThanOrEqual($bytes * 1.25, $limit * self::MIB, "usage {$mb} MB");
-            }
+            $this->assertGreaterThanOrEqual($bytes * 1.25, $memory * self::MIB, "memory {$mb} MB");
+            $this->assertGreaterThanOrEqual(512, $memory);
+            $this->assertGreaterThanOrEqual($bytes * 1.5, $disk * self::MIB, "disk {$mb} MB");
+            $this->assertGreaterThanOrEqual(1024, $disk);
         }
     }
 
@@ -99,15 +100,27 @@ final class SuggestionsTest extends TestCase
         $this->assertSame(5120, Suggestions::diskStep(200000));
     }
 
-    public function testSuggestionsNeedADayOfHistory(): void
+    public function testSuggestionsNeedThreeDaysAndSixRunningHours(): void
     {
         $now = 1_760_000_000;
+        $day = 86_400;
 
-        $this->assertFalse(Suggestions::hasHistory(null, $now));
-        $this->assertFalse(Suggestions::hasHistory($now - 3600, $now));
-        $this->assertFalse(Suggestions::hasHistory($now - 86_399, $now));
-        $this->assertTrue(Suggestions::hasHistory($now - 86_400, $now));
-        $this->assertTrue(Suggestions::hasHistory($now - 10 * 86_400, $now));
+        $this->assertFalse(Suggestions::hasHistory(null, 10_000, $now));
+        $this->assertFalse(Suggestions::hasHistory($now - $day, 10_000, $now), 'one day is not enough');
+        $this->assertFalse(Suggestions::hasHistory($now - 3 * $day + 1, 10_000, $now));
+        $this->assertTrue(Suggestions::hasHistory($now - 3 * $day, 360, $now));
+        $this->assertFalse(Suggestions::hasHistory($now - 7 * $day, 359, $now), 'a server that was off most of the time');
+        $this->assertTrue(Suggestions::hasHistory($now - 7 * $day, 10_000, $now));
+    }
+
+    public function testOnlyTheExactSuggestionIsConfirmed(): void
+    {
+        $this->assertTrue(Suggestions::confirms(1024, 1024 * self::MIB));
+        $this->assertFalse(Suggestions::confirms(1024, 1024 * self::MIB + 1), 'a byte off');
+        $this->assertFalse(Suggestions::confirms(1024, 2048 * self::MIB), 'a different value');
+        $this->assertFalse(Suggestions::confirms(null, 1024 * self::MIB), 'no suggestion any more');
+        $this->assertFalse(Suggestions::confirms(1024, '1073741824'), 'not a number');
+        $this->assertFalse(Suggestions::confirms(1024, null));
     }
 
     public function testSystemInfoFromWings(): void

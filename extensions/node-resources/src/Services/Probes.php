@@ -5,6 +5,7 @@ namespace NodeResources\Services;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use NodeResources\Support\Failure;
 use NodeResources\Support\Probe;
 use NodeResources\Support\Tables;
 use Pterodactyl\Contracts\Eggs\ImportsEggs;
@@ -88,8 +89,9 @@ class Probes
             try {
                 $power = $this->state->read($server)->state;
                 $state = $power === 'offline' ? 'offline' : ($power === 'running' ? $state : 'starting');
-            } catch (DaemonConnectionException) {
-                $state = 'unreachable';
+            } catch (DaemonConnectionException $exception) {
+                // An error answer means the node is up; only a missing answer is "unreachable".
+                $state = Failure::isConnection($exception) ? 'unreachable' : $state;
             }
         }
 
@@ -163,23 +165,45 @@ class Probes
         }
     }
 
-    public function remove(Node $node): void
+    /**
+     * Deletes the probe server and forgets it. $force also removes the panel's record when the
+     * node cannot be reached; it is only accepted while the node really is unreachable, and
+     * the container is then left behind on that node.
+     */
+    public function remove(Node $node, bool $force = false): void
     {
         $row = $this->row($node);
         if ($row === null) {
             return;
         }
 
+        if ($force && ! $this->nodeIsDown($node)) {
+            throw new HttpException(409, 'This node answers again. Remove the probe without forcing it.');
+        }
+
         $server = Server::query()->find($row->server_id);
         try {
             if ($server !== null) {
-                $this->delete->delete($server);
+                $this->delete->withForce($force)->delete($server);
             }
-        } catch (DaemonConnectionException) {
-            throw new HttpException(502, 'Could not reach the node to remove the probe server. Try again when it is online.');
+        } catch (DaemonConnectionException $exception) {
+            if (Failure::isConnection($exception)) {
+                throw new HttpException(502, 'Could not reach the node to remove the probe server. Try again when it is online, or force the removal.');
+            }
+
+            throw new HttpException(502, 'The node refused to remove the probe server: '.$exception->getMessage());
+        } finally {
+            $this->delete->withForce(false);
         }
 
         DB::table(Tables::PROBES)->where('node_id', $node->id)->delete();
+    }
+
+    private function nodeIsDown(Node $node): bool
+    {
+        $latest = DB::table(Tables::NODE_SAMPLES)->where('node_id', $node->id)->orderByDesc('taken_at')->first(['reachable']);
+
+        return $latest !== null && ! $latest->reachable;
     }
 
     /** @return array{state: string, server: array{id: string, name: string}|null, last_at: ?string} */
@@ -191,7 +215,8 @@ class Probes
         }
 
         $egg = $this->egg();
-        $allocation = Allocation::query()->unassigned()->where('node_id', $node->id)->orderBy('port')->first();
+        // The highest free port: the lowest ones are the ones people hand out to servers.
+        $allocation = Allocation::query()->unassigned()->where('node_id', $node->id)->orderByDesc('port')->first();
         if ($allocation === null) {
             throw new HttpException(422, 'This node has no free allocation. Add one on the node\'s Allocation tab; the probe needs one, but does not listen on it.');
         }
@@ -236,14 +261,19 @@ class Probes
 
     private function egg(): Egg
     {
-        $egg = Egg::query()->where('name', self::EGG_NAME)->where('author', self::EGG_AUTHOR)->first();
-        if ($egg !== null) {
-            return $egg;
-        }
-
         $json = file_get_contents(dirname(__DIR__, 2).'/resources/node-probe-egg.json');
         if ($json === false) {
             throw new HttpException(500, 'The Node Probe egg file is missing from the extension.');
+        }
+
+        $egg = Egg::query()->where('name', self::EGG_NAME)->where('author', self::EGG_AUTHOR)->first();
+        if ($egg !== null) {
+            $shipped = json_decode($json, true);
+            if (! is_array($shipped) || ! Probe::eggMatches($shipped, (string) $egg->startup, $egg->docker_images)) {
+                throw new HttpException(409, 'The panel already has an egg called "'.self::EGG_NAME.'" that differs from the one in this extension (startup command or Docker image). Rename or delete that egg, then try again.');
+            }
+
+            return $egg;
         }
 
         try {

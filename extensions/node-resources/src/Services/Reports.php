@@ -25,7 +25,7 @@ class Reports
 
     private const int WEEK = 604_800;
 
-    public function __construct(private readonly Probes $probes, private readonly Meta $meta) {}
+    public function __construct(private readonly Probes $probes, private readonly Meta $meta, private readonly Series $series) {}
 
     /** @return array{disk_percent: int, forecast_days: int, retention: string} */
     public function settings(): array
@@ -67,11 +67,11 @@ class Reports
         $now ??= time();
         $settings = $this->settings();
 
-        $latest = DB::table(Tables::NODE_SAMPLES)->where('node_id', $node->id)->orderByDesc('taken_at')->first();
+        $latest = DB::table(Tables::NODE_SAMPLES)->where('node_id', $node->id)->orderByDesc('taken_at')->first(['taken_at', 'reachable', 'mem_total', 'cpus']);
         $good = $latest !== null && $latest->reachable
             ? $latest
-            : DB::table(Tables::NODE_SAMPLES)->where('node_id', $node->id)->where('reachable', true)->orderByDesc('taken_at')->first();
-        $probeSample = DB::table(Tables::NODE_SAMPLES)->where('node_id', $node->id)->whereNotNull('mem_used')->whereNotNull('disk_used')->orderByDesc('taken_at')->first();
+            : DB::table(Tables::NODE_SAMPLES)->where('node_id', $node->id)->where('reachable', true)->orderByDesc('taken_at')->first(['taken_at', 'reachable', 'mem_total', 'cpus']);
+        $probeSample = DB::table(Tables::NODE_SAMPLES)->where('node_id', $node->id)->whereNotNull('mem_used')->whereNotNull('disk_used')->orderByDesc('taken_at')->first(['taken_at', 'mem_total', 'mem_used', 'disk_total', 'disk_used', 'load1', 'cpus']);
         if ($probeSample !== null && $now - (int) $probeSample->taken_at > self::PROBE_MAX_AGE) {
             $probeSample = null;
         }
@@ -88,7 +88,7 @@ class Reports
         $servers = Server::query()->without('allocation')->where('node_id', $node->id)->orderBy('name')
             ->get(['id', 'uuidShort', 'name', 'status', 'memory', 'disk', 'cpu']);
         $ids = $servers->modelKeys();
-        $current = $good === null ? collect() : DB::table(Tables::SERVER_SAMPLES)->where('node_id', $node->id)->where('taken_at', $good->taken_at)->get()->keyBy('server_id');
+        $current = $good === null ? collect() : DB::table(Tables::SERVER_SAMPLES)->where('node_id', $node->id)->where('taken_at', $good->taken_at)->get(['server_id', 'state', 'mem', 'disk', 'cpu'])->keyBy('server_id');
         $peaks = $this->peaks($ids, $now);
         $probe = $this->probes->status($node, $detail, $now);
         $probeServerId = $probe['server']['id'] ?? null;
@@ -109,7 +109,7 @@ class Reports
 
             if ($detail) {
                 $isProbe = $probeServerId !== null && $server->uuidShort === $probeServerId;
-                $rows[] = $this->serverRow($server, $row, $sample?->state, $isProbe, $peak['first'] ?? null, $now);
+                $rows[] = $this->serverRow($server, $row, $sample?->state, $isProbe, $peak['first'] ?? null, $peak['running'] ?? 0, $now);
             }
         }
 
@@ -144,7 +144,8 @@ class Reports
 
     /**
      * What to suggest for one server, computed the same way as in the node table. Only
-     * servers with an unlimited memory or disk get one, and only after a day of data.
+     * servers with an unlimited memory or disk get one, and only after three days of data
+     * with at least six hours of the server running. Values are in MB.
      *
      * @return array{memory: ?int, disk: ?int}
      */
@@ -152,7 +153,9 @@ class Reports
     {
         $now ??= time();
         $peak = $this->peaks([$server->id], $now)[$server->id] ?? null;
-        $sample = DB::table(Tables::SERVER_SAMPLES)->where('server_id', $server->id)->orderByDesc('taken_at')->first();
+        // The same minute the node table shows: the newest one in which the node answered.
+        $good = DB::table(Tables::NODE_SAMPLES)->where('node_id', $server->node_id)->where('reachable', true)->orderByDesc('taken_at')->first(['taken_at']);
+        $sample = $good === null ? null : DB::table(Tables::SERVER_SAMPLES)->where('server_id', $server->id)->where('taken_at', $good->taken_at)->first(['mem', 'disk']);
         $probe = DB::table(Tables::PROBES)->where('server_id', $server->id)->exists();
 
         return $this->suggestions($server, $sample === null ? null : (int) $sample->mem, $sample === null ? null : (int) $sample->disk, $peak, $probe, $now);
@@ -192,13 +195,13 @@ class Reports
     }
 
     /**
-     * @param  array{mem: ?int, disk: ?int, cpu: ?float, first: ?int}|null  $peak
+     * @param  array{mem: ?int, disk: ?int, cpu: ?float, first: ?int, running: int}|null  $peak
      * @return array{memory: ?int, disk: ?int}
      */
     private function suggestions(Server $server, ?int $memNow, ?int $diskNow, ?array $peak, bool $isProbe, int $now): array
     {
         $none = ['memory' => null, 'disk' => null];
-        if ($isProbe || $server->status !== null || ! Suggestions::hasHistory($peak['first'] ?? null, $now)) {
+        if ($isProbe || $server->status !== null || ! Suggestions::hasHistory($peak['first'] ?? null, $peak['running'] ?? 0, $now)) {
             return $none;
         }
 
@@ -210,13 +213,14 @@ class Reports
 
     /**
      * @param  array<string, mixed>  $row  limits and use, as Capacity reads them
-     * @param  array{mem: ?int, disk: ?int, cpu: ?float, first: ?int}|null  $peak
      * @return array<string, mixed>
      */
-    private function serverRow(Server $server, array $row, ?string $state, bool $isProbe, ?int $firstSeen, int $now): array
+    private function serverRow(Server $server, array $row, ?string $state, bool $isProbe, ?int $firstSeen, int $running, int $now): array
     {
-        $peak = ['mem' => $row['mem_peak'], 'disk' => $row['disk_peak'], 'cpu' => $row['cpu_peak'], 'first' => $firstSeen];
+        $peak = ['mem' => $row['mem_peak'], 'disk' => $row['disk_peak'], 'cpu' => $row['cpu_peak'], 'first' => $firstSeen, 'running' => $running];
         $suggestion = $this->suggestions($server, $row['mem_now'], $row['disk_now'], $peak, $isProbe, $now);
+        // Shown in bytes like the rest of the row. The apply call sends the same numbers back.
+        $suggestion = ['memory' => $suggestion['memory'] === null ? null : $suggestion['memory'] * 1_048_576, 'disk' => $suggestion['disk'] === null ? null : $suggestion['disk'] * 1_048_576];
 
         return [
             'id' => $server->uuidShort,
@@ -236,7 +240,7 @@ class Reports
      * Seven-day peaks and the first time each server was seen.
      *
      * @param  list<int>  $ids
-     * @return array<int, array{mem: ?int, disk: ?int, cpu: ?float, first: ?int}>
+     * @return array<int, array{mem: ?int, disk: ?int, cpu: ?float, first: ?int, running: int}>
      */
     private function peaks(array $ids, int $now): array
     {
@@ -250,12 +254,12 @@ class Reports
             ->where('bucket', '>=', $now - self::WEEK)
             ->whereIn('server_id', $ids)
             ->groupBy('server_id')
-            ->selectRaw('server_id, MAX(mem_max) as mem_peak, MAX(disk_max) as disk_peak, MAX(cpu_max) as cpu_peak, MIN(bucket) as first_seen')
+            ->selectRaw('server_id, MAX(mem_max) as mem_peak, MAX(disk_max) as disk_peak, MAX(cpu_max) as cpu_peak, MIN(bucket) as first_seen, SUM(running) as running_samples')
             ->get();
         foreach ($rows as $row) {
             $out[(int) $row->server_id] = [
                 'mem' => self::int($row->mem_peak), 'disk' => self::int($row->disk_peak),
-                'cpu' => $row->cpu_peak === null ? null : (float) $row->cpu_peak, 'first' => self::int($row->first_seen),
+                'cpu' => $row->cpu_peak === null ? null : (float) $row->cpu_peak, 'first' => self::int($row->first_seen), 'running' => (int) $row->running_samples,
             ];
         }
 
@@ -266,16 +270,13 @@ class Reports
     private function forecast(int $nodeId, int $diskTotal, int $now): ?array
     {
         return Cache::remember('node-resources:forecast:'.$nodeId.':'.intdiv($now, 300), 300, function () use ($nodeId, $diskTotal, $now): ?array {
-            $rows = DB::table(Tables::NODE_ROLLUPS)
-                ->where('node_id', $nodeId)->where('resolution', Rollup::FIVE_MINUTES)->where('bucket', '>=', $now - self::WEEK)
-                ->whereNotNull('disk_used_avg')->orderBy('bucket')
-                ->get(['bucket', 'samples', 'disk_used_avg', 'disk_used_max']);
-
             // Hourly points are plenty for a line through a week.
-            $hours = Rollup::regroup(array_map(fn (object $row): array => (array) $row, $rows->all()), Rollup::HOUR, ['disk_used']);
+            $hours = $this->series->merged(Tables::NODE_ROLLUPS, 'node_id', $nodeId, Rollup::FIVE_MINUTES, $now - self::WEEK, Rollup::HOUR, ['disk_used']);
             $points = [];
             foreach ($hours as $hour) {
-                $points[] = [(int) $hour['bucket'], (float) $hour['disk_used_avg']];
+                if ($hour['disk_used_avg'] !== null) {
+                    $points[] = [(int) $hour['bucket'], (float) $hour['disk_used_avg']];
+                }
             }
 
             return Forecast::daysUntilFull($points, (float) $diskTotal, $now);

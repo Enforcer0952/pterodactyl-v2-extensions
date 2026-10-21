@@ -140,9 +140,20 @@ function CpuCard({ cpu }: { cpu: CpuResource }) {
     );
 }
 
-function ProbeBox({ report, busy, onSetup, onRemove }: { report: NodeReport; busy: boolean; onSetup: () => void; onRemove: () => void }) {
+function ProbeBox({
+    report,
+    busy,
+    onSetup,
+    onRemove,
+}: {
+    report: NodeReport;
+    busy: boolean;
+    onSetup: () => void;
+    onRemove: (force: boolean) => void;
+}) {
     const { probe } = report;
-    const [confirm, setConfirm] = useState(false);
+    const [confirm, setConfirm] = useState<'remove' | 'force' | null>(null);
+    const down = report.reachable === false || probe.state === 'unreachable';
     const canSetup = probe.state === 'none' || probe.state === 'failed';
 
     return (
@@ -166,23 +177,31 @@ function ProbeBox({ report, busy, onSetup, onRemove }: { report: NodeReport; bus
                         </Button>
                     )}
                     {probe.state !== 'none' && (
-                        <Button size={'small'} isSecondary disabled={busy} onClick={() => setConfirm(true)}>
+                        <Button size={'small'} isSecondary disabled={busy} onClick={() => setConfirm('remove')}>
                             Remove probe
+                        </Button>
+                    )}
+                    {probe.state !== 'none' && down && (
+                        <Button size={'small'} isSecondary disabled={busy} onClick={() => setConfirm('force')}>
+                            Force remove
                         </Button>
                     )}
                 </div>
                 {confirm && (
                     <Dialog.Confirm
                         open
-                        onClose={() => setConfirm(false)}
-                        title={'Remove the probe?'}
-                        confirm={'Remove'}
+                        onClose={() => setConfirm(null)}
+                        title={confirm === 'force' ? 'Force remove the probe?' : 'Remove the probe?'}
+                        confirm={confirm === 'force' ? 'Force remove' : 'Remove'}
                         onConfirmed={() => {
-                            setConfirm(false);
-                            onRemove();
+                            const force = confirm === 'force';
+                            setConfirm(null);
+                            onRemove(force);
                         }}
                     >
-                        The probe server is deleted. Free host memory and disk will show as unknown until you set it up again.
+                        {confirm === 'force'
+                            ? 'The node cannot be reached, so the probe server is only removed from the panel. Its container stays on the node until you clean it up there.'
+                            : 'The probe server is deleted. Free host memory and disk will show as unknown until you set it up again.'}
                     </Dialog.Confirm>
                 )}
             </div>
@@ -208,7 +227,7 @@ function ServersTable({
 }: {
     rows: ServerRow[];
     applying: boolean;
-    onApply: (row: ServerRow, fields: ('memory' | 'disk')[]) => void;
+    onApply: (row: ServerRow, limits: { memory?: number; disk?: number }) => void;
 }) {
     if (rows.length === 0) return <p className={'nr:text-sm nr:text-muted-foreground'}>No servers on this node.</p>;
 
@@ -251,19 +270,21 @@ function ServersTable({
                                             size={'xsmall'}
                                             isSecondary
                                             disabled={applying}
-                                            onClick={() =>
-                                                onApply(row, [
-                                                    ...(row.suggestion?.memory !== null ? (['memory'] as const) : []),
-                                                    ...(row.suggestion?.disk !== null ? (['disk'] as const) : []),
-                                                ])
-                                            }
+                                            onClick={() => {
+                                                const suggestion = row.suggestion;
+                                                if (!suggestion) return;
+                                                onApply(row, {
+                                                    ...(suggestion.memory !== null ? { memory: suggestion.memory } : {}),
+                                                    ...(suggestion.disk !== null ? { disk: suggestion.disk } : {}),
+                                                });
+                                            }}
                                         >
                                             Apply
                                         </Button>
                                     </div>
                                 ) : (
                                     <span className={'nr:text-xs nr:text-muted-foreground'}>
-                                        {row.memory.limit === 0 || row.disk.limit === 0 ? 'Needs 24 h of data' : '-'}
+                                        {row.memory.limit === 0 || row.disk.limit === 0 ? 'Needs 3 days of data' : '-'}
                                     </span>
                                 )}
                             </td>
@@ -371,7 +392,7 @@ function Graphs({ nodeId, report }: { nodeId: number; report: NodeReport }) {
 export default function NodeView({ nodeId }: { nodeId: number }) {
     const queryClient = useQueryClient();
     const query = useQuery({ queryKey: keys.node(nodeId), queryFn: () => getNode(nodeId), refetchInterval: 60_000 });
-    const [pending, setPending] = useState<{ row: ServerRow; fields: ('memory' | 'disk')[] } | null>(null);
+    const [pending, setPending] = useState<{ row: ServerRow; limits: { memory?: number; disk?: number } } | null>(null);
 
     const store = (report: NodeReport) => {
         queryClient.setQueryData(keys.node(nodeId), report);
@@ -388,7 +409,7 @@ export default function NodeView({ nodeId }: { nodeId: number }) {
         onError: fail,
     });
     const remove = useMutation({
-        mutationFn: () => removeProbe(nodeId),
+        mutationFn: (force: boolean) => removeProbe(nodeId, force),
         onSuccess: (report) => {
             store(report);
             toast.success('Probe removed.');
@@ -404,10 +425,12 @@ export default function NodeView({ nodeId }: { nodeId: number }) {
         onError: fail,
     });
     const apply = useMutation({
-        mutationFn: (input: { row: ServerRow; fields: ('memory' | 'disk')[] }) => applyLimits(input.row.admin_id, input.fields),
-        onSuccess: () => {
+        mutationFn: (input: { row: ServerRow; limits: { memory?: number; disk?: number } }) =>
+            applyLimits(input.row.admin_id, input.limits),
+        onSuccess: (result) => {
             setPending(null);
             toast.success('Limits updated.');
+            if (result.warning) toast.warning(result.warning);
             void queryClient.invalidateQueries({ queryKey: ['node-resources'] });
         },
         onError: fail,
@@ -452,7 +475,7 @@ export default function NodeView({ nodeId }: { nodeId: number }) {
                 <ResourceCard title={'Memory'} kind={'memory'} data={report.ram} noProbe={report.probe.state === 'none'} />
                 <ResourceCard title={'Disk'} kind={'disk'} data={report.disk} noProbe={report.probe.state === 'none'} />
                 <CpuCard cpu={report.cpu} />
-                <ProbeBox report={report} busy={busy} onSetup={() => setup.mutate()} onRemove={() => remove.mutate()} />
+                <ProbeBox report={report} busy={busy} onSetup={() => setup.mutate()} onRemove={(force) => remove.mutate(force)} />
             </div>
 
             <Graphs nodeId={nodeId} report={report} />
@@ -461,7 +484,7 @@ export default function NodeView({ nodeId }: { nodeId: number }) {
                 <ServersTable
                     rows={report.servers ?? []}
                     applying={apply.isPending}
-                    onApply={(row, fields) => setPending({ row, fields })}
+                    onApply={(row, limits) => setPending({ row, limits })}
                 />
             </TitledGreyBox>
 
@@ -476,10 +499,9 @@ export default function NodeView({ nodeId }: { nodeId: number }) {
                 >
                     <>
                         {pending.row.name} gets{' '}
-                        {pending.fields
-                            .map(
-                                (field) => `${field === 'memory' ? 'memory' : 'disk'} ${formatLimit(pending.row.suggestion?.[field] ?? 0)}`,
-                            )
+                        {(['memory', 'disk'] as const)
+                            .filter((field) => pending.limits[field] !== undefined)
+                            .map((field) => `${field} ${formatLimit(pending.limits[field] ?? 0)}`)
                             .join(' and ')}
                         . The server may need a restart for memory to take effect.
                     </>

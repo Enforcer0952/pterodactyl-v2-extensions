@@ -190,12 +190,19 @@ export const getNodeHistory = async (id: number, range: Range) =>
 
 export const setupProbe = async (id: number) => (await http.post<NodeReport>(`${admin}/nodes/${id}/probe`)).data;
 
-export const removeProbe = async (id: number) => (await http.delete<NodeReport>(`${admin}/nodes/${id}/probe`)).data;
+export const removeProbe = async (id: number, force = false) =>
+    (await http.delete<NodeReport>(`${admin}/nodes/${id}/probe`, force ? { params: { force: 1 } } : undefined)).data;
 
 export const refreshNode = async (id: number) => (await http.post<NodeReport>(`${admin}/nodes/${id}/refresh`)).data;
 
-export const applyLimits = async (id: number, fields: ('memory' | 'disk')[]) =>
-    (await http.post<{ applied: Record<string, number> }>(`${admin}/servers/${id}/limits`, { fields })).data.applied;
+export interface AppliedLimits {
+    applied: Record<string, number>;
+    warning: string | null;
+}
+
+/** Limits are the exact numbers (bytes) shown on screen; the server refuses them if the suggestion has moved. */
+export const applyLimits = async (id: number, limits: { memory?: number; disk?: number }) =>
+    (await http.post<AppliedLimits>(`${admin}/servers/${id}/limits`, { limits })).data;
 
 export const getServerHistory = async (id: string, range: Range) =>
     (await http.get<ServerHistory>(`${server(id)}/history`, { params: { range } })).data;

