@@ -9,6 +9,31 @@ namespace McPlayers\Support;
 final class Stats
 {
     /**
+     * The world folder name from server.properties' level-name, or null when it is
+     * missing or could point outside the server (a path, "..", a hidden folder).
+     */
+    public static function worldName(?string $levelName): ?string
+    {
+        $world = trim($levelName ?? '') ?: 'world';
+
+        if (preg_match('#^[\w][\w .\-]{0,63}$#', $world) !== 1 || str_contains($world, '..') || str_ends_with($world, '.')) {
+            return null;
+        }
+
+        return $world;
+    }
+
+    /**
+     * Folders that can hold a world's stats files, newest layout first.
+     *
+     * @return list<string>
+     */
+    public static function folders(string $world): array
+    {
+        return ['/'.$world.'/players/stats', '/'.$world.'/stats'];
+    }
+
+    /**
      * @param  array<string, mixed>  $json
      * @return array{play_seconds: int, deaths: int, mob_kills: int, player_kills: int, distance_m: int, blocks_mined: int, jumps: int}
      */

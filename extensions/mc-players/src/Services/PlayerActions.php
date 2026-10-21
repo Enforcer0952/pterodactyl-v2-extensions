@@ -73,14 +73,15 @@ class PlayerActions
             $target = $this->target($action, $rawTarget);
             $command = $this->command($action, $target, $reason);
             // The panel's command action records this in the activity log.
-            $before = count($this->logs->read($server, 40));
+            $before = $this->logs->read($server, 40);
             $this->commands->send($server, $command);
 
             // Give the server a moment to answer and write its list files.
             usleep(self::ANSWER_DELAY_MS * 1000);
             Cache::forget('ext:mc-players:online:'.$server->uuid);
 
-            $reply = ListOutput::reply(array_slice($this->logs->read($server, 40), max(0, $before - 5)), $command);
+            // Only lines written after the command went out can be its answer.
+            $reply = ListOutput::reply(ListOutput::newLines($before, $this->logs->read($server, 40)), $command);
             if ($reply !== null && $reply['failed']) {
                 throw new HttpException(422, $reply['message']);
             }

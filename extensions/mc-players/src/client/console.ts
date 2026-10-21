@@ -32,3 +32,29 @@ export function parseConsoleLine(raw: string): ConsoleChange | null {
 }
 
 export const isValidName = (value: string) => new RegExp(`^${NAME}$`).test(value);
+
+/** A route parameter decoded safely: a broken escape such as "%E0%A4%A" gives an empty name. */
+export function decodeParam(value: string | undefined): string {
+    if (!value) return '';
+    try {
+        return decodeURIComponent(value);
+    } catch {
+        return '';
+    }
+}
+
+/**
+ * What to tell the user after a player command. A running server that printed no
+ * answer may not have done anything, so that is a warning and not a success.
+ */
+export function replyNotice(
+    reply: string | null | undefined,
+    state: string,
+    fallback: string,
+): { type: 'success' | 'warning'; message: string } {
+    if (reply) return { type: 'success', message: reply };
+    if (state === 'running') {
+        return { type: 'warning', message: 'The server sent no reply, so it is unclear whether this worked. Check the console.' };
+    }
+    return { type: 'success', message: fallback };
+}

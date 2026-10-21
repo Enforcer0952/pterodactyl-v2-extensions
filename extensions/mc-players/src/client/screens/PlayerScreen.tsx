@@ -1,12 +1,12 @@
 import { Alert, PanelLink, ServerContentBlock, useCurrentServerRequired, type ScreenComponentProps } from '@pterodactyl/sdk';
 import { ArrowLeft } from 'lucide-react';
 import PlayerProfile from '../PlayerProfile';
-import { isValidName } from '../console';
+import { decodeParam, isValidName } from '../console';
 
 /** /server/<id>/player/<name>: the full player page. */
 export default function PlayerScreen({ data }: ScreenComponentProps) {
     const server = useCurrentServerRequired();
-    const name = decodeURIComponent(data.params.player ?? '');
+    const name = decodeParam(data.params.player);
 
     return (
         <ServerContentBlock title={name ? `${name} · Players` : 'Player'}>

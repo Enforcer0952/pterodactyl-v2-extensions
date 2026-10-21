@@ -2,7 +2,10 @@
 
 namespace McContent\Tests;
 
+use McContent\Support\FileChange;
+use McContent\Support\JarName;
 use McContent\Support\Platform;
+use McContent\Support\TimeBudget;
 use McContent\Support\Updates;
 use PHPUnit\Framework\TestCase;
 
@@ -72,5 +75,74 @@ final class ContentTest extends TestCase
         $this->assertNull(Updates::pick($installed, [self::v('old', '2024-01-01T00:00:00Z')], false, null));
         $this->assertNull(Updates::pick($installed, [$installed], false, null));
         $this->assertTrue(Updates::acceptable($installed, $installed, false, null));
+    }
+
+    public function test_normal_jar_names_are_accepted(): void
+    {
+        foreach (['Plugin-1.0+mc1.21.jar', 'My%20Mod.jar', '[1.21] Thing (beta).jar', '_Fancy_.jar', "Dr.Who's-Mod.jar", 'Mod.jar.disabled', 'Ünï.JAR'] as $name) {
+            $this->assertTrue(JarName::isSafe($name), $name);
+        }
+    }
+
+    public function test_jar_names_cannot_leave_the_folder(): void
+    {
+        foreach (['../evil.jar', 'a/b.jar', 'a\\b.jar', '..jar', '.hidden.jar', "a\0.jar", "a\n.jar", 'a.jar ', ' a.jar', 'notajar.txt', '', 'x.jar.disabled.sh', str_repeat('a', 220).'.jar', 'a:b.jar'] as $name) {
+            $this->assertFalse(JarName::isSafe($name), json_encode($name));
+        }
+        $this->assertFalse(JarName::isSafe('Mod.jar.disabled', false));
+    }
+
+    public function test_download_names_are_normalised(): void
+    {
+        $this->assertSame('Plugin-1.0+mc1.21.jar', JarName::normalize('Plugin-1.0+mc1.21.jar', 'abc'));
+        $this->assertSame('evil.jar', JarName::normalize('../../evil.jar', 'abc'));
+        $this->assertSame('Thing.jar', JarName::normalize("Thing\u{202E}.jar", 'abc'));
+        $this->assertSame('abc12345.jar', JarName::normalize('...jar', 'abc12345'));
+        $this->assertSame('a.b.jar', JarName::normalize('a..b.jar', 'x'));
+        $this->assertTrue(JarName::isSafe(JarName::normalize("we\x01ird/..\\name.jar", 'x')));
+    }
+
+    public function test_a_jar_changed_by_hand_is_noticed(): void
+    {
+        $this->assertSame(FileChange::SAME, FileChange::compare(100, 1000, 100, 1000));
+        $this->assertSame(FileChange::CHANGED, FileChange::compare(100, 1000, 101, 1000));
+        $this->assertSame(FileChange::CHANGED, FileChange::compare(100, 1000, 100, 2000));
+        // Records from before size and time were kept, or made by an install.
+        $this->assertSame(FileChange::ADOPT, FileChange::compare(null, null, 100, 1000));
+        $this->assertSame(FileChange::ADOPT, FileChange::compare(100, null, 100, 1000));
+        $this->assertSame(FileChange::CHANGED, FileChange::compare(100, null, 90, 1000));
+        // A listing without a time cannot contradict the record.
+        $this->assertSame(FileChange::SAME, FileChange::compare(100, 1000, 100, null));
+    }
+
+    public function test_listing_times_become_unix_seconds(): void
+    {
+        $this->assertSame(1767225600, FileChange::timestamp('2026-01-01T00:00:00Z'));
+        $this->assertSame(5, FileChange::timestamp(5));
+        $this->assertNull(FileChange::timestamp(''));
+        $this->assertNull(FileChange::timestamp('not a date'));
+        $this->assertNull(FileChange::timestamp(null));
+    }
+
+    public function test_install_time_budget(): void
+    {
+        $now = 1000.0;
+        $budget = new TimeBudget(120, function () use (&$now): float {
+            return $now;
+        });
+
+        $this->assertSame(120, $budget->remaining());
+        $this->assertSame(120, $budget->slice(120));
+        $this->assertSame(30, $budget->slice(30));
+        $this->assertFalse($budget->exhausted());
+
+        $now += 100.5;
+        $this->assertSame(19, $budget->remaining());
+        $this->assertSame(19, $budget->slice(120));
+
+        $now += 30;
+        $this->assertTrue($budget->exhausted());
+        $this->assertSame(0, $budget->remaining());
+        $this->assertSame(1, $budget->slice(120));
     }
 }

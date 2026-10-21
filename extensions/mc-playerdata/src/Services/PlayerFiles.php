@@ -4,6 +4,7 @@ namespace McPlayerData\Services;
 
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
+use McPlayerData\Support\Backups;
 use McPlayerData\Support\MinecraftServer;
 use McPlayerData\Support\Nbt\Limits;
 use McPlayerData\Support\Nbt\NbtDocument;
@@ -25,18 +26,17 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
 /**
- * Finds, reads and rewrites <world>/playerdata/<uuid>.dat.
+ * Finds, reads and rewrites <world>/players/data/<uuid>.dat (1.21.9 and later) or
+ * <world>/playerdata/<uuid>.dat.
  *
  * Wings answers a read of a missing file or folder with a 500, so every folder is
  * listed before anything in it is read. A write keeps the old file as
- * "<uuid>.dat.mcpd-bak-<time>" next to it and keeps the newest three.
+ * "<uuid>.dat.mcpd-bak-<time>" next to it and keeps the newest ten, and any from the last week.
  */
 class PlayerFiles
 {
     /** Player files are a few kilobytes; even heavily modded ones stay well below this. */
     private const int MAX_FILE_BYTES = 4 * 1024 * 1024;
-
-    private const int KEEP_BACKUPS = 3;
 
     public function __construct(
         private readonly ReadsFileContents $reader,
@@ -77,17 +77,41 @@ class PlayerFiles
             throw new HttpException(404, 'There is no "'.$world.'" folder yet. Start the server once first.');
         }
 
+        // 1.21.9 and later keep player files in <world>/players/data, older versions in
+        // <world>/playerdata. Each parent is listed before the folder inside it is opened.
         $worldEntries = $this->entries($server, '/'.$world);
-        if (! in_array('playerdata', $this->dirNames($worldEntries), true)) {
-            throw new HttpException(404, 'The world has no playerdata folder yet.');
+        $worldDirs = $this->dirNames($worldEntries);
+        $found = [];
+        foreach (MinecraftServer::playerDataFolders() as $relative) {
+            $parts = explode('/', $relative);
+            $parent = '/'.$world;
+            $dirs = $worldDirs;
+            foreach ($parts as $index => $part) {
+                if (! in_array($part, $dirs, true)) {
+                    continue 2;
+                }
+                $parent .= '/'.$part;
+                if ($index < count($parts) - 1) {
+                    $dirs = $this->dirNames($this->entries($server, $parent));
+                }
+            }
+
+            $found[$parent] = $this->entries($server, $parent);
         }
 
-        $directory = '/'.$world.'/playerdata';
+        if ($found === []) {
+            throw new HttpException(404, 'The world has no player data folder yet.');
+        }
+
+        $directory = MinecraftServer::pickPlayerDataFolder(array_map(fn (array $entries): array => $this->fileNames($entries), $found));
+        if ($directory === null) {
+            throw new HttpException(404, 'The world has no player data folder yet.');
+        }
 
         return [
             'world' => $world,
             'directory' => $directory,
-            'folder' => $this->entries($server, $directory),
+            'folder' => $found[$directory],
             'properties' => $properties,
             'known' => $known,
             'online_mode' => $properties === null ? null : ! preg_match('/^online-mode=false\s*$/mi', $properties),
@@ -282,6 +306,7 @@ class PlayerFiles
     public function serverState(Server $server): string
     {
         try {
+            \Illuminate\Support\Facades\Cache::forget('resources:'.$server->uuid); // the panel caches power state for 20 s
             return $this->state->read($server)->state;
         } catch (DaemonConnectionException) {
             throw new HttpException(502, 'Could not reach this server\'s node.');
@@ -312,7 +337,7 @@ class PlayerFiles
     {
         try {
             $backups = $this->backupNames($this->fileNames($this->entries($server, $directory)), $uuid);
-            $old = array_slice($backups, self::KEEP_BACKUPS);
+            $old = Backups::expired($backups, new \DateTimeImmutable('now', new \DateTimeZone('UTC')));
             if ($old !== []) {
                 $this->deleter->delete($server, $directory, $old);
             }

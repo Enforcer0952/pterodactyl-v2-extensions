@@ -23,6 +23,8 @@ final class Reader
 
     private int $nodes = 0;
 
+    private int $elements = 0;
+
     private function __construct(private readonly Limits $limits) {}
 
     /** Read a file's bytes, which may or may not be gzip-compressed. */
@@ -144,10 +146,12 @@ final class Reader
                 return new Tag($type, $this->rawString());
             case Tag::INT_ARRAY:
                 $count = $this->arrayLength(4);
+                $this->countElements($count);
 
                 return new Tag($type, $count === 0 ? [] : array_map(fn (int $v): int => $v >= 0x80000000 ? $v - 0x100000000 : $v, array_values(unpack('N'.$count, $this->take($count * 4)) ?: [])));
             case Tag::LONG_ARRAY:
                 $count = $this->arrayLength(8);
+                $this->countElements($count);
 
                 return new Tag($type, $count === 0 ? [] : array_values(unpack('J'.$count, $this->take($count * 8)) ?: []));
             case Tag::LIST:
@@ -200,6 +204,11 @@ final class Reader
             throw new NbtException('The NBT data ends in the middle of a list.');
         }
 
+        // Compounds and nested lists are counted as nodes; everything else here.
+        if ($elementType !== Tag::COMPOUND && $elementType !== Tag::LIST && $elementType !== Tag::INT_ARRAY && $elementType !== Tag::LONG_ARRAY) {
+            $this->countElements($count);
+        }
+
         $items = [];
         switch ($elementType) {
             case Tag::BYTE:
@@ -240,6 +249,15 @@ final class Reader
         }
 
         return new Tag(Tag::LIST, $items, $elementType);
+    }
+
+    /** Lists of plain values are cheap per byte but costly in memory: they share one budget. */
+    private function countElements(int $count): void
+    {
+        $this->elements += $count;
+        if ($this->elements > $this->limits->maxElements) {
+            throw new NbtException('The NBT data has more than '.$this->limits->maxElements.' list entries in total.');
+        }
     }
 
     private function countNode(): void

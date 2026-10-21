@@ -16,6 +16,7 @@ import {
 } from '@pterodactyl/sdk';
 import { getContext, getInstalled, keys, saveGameVersion, search, type ContentKind, type Filters, type SearchHit } from './api';
 import { projectLinks, resultsPerPage } from './config';
+import { installBlockedReason } from './compat';
 import { formatCount, isProxyLoader, loaderLabel } from './format';
 import InstalledList from './InstalledList';
 import ProjectIcon from './ProjectIcon';
@@ -149,6 +150,7 @@ export default function ContentBrowser({ kind, title }: Props) {
     }
 
     const noun = kind === 'plugins' ? 'plugin' : 'mod';
+    const blockedReason = installBlockedReason(context.data.platform, kind, loader);
     const wrongPage = context.data.platform !== null && context.data.platform !== undefined && context.data.platform.kind !== kind;
 
     return (
@@ -156,10 +158,11 @@ export default function ContentBrowser({ kind, title }: Props) {
             <div className={'mcc:flex mcc:flex-col mcc:gap-4'}>
                 {wrongPage && (
                     <Alert type={'warning'}>
-                        This server runs {loaderLabel(context.data.platform!.loader)}, which loads {context.data.platform!.kind}, not {kind}.
-                        Installing here is turned off; use the {context.data.platform!.kind === 'mods' ? 'Mods' : 'Plugins'} page.
+                        This server runs {loaderLabel(context.data.platform!.loader)}, which loads {context.data.platform!.kind}, not {kind}
+                        . Installing here is turned off; use the {context.data.platform!.kind === 'mods' ? 'Mods' : 'Plugins'} page.
                     </Alert>
                 )}
+                {!wrongPage && blockedReason && <Alert type={'warning'}>{blockedReason} Installing is turned off for this loader.</Alert>}
                 <div className={'mcc:flex mcc:flex-wrap mcc:items-end mcc:gap-3'}>
                     <div className={'mcc:flex mcc:gap-2'} role={'tablist'}>
                         <Button
@@ -230,7 +233,13 @@ export default function ContentBrowser({ kind, title }: Props) {
                 )}
 
                 {tab === 'installed' ? (
-                    <InstalledList kind={kind} filters={filters} directory={context.data.directory} onOpen={(id) => openProject(id, id)} />
+                    <InstalledList
+                        kind={kind}
+                        filters={filters}
+                        directory={context.data.directory}
+                        blockedReason={blockedReason}
+                        onOpen={(id) => openProject(id, id)}
+                    />
                 ) : (
                     <TitledGreyBox title={`Find ${noun}s on Modrinth`}>
                         <div className={'mcc:flex mcc:flex-col mcc:gap-3'}>
@@ -264,6 +273,7 @@ export default function ContentBrowser({ kind, title }: Props) {
                                             key={hit.project_id}
                                             hit={hit}
                                             canInstall={canInstall}
+                                            blocked={blockedReason}
                                             canChangeVersion={canChangeVersion}
                                             onInstall={() => openProject(hit.project_id, hit.slug, 'versions')}
                                             onOpen={() => openProject(hit.project_id, hit.slug)}
@@ -308,6 +318,7 @@ export default function ContentBrowser({ kind, title }: Props) {
                     projectId={selected.id}
                     filters={filters}
                     initialTab={selected.tab}
+                    blockedReason={blockedReason}
                     onClose={() => setSelected(null)}
                     onInstalled={() => setTab('installed')}
                 />
@@ -319,12 +330,13 @@ export default function ContentBrowser({ kind, title }: Props) {
 interface ResultRowProps {
     hit: SearchHit;
     canInstall: boolean;
+    blocked: string | null;
     canChangeVersion: boolean;
     onInstall: () => void;
     onOpen: () => void;
 }
 
-function ResultRow({ hit, canInstall, canChangeVersion, onInstall, onOpen }: ResultRowProps) {
+function ResultRow({ hit, canInstall, blocked, canChangeVersion, onInstall, onOpen }: ResultRowProps) {
     const installed = hit.installed;
 
     return (
@@ -334,7 +346,11 @@ function ResultRow({ hit, canInstall, canChangeVersion, onInstall, onOpen }: Res
             </div>
             <div className={`mcc:min-w-0 mcc:flex-1 ${installed ? 'mcc:opacity-60' : ''}`}>
                 <div className={'mcc:flex mcc:flex-wrap mcc:items-baseline mcc:gap-x-2'}>
-                    <button type={'button'} onClick={onOpen} className={'mcc:text-left mcc:font-medium mcc:text-foreground mcc:hover:underline'}>
+                    <button
+                        type={'button'}
+                        onClick={onOpen}
+                        className={'mcc:text-left mcc:font-medium mcc:text-foreground mcc:hover:underline'}
+                    >
                         {hit.title}
                     </button>
                     <span className={'mcc:text-xs mcc:text-muted-foreground'}>by {hit.author}</span>
@@ -356,7 +372,7 @@ function ResultRow({ hit, canInstall, canChangeVersion, onInstall, onOpen }: Res
             </div>
             {installed ? (
                 canInstall && canChangeVersion ? (
-                    <Button size={'small'} isSecondary onClick={onInstall}>
+                    <Button size={'small'} isSecondary disabled={blocked !== null} title={blocked ?? undefined} onClick={onInstall}>
                         Change version
                     </Button>
                 ) : (
@@ -366,7 +382,7 @@ function ResultRow({ hit, canInstall, canChangeVersion, onInstall, onOpen }: Res
                 )
             ) : (
                 canInstall && (
-                    <Button size={'small'} onClick={onInstall}>
+                    <Button size={'small'} disabled={blocked !== null} title={blocked ?? undefined} onClick={onInstall}>
                         Install
                     </Button>
                 )

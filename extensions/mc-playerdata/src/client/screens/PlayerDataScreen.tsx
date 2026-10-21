@@ -1,12 +1,12 @@
 import { Alert, PanelLink, ServerContentBlock, useCurrentServerRequired, type ScreenComponentProps } from '@pterodactyl/sdk';
 import { ArrowLeft } from 'lucide-react';
 import PlayerDataView from '../PlayerDataView';
-import { isPlayerRef } from '../format';
+import { decodeParam, isPlayerRef } from '../format';
 
 /** /server/<id>/player-data/<player>: a name or a UUID. */
 export default function PlayerDataScreen({ data }: ScreenComponentProps) {
     const server = useCurrentServerRequired();
-    const player = decodeURIComponent(data.params.player ?? '');
+    const player = decodeParam(data.params.player);
 
     return (
         <ServerContentBlock title={player ? `${player} · Player data` : 'Player data'}>

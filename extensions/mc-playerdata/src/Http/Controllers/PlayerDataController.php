@@ -151,6 +151,7 @@ class PlayerDataController extends Controller
             'saved' => $loaded['modified'],
             'size' => $loaded['size'],
             'world' => $loaded['world'],
+            'folder' => ltrim($loaded['directory'], '/'),
             'backups' => $loaded['backups'],
             'can_manage' => $manage,
             'can_edit' => $manage && $state === 'offline',

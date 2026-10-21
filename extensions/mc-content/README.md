@@ -29,7 +29,7 @@ Adds **Plugins** and **Mods** pages to Minecraft servers in Pterodactyl 2.0. Sea
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/mc-content-1.6.1.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/mc-content-1.6.2.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -40,7 +40,7 @@ Adds **Plugins** and **Mods** pages to Minecraft servers in Pterodactyl 2.0. Sea
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/mc-content-1.6.1.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/mc-content-1.6.2.pteroext --enable --replace
 ```
 
 Settings and data are kept.

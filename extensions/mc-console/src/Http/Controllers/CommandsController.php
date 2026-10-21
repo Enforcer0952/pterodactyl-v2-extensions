@@ -40,8 +40,12 @@ class CommandsController extends Controller
     private function players(Server $server, PluginCommands $plugins, ReadsFileContents $reader): array
     {
         // Only read the file when it exists: some Wings versions answer a missing file with a 500.
-        if (! $plugins->rootHas($server, 'usercache.json')) {
-            return [];
+        try {
+            if (! $plugins->rootHas($server, 'usercache.json')) {
+                return [];
+            }
+        } catch (DaemonConnectionException) {
+            return []; // A node that is down gives no suggestions, not an error.
         }
 
         try {

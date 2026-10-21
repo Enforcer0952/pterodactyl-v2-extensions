@@ -173,4 +173,56 @@ final class PlayersTest extends TestCase
         $this->assertFalse($unknown['known']);
         $this->assertSame([], $unknown['bans']);
     }
+
+    public function test_only_lines_after_the_command_are_read(): void
+    {
+        $old = ['[10:00:01 INFO]: There are 1 of a max of 20 players online: Alex', '[10:00:02 INFO]: Alex joined the game'];
+
+        // Nothing new yet.
+        $this->assertSame([], ListOutput::newLines($old, $old));
+        // The new answer follows the old lines.
+        $answer = ['[10:00:09 INFO]: There are 2 of a max of 20 players online: Alex, Steve'];
+        $this->assertSame($answer, ListOutput::newLines($old, [...$old, ...$answer]));
+        // A full window slides: the oldest line falls out, the overlap is still found.
+        $this->assertSame($answer, ListOutput::newLines($old, [$old[1], ...$answer]));
+        // Unrelated or empty before: every line is new.
+        $this->assertSame($answer, ListOutput::newLines($old, $answer));
+        $this->assertSame($old, ListOutput::newLines([], $old));
+        $this->assertSame([], ListOutput::newLines($old, []));
+    }
+
+    public function test_an_old_list_answer_is_not_mistaken_for_the_reply(): void
+    {
+        $old = ['[10:00:01 INFO]: There are 5 of a max of 20 players online: A, B, C, D, E'];
+        $this->assertNull(ListOutput::parse(ListOutput::newLines($old, $old)));
+    }
+
+    public function test_stats_folders_follow_the_newer_layout_first(): void
+    {
+        $this->assertSame(['/world/players/stats', '/world/stats'], Stats::folders('world'));
+        $this->assertSame(['/My World/players/stats', '/My World/stats'], Stats::folders('My World'));
+    }
+
+    #[DataProvider('worldNames')]
+    public function test_world_names_cannot_leave_the_server(?string $level, ?string $expected): void
+    {
+        $this->assertSame($expected, Stats::worldName($level));
+    }
+
+    public static function worldNames(): array
+    {
+        return [
+            'default' => [null, 'world'],
+            'empty' => ['  ', 'world'],
+            'plain' => ['survival_1', 'survival_1'],
+            'spaces and dots' => ['My World 1.21', 'My World 1.21'],
+            'parent' => ['..', null],
+            'traversal' => ['../etc', null],
+            'nested' => ['a/b', null],
+            'backslash' => ['a\\b', null],
+            'hidden' => ['.hidden', null],
+            'double dot inside' => ['a..b', null],
+            'too long' => [str_repeat('a', 70), null],
+        ];
+    }
 }

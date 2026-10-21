@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use McContent\Models\Install;
 use McContent\Support\ContentKind;
+use McContent\Support\FileChange;
 use Pterodactyl\Contracts\Files\ReadsFileContents;
 use Pterodactyl\Models\Server;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -88,7 +89,7 @@ class InstallDetector
         }
 
         if ($hashes !== []) {
-            $this->record($server, $type, $hashes);
+            $this->record($server, $type, $hashes, $jars);
         }
 
         return $pending;
@@ -96,8 +97,9 @@ class InstallDetector
 
     /**
      * @param  array<string, string>  $hashes  SHA-1 hashes keyed by file name
+     * @param  array<string, array<string, mixed>>  $jars  directory entries keyed by file name
      */
-    private function record(Server $server, ContentKind $type, array $hashes): void
+    private function record(Server $server, ContentKind $type, array $hashes, array $jars): void
     {
         try {
             $versions = $this->modrinth->versionsForHashes(array_values(array_unique($hashes)));
@@ -131,6 +133,8 @@ class InstallDetector
                         'version_number' => mb_substr((string) ($version['version_number'] ?? ''), 0, 128),
                         'icon_url' => is_string($icon) && parse_url($icon, PHP_URL_HOST) === 'cdn.modrinth.com' ? $icon : null,
                         'sha1' => $hash,
+                        'file_size' => (int) ($jars[$name]['size'] ?? 0),
+                        'file_mtime' => FileChange::timestamp($jars[$name]['modified'] ?? null),
                     ],
                 );
             } catch (\Illuminate\Database\QueryException) {

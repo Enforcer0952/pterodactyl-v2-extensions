@@ -232,7 +232,11 @@ export function ConsoleAssist({ server, withServerData = true }: { server: SdkSe
                         >
                             <span className={'mccon:shrink-0'}>{suggestion.value}</span>
                             {suggestion.detail && (
-                                <span className={`mccon:truncate ${position === index ? 'mccon:opacity-80' : 'mccon:text-muted-foreground'}`}>{suggestion.detail}</span>
+                                <span
+                                    className={`mccon:truncate ${position === index ? 'mccon:opacity-80' : 'mccon:text-muted-foreground'}`}
+                                >
+                                    {suggestion.detail}
+                                </span>
                             )}
                         </li>
                     ))}
@@ -250,16 +254,24 @@ export function ConsoleAssist({ server, withServerData = true }: { server: SdkSe
                             {line.parts.map((part, partIndex) => (
                                 <Fragment key={partIndex}>
                                     {partIndex > 0 ? ' ' : '/'}
-                                    <span className={part.current ? 'mccon:font-semibold mccon:text-foreground mccon:underline' : undefined}>{part.text}</span>
+                                    <span
+                                        className={part.current ? 'mccon:font-semibold mccon:text-foreground mccon:underline' : undefined}
+                                    >
+                                        {part.text}
+                                    </span>
                                 </Fragment>
                             ))}
                             {line.source !== 'Minecraft' && <span className={'mccon:ml-2 mccon:opacity-70'}>({line.source})</span>}
                         </div>
                     ))}
-                    {result.description && <div className={'mccon:mt-1 mccon:font-sans mccon:text-foreground/80'}>{result.description}</div>}
+                    {result.description && (
+                        <div className={'mccon:mt-1 mccon:font-sans mccon:text-foreground/80'}>{result.description}</div>
+                    )}
                     <div className={'mccon:mt-1 mccon:font-sans mccon:text-[11px]'}>
                         Tab to complete · ↑↓ to choose · Esc to hide
-                        {withServerData && (serverCommands.data?.pending ?? 0) > 0 && ` · reading plugins (${serverCommands.data?.pending} left)`}
+                        {withServerData &&
+                            (serverCommands.data?.pending ?? 0) > 0 &&
+                            ` · reading plugins (${serverCommands.data?.pending} left)`}
                         {withServerData && serverCommands.isError && ' · plugin commands unavailable'}
                     </div>
                 </div>

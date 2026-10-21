@@ -16,6 +16,8 @@ final class PlayerEdits
 
     public const int MAX_Y = 4064;
 
+    private const array LEGACY_DIMENSIONS = ['0' => 'minecraft:overworld', '-1' => 'minecraft:the_nether', '1' => 'minecraft:the_end'];
+
     /**
      * Take an item (or part of a stack) out of one slot.
      *
@@ -123,14 +125,22 @@ final class PlayerEdits
 
         // Files from before 1.16 name the dimension with a number.
         $current = $root->get('Dimension');
+        $before = $current?->asInt() !== null ? self::LEGACY_DIMENSIONS[(string) $current->asInt()] ?? null : $current?->text();
         if ($current !== null && $current->asInt() !== null) {
-            $number = array_search($dimension, ['0' => 'minecraft:overworld', '-1' => 'minecraft:the_nether', '1' => 'minecraft:the_end'], true);
+            $number = array_search($dimension, self::LEGACY_DIMENSIONS, true);
             if ($number === false) {
                 throw new PlayerEditException('This old save only knows the overworld, the nether and the end.');
             }
             $root->put('Dimension', new Tag($current->type, (int) $number));
         } else {
             $root->put('Dimension', Tag::string($dimension));
+        }
+
+        // The player file remembers the world by id. For another dimension that id is wrong,
+        // and the game refuses the position; without it the game works the world out itself.
+        if ($before !== $dimension) {
+            $root->remove('WorldUUIDLeast');
+            $root->remove('WorldUUIDMost');
         }
 
         $root->put('Pos', Tag::list(Tag::DOUBLE, [$x, $y, $z]));

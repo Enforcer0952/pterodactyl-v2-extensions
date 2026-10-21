@@ -123,7 +123,12 @@ export function usageToSyntax(name: string, usage: string | null): string[] {
 
     return usage
         .split(/\r?\n/)
-        .map((line) => line.replace(/§[0-9a-fk-or]/gi, '').replace(/^\s*usage:\s*/i, '').trim())
+        .map((line) =>
+            line
+                .replace(/§[0-9a-fk-or]/gi, '')
+                .replace(/^\s*usage:\s*/i, '')
+                .trim(),
+        )
         .filter((line) => /^\/?(<command>|\S+)/.test(line))
         .map((line) => {
             const parts = groups(line.replace(/^\//, ''));
@@ -163,13 +168,20 @@ function usageWord(word: string): string {
 
     // "<add|remove>", "[on|off]" and bare "a|b" are fixed choices.
     if (body.includes('|')) {
-        const values = body.split('|').map((value) => value.trim().replace(/[<>[\]()]/g, '')).filter((value) => /^[\w.-]+$/.test(value));
+        const values = body
+            .split('|')
+            .map((value) => value.trim().replace(/[<>[\]()]/g, ''))
+            .filter((value) => /^[\w.-]+$/.test(value));
         if (values.length > 1) return wrap(`(${values.join('|')})`);
     }
 
     if (!arg && !optional && /^[\w-]+$/.test(word)) return word;
 
-    const name = body.replace(/[<>[\]():]/g, '').trim().replace(/\s+/g, '_') || 'value';
+    const name =
+        body
+            .replace(/[<>[\]():]/g, '')
+            .trim()
+            .replace(/\s+/g, '_') || 'value';
     return wrap(`<${name}:${guessType(name)}>`);
 }
 

@@ -11,6 +11,15 @@ final class MinecraftServer
      * or the "eula" feature every Java egg has (fresh 2.0 installs do not tag the
      * built-in eggs). Bedrock and proxies (BungeeCord, Waterfall, Velocity) are not.
      */
+    /**
+     * Whether a server can be asked anything right now: it is not suspended,
+     * installing, restoring or failed, and its node is not in maintenance.
+     */
+    public static function isAvailable(Server $server): bool
+    {
+        return $server->status === null && ! (bool) ($server->node?->maintenance_mode ?? false);
+    }
+
     public static function hasPlayerLists(Server $server): bool
     {
         $tags = array_map('strtolower', $server->tagSlugs());

@@ -16,7 +16,7 @@ import {
     type SdkServer,
 } from '@pterodactyl/sdk';
 import { getLists, getOnline, keys, runAction, type Action, type Lists, type OnlineResponse } from './api';
-import { isValidName, parseConsoleLine } from './console';
+import { isValidName, parseConsoleLine, replyNotice } from './console';
 import { ReasonDialog, banDetail, type Prompt } from './shared';
 import { linkBehaviour } from './config';
 import { headUrl } from './skins';
@@ -64,8 +64,18 @@ export function PlayersCard({ server }: { server: SdkServer }) {
         op: useServerPermission('ext.mc-players.op'),
     };
 
-    const online = useQuery({ queryKey: keys.online(identifier), queryFn: () => getOnline(identifier), staleTime: 30_000 });
-    const lists = useQuery({ queryKey: keys.lists(identifier), queryFn: () => getLists(identifier), staleTime: 30_000 });
+    const online = useQuery({
+        queryKey: keys.online(identifier),
+        queryFn: () => getOnline(identifier),
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+    });
+    const lists = useQuery({
+        queryKey: keys.lists(identifier),
+        queryFn: () => getLists(identifier),
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+    });
 
     const action = useMutation({
         mutationFn: (input: { action: Action; target?: string; reason?: string }) =>
@@ -75,7 +85,8 @@ export function PlayersCard({ server }: { server: SdkServer }) {
             if (input.action === 'kick' || input.action === 'ban') {
                 updateOnline((players) => players.filter((name) => name.toLowerCase() !== input.target?.toLowerCase()));
             }
-            toast.success(result.reply ? result.reply : successMessage(input.action, input.target, result.state));
+            const notice = replyNotice(result.reply, result.state, successMessage(input.action, input.target, result.state));
+            toast[notice.type](notice.message);
             setPrompt(null);
         },
         onError: (error) => toast.error(httpErrorToHuman(error)),

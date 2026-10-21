@@ -12,6 +12,9 @@ use McContent\Services\InstallDetector;
 use McContent\Services\ModrinthClient;
 use McContent\Services\ServerFiles;
 use McContent\Support\ContentKind;
+use McContent\Support\FileChange;
+use McContent\Support\JarName;
+use McContent\Support\TimeBudget;
 use McContent\Support\Updates;
 use Pterodactyl\Contracts\Files\CreatesDirectories;
 use Pterodactyl\Contracts\Files\DeletesFiles;
@@ -25,11 +28,12 @@ class ContentController extends Controller
 {
     private const string VERSION_PATTERN = '/^\d+(\.\d+){1,2}([-.][A-Za-z0-9.]+)?$/';
 
-    private const string JAR_PATTERN = '/^[A-Za-z0-9][A-Za-z0-9._+\-()\[\] ]{0,200}\.jar$/';
-
     private const array SORTS = ['relevance', 'downloads', 'follows', 'newest', 'updated'];
 
     private const int MAX_DEPENDENCIES = 10;
+
+    /** Seconds one install may take in total, dependencies included. */
+    private const int INSTALL_BUDGET = 120;
 
     /** At most this many extra version lists are fetched per page load to find stable updates. */
     private const int MAX_UPDATE_LOOKUPS = 15;
@@ -47,6 +51,7 @@ class ContentController extends Controller
     public function context(Request $request, Server $server, string $kind, GameVersionDetector $detector): JsonResponse
     {
         $type = ContentKind::from($kind);
+        $this->gate($server, $type);
         $this->authorizeRead($request, $server);
         $detected = $detector->detect($server);
         $platform = $this->files->platform($server);
@@ -81,9 +86,20 @@ class ContentController extends Controller
     {
         $this->authorizeRead($request, $server);
 
+        return new JsonResponse(['platform' => $this->files->platform($server), 'kinds' => $this->kinds($server)]);
+    }
+
+    /**
+     * The content pages this server shows: what its files say it runs, or, before it
+     * has ever started, what its egg tags say.
+     *
+     * @return list<string>
+     */
+    private function kinds(Server $server): array
+    {
         $platform = $this->files->platform($server);
         if ($platform !== null) {
-            return new JsonResponse(['platform' => $platform, 'kinds' => [$platform['kind']]]);
+            return [$platform['kind']];
         }
 
         $kinds = [];
@@ -93,7 +109,13 @@ class ContentController extends Controller
             }
         }
 
-        return new JsonResponse(['platform' => null, 'kinds' => $kinds]);
+        return $kinds;
+    }
+
+    /** The routes exist only for servers whose page is shown, like the screens. */
+    private function gate(Server $server, ContentKind $type): void
+    {
+        abort_unless(in_array($type->value, $this->kinds($server), true), 404);
     }
 
     /**
@@ -102,6 +124,7 @@ class ContentController extends Controller
      */
     public function preferences(Request $request, Server $server, string $kind, GameVersionDetector $detector): JsonResponse
     {
+        $this->gate($server, ContentKind::from($kind));
         abort_unless($request->user()->can('file.create', $server), 403, 'You do not have permission to change this server\'s content settings.');
 
         $data = $request->validate([
@@ -117,6 +140,7 @@ class ContentController extends Controller
     public function search(Request $request, Server $server, string $kind): JsonResponse
     {
         $type = ContentKind::from($kind);
+        $this->gate($server, $type);
         $this->authorizeRead($request, $server);
         $data = $this->validateSearch($request, $type);
 
@@ -147,6 +171,7 @@ class ContentController extends Controller
     public function versions(Request $request, Server $server, string $kind, string $project): JsonResponse
     {
         $type = ContentKind::from($kind);
+        $this->gate($server, $type);
         $this->authorizeRead($request, $server);
         $data = $this->validateSearch($request, $type);
 
@@ -165,6 +190,16 @@ class ContentController extends Controller
             ->where('kind', $type->value)
             ->where('project_id', $project)
             ->first();
+        if ($current !== null) {
+            try {
+                $listing = $this->files->list($server, $type->directory());
+                if ($listing === null || ! $this->recordIsCurrent($current, $this->jars($listing))) {
+                    $current = null;
+                }
+            } catch (DaemonConnectionException) {
+                $current = null;
+            }
+        }
 
         return new JsonResponse([
             'data' => array_slice($versions, 0, 50),
@@ -183,6 +218,7 @@ class ContentController extends Controller
     public function project(Request $request, Server $server, string $kind, string $project): JsonResponse
     {
         $type = ContentKind::from($kind);
+        $this->gate($server, $type);
         $this->authorizeRead($request, $server);
 
         $details = $this->modrinth->projectDetails($project);
@@ -201,6 +237,7 @@ class ContentController extends Controller
      */
     public function projectNames(Request $request, Server $server, string $kind): JsonResponse
     {
+        $this->gate($server, ContentKind::from($kind));
         $this->authorizeRead($request, $server);
         $ids = $request->validate([
             'ids' => ['required', 'array', 'max:50'],
@@ -223,6 +260,7 @@ class ContentController extends Controller
     ): JsonResponse
     {
         $type = ContentKind::from($kind);
+        $this->gate($server, $type);
         $this->authorizeRead($request, $server);
 
         $loader = $request->query('loader');
@@ -243,8 +281,11 @@ class ContentController extends Controller
 
         $jars = $this->jars($files);
 
+        // Drop records of files that are gone or were replaced by hand, and fill in the
+        // size and time of records made before they were kept.
+        $tracked = $this->reconcile($server, $type, $jars);
+
         // Recognise jars that were added by hand; large folders are done in batches.
-        $tracked = Install::query()->where('server_id', $server->id)->where('kind', $type->value)->pluck('filename')->all();
         $pending = $detector->identify($server, $type, $jars, $tracked, 25);
 
         $records = Install::query()
@@ -252,13 +293,6 @@ class ContentController extends Controller
             ->where('kind', $type->value)
             ->get()
             ->keyBy('filename');
-
-        // Forget installs whose file was deleted or renamed outside the panel.
-        $stale = $records->keys()->diff(array_keys($jars));
-        if ($stale->isNotEmpty()) {
-            Install::query()->where('server_id', $server->id)->where('kind', $type->value)->whereIn('filename', $stale->all())->delete();
-            $records = $records->except($stale->all());
-        }
 
         $updates = [];
         $current = [];
@@ -331,6 +365,7 @@ class ContentController extends Controller
         DeletesFiles $deleter,
     ): JsonResponse {
         $type = ContentKind::from($kind);
+        $this->gate($server, $type);
         abort_unless($request->user()->can('file.create', $server), 403, 'You do not have permission to create files on this server.');
 
         $platform = $this->files->platform($server);
@@ -342,53 +377,70 @@ class ContentController extends Controller
             'version_id' => ['required', 'string', 'regex:/^[A-Za-z0-9]{8}$/'],
             'loader' => ['required', 'string', 'in:'.implode(',', $type->loaders())],
             'game_version' => ['nullable', 'string', 'regex:'.self::VERSION_PATTERN],
-            'replace' => ['nullable', 'string', 'regex:/^[A-Za-z0-9][A-Za-z0-9._+\-()\[\] ]{0,200}\.jar(\.disabled)?$/'],
+            'replace' => ['nullable', 'string', $this->jarRule()],
         ]);
+
+        // One install gets a fixed amount of time, dependencies included.
+        $budget = new TimeBudget(self::INSTALL_BUDGET);
+        @set_time_limit(self::INSTALL_BUDGET + 30);
 
         $loaders = ContentKind::compatibleLoaders($data['loader']);
         if (ContentKind::isProxy($data['loader'])) {
             $data['game_version'] = null;
         }
         $existing = $this->existingFiles($server, $type, $directories);
+        $jars = $this->jars($this->files->list($server, $type->directory()) ?? []);
 
         // A project can only be installed once. Installing another version of a
         // project that is already here replaces the old file instead.
         $requested = $this->modrinth->version($data['version_id']);
+        $projectId = (string) ($requested['project_id'] ?? '');
         $current = Install::query()
             ->where('server_id', $server->id)
             ->where('kind', $type->value)
-            ->where('project_id', (string) ($requested['project_id'] ?? ''))
+            ->where('project_id', $projectId)
             ->first();
 
-        if ($current !== null && in_array($current->filename, $existing, true)) {
+        $replace = null;
+        if ($current !== null && $this->recordIsCurrent($current, $jars)) {
             if ($current->version_id === $data['version_id']) {
                 throw new HttpException(409, $current->title.' '.$current->version_number.' is already installed.');
             }
 
-            $data['replace'] = $current->filename;
+            $replace = $current->filename;
+        } elseif (! empty($data['replace'])) {
+            // Only a file this extension tracks as the same project is ever replaced.
+            $named = Install::query()
+                ->where('server_id', $server->id)
+                ->where('kind', $type->value)
+                ->where('filename', $data['replace'])
+                ->first();
+            if ($named !== null && $named->project_id === $projectId && $this->recordIsCurrent($named, $jars)) {
+                $replace = $named->filename;
+            }
         }
 
-        if (! empty($data['replace'])) {
+        if ($replace !== null) {
             abort_unless($request->user()->can('file.delete', $server), 403, 'Changing the installed version needs permission to delete files on this server.');
         }
 
         $installed = [];
-        $installed[] = $this->installVersion($server, $type, $puller, $data['version_id'], $loaders, $existing, $data['replace'] ?? null);
+        $installed[] = $this->installVersion($server, $type, $puller, $data['version_id'], $loaders, $existing, $budget, $replace);
 
-        if (! empty($data['replace']) && $data['replace'] !== $installed[0]['filename'] && in_array($data['replace'], $existing, true)) {
+        if ($replace !== null && $replace !== $installed[0]['filename'] && in_array($replace, $existing, true)) {
             // The record of the old file goes first: if deleting it fails, the new
             // version is still the one the panel tracks. The panel logs the delete.
-            Install::query()->where('server_id', $server->id)->where('kind', $type->value)->where('filename', $data['replace'])->delete();
+            Install::query()->where('server_id', $server->id)->where('kind', $type->value)->where('filename', $replace)->delete();
             try {
-                $deleter->delete($server, $type->directory(), [$data['replace']]);
+                $deleter->delete($server, $type->directory(), [$replace]);
             } catch (DaemonConnectionException) {
-                throw new HttpException(502, $installed[0]['title'].' '.$installed[0]['version_number'].' was installed, but the old file '.$data['replace'].' could not be deleted. Delete it in the file manager, or both versions will load.');
+                throw new HttpException(502, $installed[0]['title'].' '.$installed[0]['version_number'].' was installed, but the old file '.$replace.' could not be deleted. Delete it in the file manager, or both versions will load.');
             }
         }
 
         $skipped = [];
         if ($this->setting('install_dependencies') ?? true) {
-            $this->installDependencies($server, $type, $puller, $installed[0]['dependencies'], $loaders, $data['game_version'] ?? null, $existing, $installed, $skipped);
+            $this->installDependencies($server, $type, $puller, $installed[0]['dependencies'], $loaders, $data['game_version'] ?? null, $existing, $installed, $skipped, $budget);
         }
 
         return new JsonResponse([
@@ -400,10 +452,11 @@ class ContentController extends Controller
     public function uninstall(Request $request, Server $server, string $kind, DeletesFiles $deleter): JsonResponse
     {
         $type = ContentKind::from($kind);
+        $this->gate($server, $type);
         abort_unless($request->user()->can('file.delete', $server), 403, 'You do not have permission to delete files on this server.');
 
         $data = $request->validate([
-            'filename' => ['required', 'string', 'regex:/^[A-Za-z0-9][A-Za-z0-9._+\-()\[\] ]{0,200}\.jar(\.disabled)?$/'],
+            'filename' => ['required', 'string', $this->jarRule()],
         ]);
 
         // The panel's delete action records this in the activity log.
@@ -418,7 +471,7 @@ class ContentController extends Controller
      * @param  list<string>  $existing  file names already in the folder, updated in place
      * @return array<string, mixed>
      */
-    private function installVersion(Server $server, ContentKind $type, PullsFiles $puller, string $versionId, array $loaders, array &$existing, ?string $replacing = null): array
+    private function installVersion(Server $server, ContentKind $type, PullsFiles $puller, string $versionId, array $loaders, array &$existing, TimeBudget $budget, ?string $replacing = null): array
     {
         $version = $this->modrinth->version($versionId);
 
@@ -437,11 +490,7 @@ class ContentController extends Controller
             throw new HttpException(422, 'Refusing to download from an unexpected host.');
         }
 
-        $filename = basename($jar['filename']);
-        if (preg_match(self::JAR_PATTERN, $filename) !== 1) {
-            $stem = trim((string) preg_replace('/[^A-Za-z0-9._+-]/', '_', pathinfo($filename, PATHINFO_FILENAME)), '._');
-            $filename = ($stem !== '' ? $stem : (string) $version['id']).'.jar';
-        }
+        $filename = JarName::normalize($jar['filename'], (string) $version['id']);
 
         // Never overwrite a file that belongs to another project.
         if (in_array($filename, $existing, true) && $filename !== $replacing) {
@@ -451,12 +500,24 @@ class ContentController extends Controller
             }
         }
 
+        if ($budget->exhausted()) {
+            throw $this->outOfTime($budget);
+        }
+
         // The panel's pull action records this in the activity log.
-        $puller->pull($server, $jar['url'], $type->directory(), [
-            'filename' => $filename,
-            'foreground' => true,
-            'timeout' => 120,
-        ]);
+        try {
+            $puller->pull($server, $jar['url'], $type->directory(), [
+                'filename' => $filename,
+                'foreground' => true,
+                'timeout' => $budget->slice(120),
+            ]);
+        } catch (DaemonConnectionException $exception) {
+            if ($budget->exhausted()) {
+                throw $this->outOfTime($budget);
+            }
+
+            throw $exception;
+        }
 
         $project = [];
         try {
@@ -477,6 +538,8 @@ class ContentController extends Controller
                 'version_number' => mb_substr((string) ($version['version_number'] ?? ''), 0, 128),
                 'icon_url' => $icon,
                 'sha1' => $jar['sha1'],
+                'file_size' => $jar['size'] > 0 ? $jar['size'] : null,
+                'file_mtime' => null, // learned from the folder listing on the next visit
             ],
         );
 
@@ -511,6 +574,7 @@ class ContentController extends Controller
         array &$existing,
         array &$installed,
         array &$skipped,
+        TimeBudget $budget,
     ): void {
         $tracked = Install::query()->where('server_id', $server->id)->where('kind', $type->value)->pluck('project_id')->all();
 
@@ -521,6 +585,12 @@ class ContentController extends Controller
 
             $projectId = is_string($dependency['project_id'] ?? null) ? $dependency['project_id'] : null;
             if ($projectId !== null && in_array($projectId, $tracked, true)) {
+                continue;
+            }
+
+            if ($budget->exhausted()) {
+                $skipped[] = ['project_id' => $projectId, 'reason' => 'Stopped after '.$budget->total().' seconds. Install this dependency on its own.'];
+
                 continue;
             }
 
@@ -541,11 +611,11 @@ class ContentController extends Controller
 
                 $version = $this->modrinth->version($versionId);
                 $jar = $this->modrinth->primaryJar($version);
-                if ($jar !== null && in_array(basename($jar['filename']), $existing, true)) {
+                if ($jar !== null && in_array(JarName::normalize($jar['filename'], $versionId), $existing, true)) {
                     continue;
                 }
 
-                $result = $this->installVersion($server, $type, $puller, $versionId, $loaders, $existing);
+                $result = $this->installVersion($server, $type, $puller, $versionId, $loaders, $existing, $budget);
                 $installed[] = $result;
                 $tracked[] = $result['project_id'];
             } catch (HttpException|DaemonConnectionException $exception) {
@@ -572,6 +642,9 @@ class ContentController extends Controller
         $result = [];
         $records = Install::query()->where('server_id', $server->id)->where('kind', $type->value)->whereIn('filename', array_keys($jars))->get();
         foreach ($records as $record) {
+            if (! $this->recordIsCurrent($record, $jars)) {
+                continue; // The file was replaced by hand; the Installed tab sorts it out.
+            }
             $result[$record->project_id] = [
                 'filename' => $record->filename,
                 'version_id' => $record->version_id,
@@ -580,6 +653,91 @@ class ContentController extends Controller
         }
 
         return $result;
+    }
+
+    private function outOfTime(TimeBudget $budget): HttpException
+    {
+        return new HttpException(504, 'Installing took longer than '.$budget->total().' seconds, so it was stopped. Check the plugins or mods folder, then try again.');
+    }
+
+    /** Validation rule for a jar file name sent by the browser. */
+    private function jarRule(): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail): void {
+            if (! is_string($value) || ! JarName::isSafe($value)) {
+                $fail('The '.$attribute.' is not a valid jar file name.');
+            }
+        };
+    }
+
+    /**
+     * Whether an install record still describes the file with that name: it exists,
+     * and its size and time have not changed since the record was made.
+     *
+     * @param  array<string, array<string, mixed>>  $jars
+     */
+    private function recordIsCurrent(Install $record, array $jars): bool
+    {
+        $file = $jars[$record->filename] ?? null;
+        if ($file === null) {
+            return false;
+        }
+
+        return FileChange::compare(
+            $record->file_size !== null ? (int) $record->file_size : null,
+            $record->file_mtime !== null ? (int) $record->file_mtime : null,
+            (int) ($file['size'] ?? 0),
+            FileChange::timestamp($file['modified'] ?? null),
+        ) !== FileChange::CHANGED;
+    }
+
+    /**
+     * Bring the install records in line with the folder: forget records whose file is
+     * gone or was replaced, and note the size and time of the ones that match.
+     *
+     * @param  array<string, array<string, mixed>>  $jars
+     * @return list<string> file names that have a valid record
+     */
+    private function reconcile(Server $server, ContentKind $type, array $jars): array
+    {
+        $records = Install::query()->where('server_id', $server->id)->where('kind', $type->value)->get();
+        $drop = [];
+        $valid = [];
+
+        foreach ($records as $record) {
+            $file = $jars[$record->filename] ?? null;
+            if ($file === null) {
+                $drop[] = $record->filename;
+
+                continue;
+            }
+
+            $size = (int) ($file['size'] ?? 0);
+            $time = FileChange::timestamp($file['modified'] ?? null);
+            $state = FileChange::compare(
+                $record->file_size !== null ? (int) $record->file_size : null,
+                $record->file_mtime !== null ? (int) $record->file_mtime : null,
+                $size,
+                $time,
+            );
+
+            if ($state === FileChange::CHANGED) {
+                $drop[] = $record->filename;
+
+                continue;
+            }
+
+            if ($state === FileChange::ADOPT) {
+                $record->forceFill(['file_size' => $size, 'file_mtime' => $time])->save();
+            }
+            $valid[] = $record->filename;
+        }
+
+        if ($drop !== []) {
+            Install::query()->where('server_id', $server->id)->where('kind', $type->value)->whereIn('filename', $drop)->delete();
+        }
+
+        return $valid;
     }
 
     /**

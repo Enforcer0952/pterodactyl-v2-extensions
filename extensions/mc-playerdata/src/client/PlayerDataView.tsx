@@ -17,7 +17,7 @@ import { Actions } from './Actions';
 import { Details } from './Details';
 import { EnderGrid, InventoryGrid, ItemDetail, OtherSlots, findItem, type Selection } from './Items';
 import { editPlayer, getPlayer, getPlayers, keys, type EditRequest, type EditResult, type KnownPlayer, type PlayerView } from './api';
-import { slotName } from './format';
+import { canEditNow, slotName } from './format';
 
 interface Pending {
     request: EditRequest;
@@ -33,6 +33,8 @@ export default function PlayerDataView({ player }: { player: string }) {
     const queryClient = useQueryClient();
     const [selection, setSelection] = useState<Selection | null>(null);
     const [pending, setPending] = useState<Pending | null>(null);
+    // After a save the file is read again before more edits are offered, so nothing is changed from a stale copy.
+    const [refreshing, setRefreshing] = useState(false);
 
     const view = useQuery({ queryKey: keys.player(identifier, player), queryFn: () => getPlayer(identifier, player), retry: false });
     const data = view.data;
@@ -50,9 +52,17 @@ export default function PlayerDataView({ player }: { player: string }) {
 
     const edit = useMutation({
         mutationFn: (input: { request: EditRequest; done: string }) => editPlayer(identifier, player, data?.hash ?? '', input.request),
-        onSuccess: (result: EditResult, input) => {
-            queryClient.setQueryData<PlayerView>(keys.player(identifier, player), result);
+        onSuccess: async (result: EditResult, input) => {
+            queryClient.setQueryData<PlayerView>(keys.player(identifier, player), result.changed ? { ...result, can_edit: false } : result);
             setPending(null);
+            if (result.changed) {
+                setRefreshing(true);
+                try {
+                    await queryClient.invalidateQueries({ queryKey: keys.player(identifier, player) });
+                } finally {
+                    setRefreshing(false);
+                }
+            }
             if (!result.changed) {
                 toast.success('Nothing to change.');
                 return;
@@ -68,6 +78,7 @@ export default function PlayerDataView({ player }: { player: string }) {
     });
 
     const busy = edit.isPending;
+    const canEdit = data ? canEditNow(data, refreshing) : false;
     const selected = useMemo(() => (data ? findItem(data.data, selection) : null), [data, selection]);
 
     // A selected slot that is empty after an edit is dropped.
@@ -97,7 +108,7 @@ export default function PlayerDataView({ player }: { player: string }) {
                     <ItemDetail
                         item={selected}
                         selection={selection}
-                        canEdit={data.can_edit}
+                        canEdit={canEdit}
                         busy={busy}
                         onRemove={(amount) => {
                             if (!selection || !selected) return;
@@ -116,7 +127,7 @@ export default function PlayerDataView({ player }: { player: string }) {
                         }}
                     />
                     <Details data={data.data} saved={data.saved} />
-                    {data.can_edit && (
+                    {canEdit && (
                         <Actions
                             key={data.hash}
                             data={data.data}
@@ -127,7 +138,7 @@ export default function PlayerDataView({ player }: { player: string }) {
                     )}
                     {data.backups.length > 0 && (
                         <p className={'mcpd:text-xs mcpd:text-muted-foreground'}>
-                            Backups in {data.world}/playerdata: {data.backups.join(', ')}
+                            Backups in {data.folder ?? `${data.world}/playerdata`}: {data.backups.join(', ')}
                         </p>
                     )}
                 </div>

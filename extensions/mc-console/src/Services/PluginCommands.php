@@ -56,49 +56,51 @@ class PluginCommands
         $lock = Cache::lock('ext:mc-console:read:'.$server->uuid, 60);
         $reading = $lock->get();
 
-        $commands = [];
-        $pending = 0;
-        $read = 0;
-        $bytes = 0;
+        try {
+            $commands = [];
+            $pending = 0;
+            $read = 0;
+            $bytes = 0;
 
-        foreach ($files as $file) {
-            $name = (string) ($file['name'] ?? '');
-            if (! ($file['file'] ?? true) || ! str_ends_with(strtolower($name), '.jar')) {
-                continue;
-            }
-
-            $size = (int) ($file['size'] ?? 0);
-            $key = 'ext:mc-console:plugin:'.$server->uuid.':'.sha1($name.'|'.$size.'|'.($file['modified'] ?? ''));
-            $result = Cache::get($key);
-
-            if ($result === null) {
-                if ($size > self::MAX_JAR_BYTES) {
-                    $result = [];
-                } elseif (! $reading || $read >= self::MAX_BATCH_FILES || $bytes + $size > self::MAX_BATCH_BYTES) {
-                    $pending++;
-
+            foreach ($files as $file) {
+                $name = (string) ($file['name'] ?? '');
+                if (! ($file['file'] ?? true) || ! str_ends_with(strtolower($name), '.jar')) {
                     continue;
-                } else {
-                    $read++;
-                    $bytes += $size;
-                    $result = $this->readJar($server, $name);
                 }
 
-                // A failed read (node hiccup) is retried after a few minutes, not a month.
-                Cache::put($key, $result ?? [], $result === null ? now()->addMinutes(5) : now()->addDays(30));
-                $result ??= [];
-            }
+                $size = (int) ($file['size'] ?? 0);
+                $key = 'ext:mc-console:plugin:'.$server->uuid.':'.sha1($name.'|'.$size.'|'.($file['modified'] ?? ''));
+                $result = Cache::get($key);
 
-            foreach ($result as $command) {
-                if (count($commands) >= self::MAX_COMMANDS) {
-                    break 2;
+                if ($result === null) {
+                    if ($size > self::MAX_JAR_BYTES) {
+                        $result = [];
+                    } elseif (! $reading || $read >= self::MAX_BATCH_FILES || $bytes + $size > self::MAX_BATCH_BYTES) {
+                        $pending++;
+
+                        continue;
+                    } else {
+                        $read++;
+                        $bytes += $size;
+                        $result = $this->readJar($server, $name);
+                    }
+
+                    // A failed read (node hiccup) is retried after a few minutes, not a month.
+                    Cache::put($key, $result ?? [], $result === null ? now()->addMinutes(5) : now()->addDays(30));
+                    $result ??= [];
                 }
-                $commands[] = $command;
-            }
-        }
 
-        if ($reading) {
-            $lock->release();
+                foreach ($result as $command) {
+                    if (count($commands) >= self::MAX_COMMANDS) {
+                        break 2;
+                    }
+                    $commands[] = $command;
+                }
+            }
+        } finally {
+            if ($reading) {
+                $lock->release();
+            }
         }
 
         return ['commands' => $commands, 'pending' => $pending];

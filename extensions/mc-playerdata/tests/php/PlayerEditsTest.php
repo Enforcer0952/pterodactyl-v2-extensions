@@ -308,4 +308,37 @@ final class PlayerEditsTest extends TestCase
 
         $this->assertSame($original, Writer::writeDocument(Reader::readFile(Writer::writeFile($document))));
     }
+
+    public function test_teleport_to_another_dimension_drops_the_world_id(): void
+    {
+        $root = Tag::compound([
+            'Dimension' => Tag::string('minecraft:overworld'),
+            'WorldUUIDLeast' => Tag::long(123),
+            'WorldUUIDMost' => Tag::long(456),
+            'Pos' => Tag::list(Tag::DOUBLE, [0.0, 0.0, 0.0]),
+        ]);
+        PlayerEdits::teleport($root, 1, 70, 1, 'minecraft:the_nether');
+        $this->assertFalse($root->has('WorldUUIDLeast'));
+        $this->assertFalse($root->has('WorldUUIDMost'));
+        $this->assertSame('minecraft:the_nether', $root->get('Dimension')->text());
+    }
+
+    public function test_teleport_inside_the_dimension_keeps_the_world_id(): void
+    {
+        $root = Tag::compound([
+            'Dimension' => Tag::string('minecraft:overworld'),
+            'WorldUUIDLeast' => Tag::long(123),
+            'WorldUUIDMost' => Tag::long(456),
+            'Pos' => Tag::list(Tag::DOUBLE, [0.0, 0.0, 0.0]),
+        ]);
+        PlayerEdits::teleport($root, 1, 70, 1, 'minecraft:overworld');
+        $this->assertSame(123, $root->get('WorldUUIDLeast')->value);
+
+        // An old save with a numeric dimension counts the same way.
+        $old = Tag::compound(['Dimension' => Tag::int(0), 'WorldUUIDLeast' => Tag::long(1), 'WorldUUIDMost' => Tag::long(2), 'Pos' => Tag::list(Tag::DOUBLE, [0.0, 0.0, 0.0])]);
+        PlayerEdits::teleport($old, 1, 70, 1, 'minecraft:overworld');
+        $this->assertTrue($old->has('WorldUUIDLeast'));
+        PlayerEdits::teleport($old, 1, 70, 1, 'minecraft:the_end');
+        $this->assertFalse($old->has('WorldUUIDMost'));
+    }
 }

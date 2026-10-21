@@ -18,6 +18,8 @@ final readonly class Limits
 
     public const int DEFAULT_NODES = 500_000;
 
+    public const int DEFAULT_ELEMENTS = 1_000_000;
+
     public function __construct(
         /** Nesting depth of compounds and lists. */
         public int $maxDepth = self::DEFAULT_DEPTH,
@@ -27,5 +29,7 @@ final readonly class Limits
         public int $maxListLength = self::DEFAULT_LIST,
         /** Compound entries and compound or list elements, over the whole file. */
         public int $maxNodes = self::DEFAULT_NODES,
+        /** Elements of all lists of numbers, strings or byte arrays, and all int and long arrays, together. */
+        public int $maxElements = self::DEFAULT_ELEMENTS,
     ) {}
 }

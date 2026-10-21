@@ -23,4 +23,30 @@ describe('Markdown', () => {
         expect(links[0].getAttribute('rel')).toBe('noreferrer noopener');
         expect(links.some((link) => (link.getAttribute('href') ?? '').startsWith('javascript:'))).toBe(false);
     });
+
+    it('strips class, id and name attributes', () => {
+        const { container } = render(
+            <Markdown text={'<p class="fixed inset-0" id="root" name="x">hi</p><a name="top" href="https://example.com">a</a>'} />,
+        );
+
+        const p = container.querySelector('p');
+        expect(p?.getAttribute('class')).toBeNull();
+        expect(p?.getAttribute('id')).toBeNull();
+        expect(container.querySelector('a')?.getAttribute('name')).toBeNull();
+    });
+
+    it('only loads images from Modrinth and GitHub', () => {
+        const { container } = render(
+            <Markdown
+                text={
+                    '![ok](https://cdn.modrinth.com/a.png) ![gh](https://raw.githubusercontent.com/o/r/main/a.png) ' +
+                    '![bad](https://evil.example/track.png) <img src="data:image/png;base64,AAAA">'
+                }
+            />,
+        );
+
+        const sources = [...container.querySelectorAll('img')].map((img) => img.getAttribute('src'));
+        expect(sources).toEqual(['https://cdn.modrinth.com/a.png', 'https://raw.githubusercontent.com/o/r/main/a.png']);
+        expect(container.querySelector('a[href="https://evil.example/track.png"]')?.textContent).toBe('bad');
+    });
 });

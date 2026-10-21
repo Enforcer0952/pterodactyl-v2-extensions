@@ -85,3 +85,18 @@ export function slotName(area: string, slot: number | string): string {
 export function isPlayerRef(value: string): boolean {
     return /^\.?[A-Za-z0-9_]{1,16}$/.test(value) || /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i.test(value);
 }
+
+/** Edits are offered only when the server allows them and the file is not being read again after a save. */
+export function canEditNow(view: { can_edit: boolean }, refreshing: boolean): boolean {
+    return view.can_edit && !refreshing;
+}
+
+/** A route parameter decoded safely: a broken escape gives an empty value. */
+export function decodeParam(value: string | undefined): string {
+    if (!value) return '';
+    try {
+        return decodeURIComponent(value);
+    } catch {
+        return '';
+    }
+}

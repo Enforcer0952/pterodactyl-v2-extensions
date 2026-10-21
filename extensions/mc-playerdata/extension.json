@@ -2,7 +2,7 @@
     "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
     "id": "mc-playerdata",
     "name": "Minecraft Player Data",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "requires": {
         "panel": "^2.0.0-dev",
         "sdk": "^2.0.0-beta.4",

@@ -299,12 +299,53 @@ class PlayerLists
     }
 
     /**
+     * Whether a folder exists. Each parent is listed first, because Wings answers a
+     * listing of a missing folder with an error instead of an empty result.
+     */
+    public function folderExists(Server $server, string $path): bool
+    {
+        $path = '/'.trim($path, '/');
+        if ($path === '/') {
+            return true;
+        }
+
+        $parent = dirname($path);
+        if (! $this->folderExists($server, $parent)) {
+            return false;
+        }
+
+        try {
+            $entries = $this->directories->list($server, $parent);
+        } catch (DaemonConnectionException) {
+            return false;
+        }
+
+        foreach ($entries as $entry) {
+            if (($entry['name'] ?? null) === basename($path) && ($entry['file'] ?? true) === false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @return array<string, string>
+     *
+     * @throws HttpException when server.properties exists but cannot be read
      */
     public function properties(Server $server): array
     {
+        try {
+            $contents = $this->read($server, self::PROPERTIES);
+        } catch (DaemonConnectionException) {
+            throw new HttpException(502, 'Could not read server.properties from this server\'s node.');
+        } catch (FileSizeTooLargeException) {
+            throw new HttpException(422, 'server.properties is too large to read.');
+        }
+
         $properties = [];
-        foreach (preg_split('/\R/', $this->read($server, self::PROPERTIES) ?? '') ?: [] as $line) {
+        foreach (preg_split('/\R/', $contents ?? '') ?: [] as $line) {
             if ($line === '' || $line[0] === '#' || ! str_contains($line, '=')) {
                 continue;
             }

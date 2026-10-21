@@ -74,6 +74,8 @@ export interface PlayerView {
     saved: string | null;
     size: number;
     world: string;
+    /** The folder the player files are in, e.g. world/players/data. */
+    folder?: string;
     backups: string[];
     can_manage: boolean;
     can_edit: boolean;

@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $version_number
  * @property string|null $icon_url
  * @property string|null $sha1
+ * @property int|null $file_size
+ * @property int|null $file_mtime
  */
 class Install extends Model
 {
@@ -25,6 +27,6 @@ class Install extends Model
 
     protected $fillable = [
         'server_id', 'kind', 'filename', 'project_id', 'version_id',
-        'title', 'version_number', 'icon_url', 'sha1',
+        'title', 'version_number', 'icon_url', 'sha1', 'file_size', 'file_mtime',
     ];
 }

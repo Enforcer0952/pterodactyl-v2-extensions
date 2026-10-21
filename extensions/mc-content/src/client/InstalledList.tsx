@@ -22,11 +22,13 @@ interface Props {
     kind: ContentKind;
     filters: Filters;
     directory: string;
+    /** Set when installing is not possible on this server; turns Update off. */
+    blockedReason?: string | null;
     /** Open a project's page; only for files recognised on Modrinth. */
     onOpen?: (projectId: string) => void;
 }
 
-export default function InstalledList({ kind, filters, directory, onOpen }: Props) {
+export default function InstalledList({ kind, filters, directory, blockedReason = null, onOpen }: Props) {
     const server = useCurrentServerRequired();
     const identifier = server.attributes.identifier;
     const queryClient = useQueryClient();
@@ -90,7 +92,9 @@ export default function InstalledList({ kind, filters, directory, onOpen }: Prop
                             <button
                                 type={'button'}
                                 onClick={() => onOpen(file.project_id as string)}
-                                className={'mcc:block mcc:max-w-full mcc:truncate mcc:text-left mcc:font-medium mcc:text-foreground mcc:hover:underline'}
+                                className={
+                                    'mcc:block mcc:max-w-full mcc:truncate mcc:text-left mcc:font-medium mcc:text-foreground mcc:hover:underline'
+                                }
                             >
                                 {file.title ?? file.filename}
                             </button>
@@ -125,7 +129,8 @@ export default function InstalledList({ kind, filters, directory, onOpen }: Prop
                         <Button
                             size={'small'}
                             isLoading={update.isPending && update.variables?.filename === file.filename}
-                            disabled={update.isPending}
+                            disabled={blockedReason !== null || update.isPending}
+                            title={blockedReason ?? undefined}
                             onClick={() => update.mutate(file)}
                         >
                             Update

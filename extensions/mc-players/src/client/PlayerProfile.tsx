@@ -17,6 +17,7 @@ import {
     type PlayerStats,
 } from './api';
 import { mcbansEnabled, profileLinks } from './config';
+import { replyNotice } from './console';
 import { ReasonDialog, banDetail, type Prompt } from './shared';
 import SkinViewer from './SkinViewer';
 import { isPremiumUuid, profileUrls, skinUrl } from './skins';
@@ -31,6 +32,7 @@ export default function PlayerProfile({ server, name, footer }: { server: string
         queryKey: playerKeys.onServer(server, name),
         queryFn: () => getPlayer(server, name),
         staleTime: 15_000,
+        refetchOnWindowFocus: false,
     });
 
     const player = here.data;
@@ -149,7 +151,8 @@ function ThisServer({ server, player, name }: { server: string; player: PlayerOn
             void queryClient.invalidateQueries({ queryKey: keys.online(server) });
             void queryClient.invalidateQueries({ queryKey: playerKeys.onServer(server, name) });
             void queryClient.invalidateQueries({ queryKey: playerKeys.network(name) });
-            toast.success(lists.reply || 'Done.');
+            const notice = replyNotice(lists.reply, lists.state, 'Done.');
+            toast[notice.type](notice.message);
             setPrompt(null);
         },
         onError: (error) => toast.error(httpErrorToHuman(error)),
@@ -295,7 +298,12 @@ const BULK: { action: NetworkAction; label: string; needs: Action; danger?: bool
 /** The same player on every Minecraft server you can see players on. */
 function AllServers({ name, current }: { name: string; current: string }) {
     const queryClient = useQueryClient();
-    const network = useQuery({ queryKey: playerKeys.network(name), queryFn: () => getNetworkPlayer(name), staleTime: 30_000 });
+    const network = useQuery({
+        queryKey: playerKeys.network(name),
+        queryFn: () => getNetworkPlayer(name),
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+    });
     const [selected, setSelected] = useState<Set<string> | null>(null);
     const [prompt, setPrompt] = useState<{ action: 'kick' | 'ban'; servers: string[] } | null>(null);
 
@@ -456,6 +464,7 @@ function McBansSection({ uuid }: { uuid: string }) {
         queryKey: ['mc-players', 'mcbans', uuid.replace(/-/g, '').toLowerCase()],
         queryFn: () => getMcBans(uuid),
         staleTime: 30 * 60_000,
+        refetchOnWindowFocus: false,
         retry: false,
     });
 

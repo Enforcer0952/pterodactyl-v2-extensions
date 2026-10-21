@@ -6,6 +6,8 @@ import {
     formatDuration,
     formatNumber,
     initials,
+    canEditNow,
+    decodeParam,
     isPlayerRef,
     itemTitle,
     parseCoordinate,
@@ -137,5 +139,21 @@ describe('coordinates', () => {
         expect(typeof teleportRequest('30000001', '64', '0', 'minecraft:overworld')).toBe('string');
         expect(typeof teleportRequest('0', '64', '-30000001', 'minecraft:overworld')).toBe('string');
         expect(teleportRequest('30000000', '4064', '-30000000', 'minecraft:overworld')).toMatchObject({ action: 'teleport' });
+    });
+});
+
+describe('canEditNow', () => {
+    it('stays off while the file is read again after a save', () => {
+        expect(canEditNow({ can_edit: true }, false)).toBe(true);
+        expect(canEditNow({ can_edit: true }, true)).toBe(false);
+        expect(canEditNow({ can_edit: false }, false)).toBe(false);
+    });
+});
+
+describe('decodeParam', () => {
+    it('decodes and survives broken escapes', () => {
+        expect(decodeParam('Steve')).toBe('Steve');
+        expect(decodeParam('%E0%A4%A')).toBe('');
+        expect(decodeParam(undefined)).toBe('');
     });
 });

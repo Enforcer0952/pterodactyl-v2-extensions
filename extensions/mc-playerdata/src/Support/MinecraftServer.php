@@ -22,6 +22,36 @@ final class MinecraftServer
     }
 
     /**
+     * Folders that can hold a world's player files: 1.21.9 and later use players/data,
+     * older versions playerdata.
+     *
+     * @return list<string> paths below the world folder, newest layout first
+     */
+    public static function playerDataFolders(): array
+    {
+        return ['players/data', 'playerdata'];
+    }
+
+    /**
+     * Which folder to use. The newer one wins, unless it holds no player files and the
+     * older one does (a server upgraded in place, before its first save).
+     *
+     * @param  array<string, list<string>>  $found  file names per existing folder, in preference order
+     */
+    public static function pickPlayerDataFolder(array $found): ?string
+    {
+        $hasPlayers = fn (array $names): bool => array_filter($names, fn (string $name): bool => preg_match('/\.dat$/D', $name) === 1) !== [];
+
+        foreach ($found as $folder => $names) {
+            if ($hasPlayers($names)) {
+                return (string) $folder;
+            }
+        }
+
+        return array_key_first($found);
+    }
+
+    /**
      * The folder of the main world, from level-name in server.properties. Only a plain
      * folder name is accepted, so nothing can point outside the server.
      */

@@ -11,18 +11,10 @@ import {
     useCurrentServerRequired,
     useServerPermission,
 } from '@pterodactyl/sdk';
-import {
-    getProject,
-    getProjectNames,
-    getVersions,
-    install,
-    keys,
-    type ContentKind,
-    type Filters,
-    type ProjectVersion,
-} from './api';
+import { getProject, getProjectNames, getVersions, install, keys, type ContentKind, type Filters, type ProjectVersion } from './api';
 import { formatBytes, formatCount, formatDate, loaderLabel, versionRange } from './format';
 import Markdown from './Markdown';
+import { isAllowedImage } from './images';
 import ProjectIcon from './ProjectIcon';
 
 type Tab = 'description' | 'gallery' | 'versions' | 'dependencies';
@@ -33,6 +25,8 @@ interface Props {
     filters: Filters;
     /** Open on this tab, e.g. "versions" from an Install button. */
     initialTab?: Tab;
+    /** Set when installing is not possible on this server; shown instead of the buttons. */
+    blockedReason?: string | null;
     onClose: () => void;
     onInstalled?: () => void;
 }
@@ -42,7 +36,15 @@ interface Props {
  * changelogs and install buttons, dependencies and links. Modrinth refuses to be
  * framed, so this is built from its API rather than embedding the site.
  */
-export default function ProjectPopup({ kind, projectId, filters, initialTab = 'description', onClose, onInstalled }: Props) {
+export default function ProjectPopup({
+    kind,
+    projectId,
+    filters,
+    initialTab = 'description',
+    blockedReason = null,
+    onClose,
+    onInstalled,
+}: Props) {
     const server = useCurrentServerRequired();
     const identifier = server.attributes.identifier;
     const queryClient = useQueryClient();
@@ -52,7 +54,10 @@ export default function ProjectPopup({ kind, projectId, filters, initialTab = 'd
     const [openChangelog, setOpenChangelog] = useState<string | null>(null);
     const [zoomed, setZoomed] = useState<number | null>(null);
 
-    const project = useQuery({ queryKey: keys.project(identifier, kind, projectId), queryFn: () => getProject(identifier, kind, projectId) });
+    const project = useQuery({
+        queryKey: keys.project(identifier, kind, projectId),
+        queryFn: () => getProject(identifier, kind, projectId),
+    });
     const versions = useQuery({
         queryKey: keys.versions(identifier, kind, projectId, filters),
         queryFn: () => getVersions(identifier, kind, projectId, filters),
@@ -61,11 +66,17 @@ export default function ProjectPopup({ kind, projectId, filters, initialTab = 'd
     const installed = versions.data?.installed ?? null;
     const newest: ProjectVersion | undefined = versions.data?.data[0];
     const required = useMemo(
-        () => (newest?.dependencies ?? []).filter((dependency) => dependency.type === 'required' && dependency.project_id).map((d) => d.project_id as string),
+        () =>
+            (newest?.dependencies ?? [])
+                .filter((dependency) => dependency.type === 'required' && dependency.project_id)
+                .map((d) => d.project_id as string),
         [newest],
     );
     const optional = useMemo(
-        () => (newest?.dependencies ?? []).filter((dependency) => dependency.type === 'optional' && dependency.project_id).map((d) => d.project_id as string),
+        () =>
+            (newest?.dependencies ?? [])
+                .filter((dependency) => dependency.type === 'optional' && dependency.project_id)
+                .map((d) => d.project_id as string),
         [newest],
     );
     const names = useQuery({
@@ -110,7 +121,7 @@ export default function ProjectPopup({ kind, projectId, filters, initialTab = 'd
     }, [onClose, zoomed, installVersion.isPending]);
 
     const data = project.data;
-    const gallery = data?.gallery ?? [];
+    const gallery = useMemo(() => (data?.gallery ?? []).filter((image) => isAllowedImage(image.url)), [data]);
     const tabs: { id: Tab; label: string; hidden?: boolean }[] = [
         { id: 'description', label: 'Description' },
         { id: 'gallery', label: `Gallery${gallery.length ? ` (${gallery.length})` : ''}`, hidden: gallery.length === 0 },
@@ -162,7 +173,11 @@ export default function ProjectPopup({ kind, projectId, filters, initialTab = 'd
                                     )}
                                 </div>
                                 <p className={'mcc:mt-1 mcc:text-sm mcc:text-muted-foreground'}>{data.description}</p>
-                                <div className={'mcc:mt-2 mcc:flex mcc:flex-wrap mcc:items-center mcc:gap-x-4 mcc:gap-y-1 mcc:text-xs mcc:text-muted-foreground'}>
+                                <div
+                                    className={
+                                        'mcc:mt-2 mcc:flex mcc:flex-wrap mcc:items-center mcc:gap-x-4 mcc:gap-y-1 mcc:text-xs mcc:text-muted-foreground'
+                                    }
+                                >
                                     <span>{formatCount(data.downloads)} downloads</span>
                                     <span>{formatCount(data.followers)} followers</span>
                                     {data.updated && <span>Updated {formatDate(data.updated)}</span>}
@@ -177,11 +192,21 @@ export default function ProjectPopup({ kind, projectId, filters, initialTab = 'd
                                 {canInstall && newest && (
                                     <Button
                                         size={'small'}
-                                        disabled={installVersion.isPending || installed?.version_id === newest.id || (installed !== null && !canReplace)}
+                                        disabled={
+                                            blockedReason !== null ||
+                                            installVersion.isPending ||
+                                            installed?.version_id === newest.id ||
+                                            (installed !== null && !canReplace)
+                                        }
+                                        title={blockedReason ?? undefined}
                                         isLoading={installVersion.isPending && installVersion.variables === newest.id}
                                         onClick={() => installVersion.mutate(newest.id)}
                                     >
-                                        {installed?.version_id === newest.id ? 'Up to date' : installed ? `Update to ${newest.version_number}` : 'Install latest'}
+                                        {installed?.version_id === newest.id
+                                            ? 'Up to date'
+                                            : installed
+                                              ? `Update to ${newest.version_number}`
+                                              : 'Install latest'}
                                     </Button>
                                 )}
                                 <button
@@ -189,9 +214,19 @@ export default function ProjectPopup({ kind, projectId, filters, initialTab = 'd
                                     onClick={onClose}
                                     disabled={installVersion.isPending}
                                     aria-label={'Close'}
-                                    className={'mcc:rounded mcc:p-1.5 mcc:text-muted-foreground mcc:hover:bg-muted mcc:hover:text-foreground'}
+                                    className={
+                                        'mcc:rounded mcc:p-1.5 mcc:text-muted-foreground mcc:hover:bg-muted mcc:hover:text-foreground'
+                                    }
                                 >
-                                    <svg width={'18'} height={'18'} viewBox={'0 0 24 24'} fill={'none'} stroke={'currentColor'} strokeWidth={'2'} aria-hidden>
+                                    <svg
+                                        width={'18'}
+                                        height={'18'}
+                                        viewBox={'0 0 24 24'}
+                                        fill={'none'}
+                                        stroke={'currentColor'}
+                                        strokeWidth={'2'}
+                                        aria-hidden
+                                    >
                                         <path d={'M18 6 6 18M6 6l12 12'} />
                                     </svg>
                                 </button>
@@ -233,19 +268,29 @@ export default function ProjectPopup({ kind, projectId, filters, initialTab = 'd
                                                 key={image.url}
                                                 type={'button'}
                                                 onClick={() => setZoomed(index)}
-                                                className={'mcc:group mcc:overflow-hidden mcc:rounded-md mcc:border mcc:border-border mcc:text-left'}
+                                                className={
+                                                    'mcc:group mcc:overflow-hidden mcc:rounded-md mcc:border mcc:border-border mcc:text-left'
+                                                }
                                             >
                                                 <img
                                                     src={image.url}
                                                     alt={image.title ?? ''}
                                                     loading={'lazy'}
                                                     referrerPolicy={'no-referrer'}
-                                                    className={'mcc:aspect-video mcc:w-full mcc:bg-muted mcc:object-cover mcc:transition mcc:group-hover:opacity-90'}
+                                                    className={
+                                                        'mcc:aspect-video mcc:w-full mcc:bg-muted mcc:object-cover mcc:transition mcc:group-hover:opacity-90'
+                                                    }
                                                 />
                                                 {(image.title || image.description) && (
                                                     <div className={'mcc:p-2'}>
-                                                        {image.title && <p className={'mcc:text-sm mcc:font-medium mcc:text-foreground'}>{image.title}</p>}
-                                                        {image.description && <p className={'mcc:text-xs mcc:text-muted-foreground'}>{image.description}</p>}
+                                                        {image.title && (
+                                                            <p className={'mcc:text-sm mcc:font-medium mcc:text-foreground'}>
+                                                                {image.title}
+                                                            </p>
+                                                        )}
+                                                        {image.description && (
+                                                            <p className={'mcc:text-xs mcc:text-muted-foreground'}>{image.description}</p>
+                                                        )}
                                                     </div>
                                                 )}
                                             </button>
@@ -274,19 +319,29 @@ export default function ProjectPopup({ kind, projectId, filters, initialTab = 'd
                                                         <div className={'mcc:flex mcc:items-center mcc:gap-3'}>
                                                             <div className={'mcc:min-w-0 mcc:flex-1'}>
                                                                 <div className={'mcc:flex mcc:flex-wrap mcc:items-center mcc:gap-2'}>
-                                                                    <span className={'mcc:font-medium mcc:text-foreground'}>{version.version_number}</span>
+                                                                    <span className={'mcc:font-medium mcc:text-foreground'}>
+                                                                        {version.version_number}
+                                                                    </span>
                                                                     {index === 0 && <Badge tone={'primary'}>Latest</Badge>}
                                                                     {current && <Badge>Installed</Badge>}
-                                                                    {version.version_type !== 'release' && <Badge>{version.version_type}</Badge>}
+                                                                    {version.version_type !== 'release' && (
+                                                                        <Badge>{version.version_type}</Badge>
+                                                                    )}
                                                                 </div>
                                                                 <p className={'mcc:mt-0.5 mcc:text-xs mcc:text-muted-foreground'}>
-                                                                    {versionRange(version.game_versions)} · {version.loaders.map(loaderLabel).join(', ')}
+                                                                    {versionRange(version.game_versions)} ·{' '}
+                                                                    {version.loaders.map(loaderLabel).join(', ')}
                                                                     {version.file ? ` · ${formatBytes(version.file.size)}` : ''}
-                                                                    {version.date_published ? ` · ${formatDate(version.date_published)}` : ''}
+                                                                    {version.date_published
+                                                                        ? ` · ${formatDate(version.date_published)}`
+                                                                        : ''}
                                                                 </p>
                                                             </div>
                                                             {version.changelog?.trim() && (
-                                                                <Button.Text size={'xsmall'} onClick={() => setOpenChangelog(showing ? null : version.id)}>
+                                                                <Button.Text
+                                                                    size={'xsmall'}
+                                                                    onClick={() => setOpenChangelog(showing ? null : version.id)}
+                                                                >
                                                                     {showing ? 'Hide changes' : 'Changes'}
                                                                 </Button.Text>
                                                             )}
@@ -294,8 +349,16 @@ export default function ProjectPopup({ kind, projectId, filters, initialTab = 'd
                                                                 <Button
                                                                     size={'small'}
                                                                     isSecondary={index !== 0 || current}
-                                                                    disabled={installVersion.isPending || current || (installed !== null && !canReplace)}
-                                                                    isLoading={installVersion.isPending && installVersion.variables === version.id}
+                                                                    disabled={
+                                                                        blockedReason !== null ||
+                                                                        installVersion.isPending ||
+                                                                        current ||
+                                                                        (installed !== null && !canReplace)
+                                                                    }
+                                                                    title={blockedReason ?? undefined}
+                                                                    isLoading={
+                                                                        installVersion.isPending && installVersion.variables === version.id
+                                                                    }
                                                                     onClick={() => installVersion.mutate(version.id)}
                                                                 >
                                                                     {current ? 'Installed' : installed ? 'Switch' : 'Install'}
@@ -321,7 +384,11 @@ export default function ProjectPopup({ kind, projectId, filters, initialTab = 'd
                                     ) : (
                                         <div className={'mcc:flex mcc:flex-col mcc:gap-4'}>
                                             {[
-                                                { label: 'Required', ids: required, note: 'Installed automatically with it, unless turned off in the extension settings.' },
+                                                {
+                                                    label: 'Required',
+                                                    ids: required,
+                                                    note: 'Installed automatically with it, unless turned off in the extension settings.',
+                                                },
                                                 { label: 'Optional', ids: optional, note: 'Not installed automatically.' },
                                             ]
                                                 .filter((group) => group.ids.length > 0)
@@ -329,15 +396,31 @@ export default function ProjectPopup({ kind, projectId, filters, initialTab = 'd
                                                     <section key={group.label}>
                                                         <h3 className={'mcc:text-sm mcc:font-medium mcc:text-foreground'}>{group.label}</h3>
                                                         <p className={'mcc:mb-2 mcc:text-xs mcc:text-muted-foreground'}>{group.note}</p>
-                                                        <ul className={'mcc:flex mcc:flex-col mcc:divide-y mcc:divide-border mcc:rounded-md mcc:border mcc:border-border'}>
+                                                        <ul
+                                                            className={
+                                                                'mcc:flex mcc:flex-col mcc:divide-y mcc:divide-border mcc:rounded-md mcc:border mcc:border-border'
+                                                            }
+                                                        >
                                                             {group.ids.map((id) => {
                                                                 const name = names.data?.[id];
                                                                 const here = data.installed_projects.includes(id);
                                                                 return (
-                                                                    <li key={id} className={'mcc:flex mcc:items-center mcc:gap-3 mcc:px-3 mcc:py-2'}>
-                                                                        <ProjectIcon url={name?.icon_url ?? null} title={name?.title ?? id} />
-                                                                        <span className={'mcc:flex-1 mcc:text-sm mcc:text-foreground'}>{name?.title ?? id}</span>
-                                                                        {here ? <Badge tone={'primary'}>On this server</Badge> : <Badge>Not installed</Badge>}
+                                                                    <li
+                                                                        key={id}
+                                                                        className={'mcc:flex mcc:items-center mcc:gap-3 mcc:px-3 mcc:py-2'}
+                                                                    >
+                                                                        <ProjectIcon
+                                                                            url={name?.icon_url ?? null}
+                                                                            title={name?.title ?? id}
+                                                                        />
+                                                                        <span className={'mcc:flex-1 mcc:text-sm mcc:text-foreground'}>
+                                                                            {name?.title ?? id}
+                                                                        </span>
+                                                                        {here ? (
+                                                                            <Badge tone={'primary'}>On this server</Badge>
+                                                                        ) : (
+                                                                            <Badge>Not installed</Badge>
+                                                                        )}
                                                                     </li>
                                                                 );
                                                             })}
@@ -387,7 +470,12 @@ export default function ProjectPopup({ kind, projectId, filters, initialTab = 'd
                                 {data.license.name && (
                                     <Side title={'License'}>
                                         {data.license.url ? (
-                                            <a href={data.license.url} target={'_blank'} rel={'noreferrer noopener'} className={'mcc:text-foreground mcc:hover:underline'}>
+                                            <a
+                                                href={data.license.url}
+                                                target={'_blank'}
+                                                rel={'noreferrer noopener'}
+                                                className={'mcc:text-foreground mcc:hover:underline'}
+                                            >
                                                 {data.license.name}
                                             </a>
                                         ) : (
@@ -413,7 +501,7 @@ export default function ProjectPopup({ kind, projectId, filters, initialTab = 'd
                     role={'presentation'}
                 >
                     <img
-                        src={gallery[zoomed].raw_url}
+                        src={isAllowedImage(gallery[zoomed].raw_url) ? gallery[zoomed].raw_url : gallery[zoomed].url}
                         alt={gallery[zoomed].title ?? ''}
                         referrerPolicy={'no-referrer'}
                         className={'mcc:max-h-full mcc:max-w-full mcc:rounded'}

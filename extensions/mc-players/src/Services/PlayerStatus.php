@@ -13,6 +13,7 @@ use Pterodactyl\Contracts\Servers\ReadsServerState;
 use Pterodactyl\Contracts\Servers\SendsServerCommands;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
 use Pterodactyl\Models\Server;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * One player's standing on one server: online, whitelisted, operator, banned,
@@ -41,7 +42,11 @@ class PlayerStatus
             return ['server' => $this->serverInfo($server), 'state' => 'unreachable', 'error' => 'Could not reach this server\'s node.'];
         }
 
-        $lists = $this->lists->all($server);
+        try {
+            $lists = $this->lists->all($server);
+        } catch (HttpException $exception) {
+            return ['server' => $this->serverInfo($server), 'state' => 'unreachable', 'error' => $exception->getMessage()];
+        }
         $find = fn (array $rows): ?array => array_values(array_filter($rows, fn (array $row): bool => strcasecmp((string) ($row['name'] ?? ''), $name) === 0))[0] ?? null;
 
         $known = $find($lists['known']);
@@ -98,13 +103,12 @@ class PlayerStatus
                     return $cached;
                 }
 
-                $before = count($this->logs->read($server, 60));
+                $before = $this->logs->read($server, 60);
                 $this->commands->send($server, 'list');
                 usleep(self::ANSWER_DELAY_MS * 1000);
-                $lines = $this->logs->read($server, 60);
 
                 // Only lines that arrived after the command, so an old answer is never reused.
-                $parsed = ListOutput::parse(array_slice($lines, max(0, min($before, count($lines) - 15))));
+                $parsed = ListOutput::parse(ListOutput::newLines($before, $this->logs->read($server, 60)));
 
                 // A failed parse is remembered too (briefly), so it is not retried on every poll.
                 Cache::put($key, $parsed ?? false, $parsed === null ? 15 : 5);
@@ -124,15 +128,30 @@ class PlayerStatus
     private function stats(Server $server, string $uuid): ?array
     {
         return Cache::remember('ext:mc-players:stats:'.$server->uuid.':'.$uuid, 120, function () use ($server, $uuid): ?array {
-            $world = trim($this->lists->properties($server)['level-name'] ?? 'world') ?: 'world';
-            if (preg_match('#^[\w .\-]{1,64}$#', $world) !== 1) {
+            try {
+                $properties = $this->lists->properties($server);
+            } catch (HttpException) {
+                return null; // The stats are optional; the rest of the profile still shows.
+            }
+
+            $world = Stats::worldName($properties['level-name'] ?? null);
+            if ($world === null) {
                 return null;
             }
 
-            $contents = $this->lists->readFile($server, '/'.$world.'/stats', $uuid.'.json');
-            $json = $contents === null ? null : json_decode($contents, true);
+            // 1.21.9 and later keep stats in world/players/stats; older versions in world/stats.
+            foreach (Stats::folders($world) as $folder) {
+                if (! $this->lists->folderExists($server, $folder)) {
+                    continue;
+                }
+                $contents = $this->lists->readFile($server, $folder, $uuid.'.json');
+                $json = $contents === null ? null : json_decode($contents, true);
+                if (is_array($json)) {
+                    return Stats::summarize($json);
+                }
+            }
 
-            return is_array($json) ? Stats::summarize($json) : null;
+            return null;
         });
     }
 

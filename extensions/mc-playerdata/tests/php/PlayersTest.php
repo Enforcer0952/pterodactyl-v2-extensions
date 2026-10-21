@@ -67,4 +67,18 @@ final class PlayersTest extends TestCase
             $this->assertNull(MinecraftServer::worldFolder('level-name='.$bad), $bad);
         }
     }
+
+    public function test_player_data_folder_prefers_the_newer_layout(): void
+    {
+        $this->assertSame(['players/data', 'playerdata'], MinecraftServer::playerDataFolders());
+
+        $uuid = '069a79f4-44e9-4726-a5be-fca90e38aaf5.dat';
+        $this->assertSame('/w/players/data', MinecraftServer::pickPlayerDataFolder(['/w/players/data' => [$uuid], '/w/playerdata' => [$uuid]]));
+        $this->assertSame('/w/playerdata', MinecraftServer::pickPlayerDataFolder(['/w/playerdata' => [$uuid]]));
+        // An upgraded server that has not saved yet: the old folder still has the players.
+        $this->assertSame('/w/playerdata', MinecraftServer::pickPlayerDataFolder(['/w/players/data' => [], '/w/playerdata' => [$uuid]]));
+        // Neither has players: stay with the newer one.
+        $this->assertSame('/w/players/data', MinecraftServer::pickPlayerDataFolder(['/w/players/data' => [], '/w/playerdata' => []]));
+        $this->assertNull(MinecraftServer::pickPlayerDataFolder([]));
+    }
 }

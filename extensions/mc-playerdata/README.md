@@ -25,7 +25,7 @@ Edits work **only while the server is stopped**. A running server keeps online p
 
 Safety:
 
-- Before every change the old file is copied to `<uuid>.dat.mcpd-bak-<time>` next to it. The newest three are kept.
+- Before every change the old file is copied to `<uuid>.dat.mcpd-bak-<time>` next to it. The newest ten are kept, plus any from the last 7 days.
 - If the file changed since you opened the page, the change is refused (409) and nothing is written. Reload and try again.
 - Only the tags an edit needs are touched. Everything else, including data from mods, is written back byte for byte. A file this reader would not write back exactly as it found it is not edited at all.
 - Every confirm dialog names what is about to go.
@@ -43,7 +43,7 @@ Safety:
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/mc-playerdata-1.0.0.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/mc-playerdata-1.0.1.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -54,14 +54,14 @@ Safety:
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/mc-playerdata-1.0.0.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/mc-playerdata-1.0.1.pteroext --enable --replace
 ```
 
 ## Setup
 
 The page is available on servers whose egg has the `minecraft` tag, or the `eula` feature that every Java egg has. It is hidden for Bedrock (`bedrock` tag) and for proxies (BungeeCord, Waterfall, Velocity).
 
-The world folder comes from `level-name` in `server.properties` (default `world`). Player files are read from `<world>/playerdata/<uuid>.dat`. A player appears once the server has saved them, which happens when they leave.
+The world folder comes from `level-name` in `server.properties` (default `world`). Player files are read from `<world>/players/data/<uuid>.dat` (Minecraft 1.21.9 and later) or `<world>/playerdata/<uuid>.dat`. A player appears once the server has saved them, which happens when they leave.
 
 Only plain folder names are supported for the world. A `level-name` with a slash in it is not.
 

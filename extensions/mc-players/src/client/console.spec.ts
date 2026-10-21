@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanLine, isValidName, parseConsoleLine } from './console';
+import { cleanLine, decodeParam, isValidName, parseConsoleLine, replyNotice } from './console';
 
 describe('console parsing', () => {
     it('strips colours and log prefixes', () => {
@@ -21,5 +21,28 @@ describe('console parsing', () => {
         expect(isValidName('.BedrockGuy')).toBe(true);
         expect(isValidName('bad name')).toBe(false);
         expect(isValidName('@a')).toBe(false);
+    });
+});
+
+describe('route params', () => {
+    it('decodes names and survives broken escapes', () => {
+        expect(decodeParam('Steve')).toBe('Steve');
+        expect(decodeParam('%2EBedrock_Guy')).toBe('.Bedrock_Guy');
+        expect(decodeParam('%E0%A4%A')).toBe('');
+        expect(decodeParam(undefined)).toBe('');
+    });
+});
+
+describe('command replies', () => {
+    it('shows the server answer', () => {
+        expect(replyNotice('Banned Steve: x', 'running', 'Done.')).toEqual({ type: 'success', message: 'Banned Steve: x' });
+    });
+
+    it('warns when a running server stays silent', () => {
+        expect(replyNotice(null, 'running', 'Done.').type).toBe('warning');
+    });
+
+    it('accepts silence from a stopped server, where the files were edited', () => {
+        expect(replyNotice(null, 'offline', 'Banned Steve.')).toEqual({ type: 'success', message: 'Banned Steve.' });
     });
 });

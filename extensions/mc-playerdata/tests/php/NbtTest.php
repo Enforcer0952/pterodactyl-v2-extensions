@@ -357,4 +357,27 @@ final class NbtTest extends TestCase
         $this->assertSame('x', $php['nested']['inner']['deep']);
         $this->assertSame([0, 1, -1, -128], $php['bytes']);
     }
+
+    public function test_element_budget_covers_all_lists_together(): void
+    {
+        // Three lists of 40 entries each: fine alone, too many together for a budget of 100.
+        $root = Tag::compound([
+            'a' => Tag::list(Tag::INT, range(1, 40)),
+            'b' => Tag::list(Tag::DOUBLE, array_fill(0, 40, 1.5)),
+            'c' => Tag::intArray(range(1, 40)),
+        ]);
+        $bytes = Writer::writeDocument(new NbtDocument($root, '', false));
+
+        $this->assertInstanceOf(NbtDocument::class, Reader::readDocument($bytes, new Limits(maxElements: 120)));
+        $this->expectException(NbtException::class);
+        Reader::readDocument($bytes, new Limits(maxElements: 119));
+    }
+
+    public function test_element_budget_ignores_compound_lists(): void
+    {
+        $items = array_map(fn (int $i): Tag => Tag::compound(['n' => Tag::int($i)]), range(1, 30));
+        $bytes = Writer::writeDocument(new NbtDocument(Tag::compound(['items' => Tag::list(Tag::COMPOUND, $items)]), '', false));
+
+        $this->assertInstanceOf(NbtDocument::class, Reader::readDocument($bytes, new Limits(maxElements: 0)));
+    }
 }

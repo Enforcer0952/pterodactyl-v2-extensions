@@ -48,6 +48,30 @@ final class ListOutput
         return null;
     }
 
+    /**
+     * The console lines written between two reads of the log tail. The log only
+     * returns its last lines, so a busy console slides the window: the newest lines
+     * of the first read start the second one. Without that overlap every line of the
+     * second read is newer.
+     *
+     * @param  list<string>  $before
+     * @param  list<string>  $after
+     * @return list<string>
+     */
+    public static function newLines(array $before, array $after): array
+    {
+        $before = array_values($before);
+        $after = array_values($after);
+
+        for ($keep = min(count($before), count($after)); $keep > 0; $keep--) {
+            if (array_slice($before, -$keep) === array_slice($after, 0, $keep)) {
+                return array_slice($after, $keep);
+            }
+        }
+
+        return $after;
+    }
+
     /** Messages a server prints when a player command did nothing. */
     private const array FAILURES = [
         'That player does not exist', 'No player was found', 'Unknown player', 'Player not found', 'Could not',

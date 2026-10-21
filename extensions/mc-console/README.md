@@ -26,7 +26,7 @@ Adds Minecraft-style command suggestions to the Pterodactyl 2.0 server console.
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/mc-console-1.1.0.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/mc-console-1.1.1.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -37,7 +37,7 @@ Adds Minecraft-style command suggestions to the Pterodactyl 2.0 server console.
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/mc-console-1.1.0.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/mc-console-1.1.1.pteroext --enable --replace
 ```
 
 Settings and data are kept.

@@ -5,6 +5,7 @@ namespace McPlayers\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Cache;
 use McPlayers\Services\PlayerActions;
 use McPlayers\Services\PlayerStatus;
 use McPlayers\Support\MinecraftServer;
@@ -19,7 +20,11 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  */
 class NetworkController extends Controller
 {
-    private const int MAX_SERVERS = 30;
+    /** At most this many servers are asked per request. */
+    private const int MAX_SERVERS = 25;
+
+    /** Seconds one request may spend asking servers; the rest are skipped. */
+    private const int TIME_BUDGET = 20;
 
     public function __construct(
         private readonly PlayerStatus $status,
@@ -30,12 +35,27 @@ class NetworkController extends Controller
     {
         $name = (string) $request->validate(['name' => ['required', 'string', 'max:64']])['name'];
 
-        $servers = [];
-        foreach ($this->servers($request->user()) as $server) {
-            // Only answers already cached: asking every server for "list" would be slow.
-            $servers[] = $this->status->forServer($server, $name, withStats: false, sendList: false) + [
-                'can' => array_map(fn (string $action): bool => $this->actions->allowed($request->user(), $server, $action), array_combine(array_keys(PlayerActions::ACTIONS), array_keys(PlayerActions::ACTIONS))),
-            ];
+        // One lookup per user at a time: each one reads files from every node.
+        $lock = Cache::lock('ext:mc-players:network:'.$request->user()->id, self::TIME_BUDGET + 10);
+        if (! $lock->get()) {
+            throw new HttpException(429, 'Another lookup is still running. Try again in a moment.');
+        }
+
+        try {
+            $servers = [];
+            $started = microtime(true);
+            foreach ($this->servers($request->user()) as $server) {
+                if (microtime(true) - $started > self::TIME_BUDGET) {
+                    break;
+                }
+
+                // Only answers already cached: asking every server for "list" would be slow.
+                $servers[] = $this->status->forServer($server, $name, withStats: false, sendList: false) + [
+                    'can' => array_map(fn (string $action): bool => $this->actions->allowed($request->user(), $server, $action), array_combine(array_keys(PlayerActions::ACTIONS), array_keys(PlayerActions::ACTIONS))),
+                ];
+            }
+        } finally {
+            $lock->release();
         }
 
         return new JsonResponse(['name' => $name, 'servers' => $servers]);
@@ -85,11 +105,12 @@ class NetworkController extends Controller
     {
         $query = $user->root_admin ? Server::query() : $user->accessibleServers();
 
-        return $query->with('egg')
+        return $query->with(['egg', 'node'])
             ->orderBy('servers.name')
             ->limit(200)
             ->get()
-            ->filter(fn (Server $server): bool => MinecraftServer::hasPlayerLists($server) && $user->can('ext.mc-players.view', $server))
+            // Suspended, installing or unreachable servers are skipped, not asked.
+            ->filter(fn (Server $server): bool => MinecraftServer::isAvailable($server) && MinecraftServer::hasPlayerLists($server) && $user->can('ext.mc-players.view', $server))
             ->take(self::MAX_SERVERS)
             ->values()
             ->all();
