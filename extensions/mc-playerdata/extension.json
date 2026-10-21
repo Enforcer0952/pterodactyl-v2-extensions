@@ -1,0 +1,46 @@
+{
+    "$schema": "./node_modules/@pterodactyl/sdk/manifest.schema.json",
+    "id": "mc-playerdata",
+    "name": "Minecraft Player Data",
+    "version": "1.0.0",
+    "requires": {
+        "panel": "^2.0.0-dev",
+        "sdk": "^2.0.0-beta.4",
+        "php": "^8.3"
+    },
+    "description": "See a Minecraft Java player's saved data: inventory, armor, ender chest, position, experience, health, game mode and effects. With the server stopped, remove items, clear the inventory, ender chest or effects, change the game mode and move the player, with a backup before every change.",
+    "author": "Anton van Zanten",
+    "provider": "McPlayerData\\McPlayerDataProvider",
+    "ui": {
+        "entry": "dist/client.js",
+        "mode": "native",
+        "prefix": "mcpd",
+        "screens": [
+            {
+                "id": "player-data",
+                "area": "server",
+                "path": "player-data/$player",
+                "permission": [
+                    "ext.mc-playerdata.read"
+                ],
+                "when": {
+                    "eggTags": {
+                        "any": [
+                            "minecraft"
+                        ]
+                    },
+                    "eggFeatures": {
+                        "any": [
+                            "eula"
+                        ]
+                    },
+                    "match": "any"
+                }
+            }
+        ]
+    },
+    "icon": "backpack",
+    "autoload": {
+        "McPlayerData\\": "src"
+    }
+}

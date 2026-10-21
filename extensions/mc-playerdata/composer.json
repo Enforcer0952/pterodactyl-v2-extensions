@@ -1,0 +1,12 @@
+{
+    "description": "View and carefully edit a Minecraft Java player's saved data: inventory, ender chest, position, effects and more.",
+    "autoload": {
+        "psr-4": {
+            "McPlayerData\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "McPlayerDataExtension"
+    },
+    "license": "GPL-3.0-or-later"
+}

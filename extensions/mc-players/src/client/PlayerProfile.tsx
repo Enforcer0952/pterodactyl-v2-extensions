@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Button, Checkbox, Spinner, httpErrorToHuman, toast, useServerPermission } from '@pterodactyl/sdk';
-import { Copy, ExternalLink } from 'lucide-react';
+import { Alert, Button, Checkbox, PanelLink, Spinner, httpErrorToHuman, toast, useServerPermission } from '@pterodactyl/sdk';
+import { Backpack, Copy, ExternalLink } from 'lucide-react';
 import {
     getMcBans,
     getNetworkPlayer,
@@ -48,7 +48,24 @@ export default function PlayerProfile({ server, name, footer }: { server: string
                     ) : here.error ? (
                         <Alert type={'danger'}>{httpErrorToHuman(here.error)}</Alert>
                     ) : player ? (
-                        <ThisServer server={server} player={player} name={shownName} />
+                        <>
+                            <ThisServer server={server} player={player} name={shownName} />
+                            {player.player_data && (
+                                <PanelLink
+                                    destination={{
+                                        extension: 'mc-playerdata',
+                                        screen: 'player-data',
+                                        params: { id: server, player: shownName },
+                                    }}
+                                    className={
+                                        'mcp:flex mcp:w-fit mcp:items-center mcp:gap-1 mcp:text-sm mcp:text-primary mcp:hover:underline'
+                                    }
+                                >
+                                    <Backpack className={'mcp:size-4'} aria-hidden />
+                                    Inventory and saved data
+                                </PanelLink>
+                            )}
+                        </>
                     ) : null}
                 </div>
             </div>

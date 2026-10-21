@@ -117,6 +117,8 @@ export interface PlayerOnServer {
     joined?: boolean;
     problems?: Record<string, string>;
     stats?: PlayerStats | null;
+    /** The Minecraft Player Data extension is installed and you may view inventories. */
+    player_data?: boolean;
 }
 
 export type NetworkAction = 'kick' | 'ban' | 'pardon' | 'whitelist-add' | 'whitelist-remove' | 'op' | 'deop';

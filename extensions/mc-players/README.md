@@ -43,7 +43,7 @@ Click any player name on the card to open their profile, as a popup over the con
 2. Run, from the panel directory (usually `/var/www/pterodactyl`):
 
    ```
-   sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.4.1.pteroext --enable
+   sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.4.2.pteroext --enable
    ```
 
    Or upload it under **Admin → Extensions**.
@@ -54,7 +54,7 @@ Click any player name on the card to open their profile, as a popup over the con
 Same command with `--replace`:
 
 ```
-sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.4.1.pteroext --enable --replace
+sudo -u www-data php artisan p:extension:install /path/to/mc-players-1.4.2.pteroext --enable --replace
 ```
 
 Settings and data are kept.

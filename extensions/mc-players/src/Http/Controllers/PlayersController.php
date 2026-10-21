@@ -76,7 +76,20 @@ class PlayersController extends Controller
         $this->authorizeView($request, $server);
         $name = (string) $request->validate(['name' => ['required', 'string', 'max:64']])['name'];
 
-        return new JsonResponse($this->status->forServer($server, $name, withStats: true, sendList: true));
+        $result = $this->status->forServer($server, $name, withStats: true, sendList: true);
+        $result['player_data'] = $this->playerDataAvailable() && $request->user()->can('ext.mc-playerdata.read', $server);
+
+        return new JsonResponse($result);
+    }
+
+    /** Whether the Minecraft Player Data extension is installed, so the profile can link to it. */
+    private function playerDataAvailable(): bool
+    {
+        try {
+            return \Pterodactyl\Facades\Extensions::isAvailable('mc-playerdata');
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private function serverState(Server $server): string
